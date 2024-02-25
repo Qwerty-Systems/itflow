@@ -263,6 +263,7 @@ $currencies_array = array(
     'KPW' => 'Korea (North) Won',
     'KRW' => 'Korea (South) Won',
     'KWD' => 'Kuwaiti Dinar',
+    'KSH' => 'Kenyan Shilling',
     'LAK' => 'Laos Kip',
     'LVL' => 'Latvia Lat',
     'LBP' => 'Lebanon Pound',
