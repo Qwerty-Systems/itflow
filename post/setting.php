@@ -85,7 +85,7 @@ if (isset($_POST['edit_mail_smtp_settings'])) {
     $config_smtp_username = sanitizeInput($_POST['config_smtp_username']);
     $config_smtp_password = sanitizeInput($_POST['config_smtp_password']);
 
-    mysqli_query($mysqli,"UPDATE settings SET config_smtp_host = '$config_smtp_host', config_smtp_port = $config_smtp_port, config_smtp_encryption = '$config_smtp_encryption', config_smtp_username = '$config_smtp_username', config_smtp_password = '$config_smtp_password', config_mail_from_email = '$config_mail_from_email', config_mail_from_name = '$config_mail_from_name' WHERE company_id = 1");
+    mysqli_query($mysqli,"UPDATE settings SET config_smtp_host = '$config_smtp_host', config_smtp_port = $config_smtp_port, config_smtp_encryption = '$config_smtp_encryption', config_smtp_username = '$config_smtp_username', config_smtp_password = '$config_smtp_password' WHERE company_id = 1");
 
     // Logging
     mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Settings', log_action = 'Modify', log_description = '$session_name modified SMTP mail settings', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
@@ -184,10 +184,10 @@ if (isset($_POST['test_email_smtp'])) {
     $mail = addToMailQueue($mysqli, $data);
 
     if ($mail === true) {
-        $_SESSION['alert_message'] = "Test email sent successfully";
+        $_SESSION['alert_message'] = "Test email queued successfully! <a class='text-bold text-light' href='admin_mail_queue.php'>Check Admin > Mail queue</a>";
     } else {
         $_SESSION['alert_type'] = "error";
-        $_SESSION['alert_message'] = "Test email failed";
+        $_SESSION['alert_message'] = "Failed to add test mail to queue";
     }
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
@@ -503,8 +503,9 @@ if (isset($_POST['edit_security_settings'])) {
     $config_login_message = sanitizeInput($_POST['config_login_message']);
     $config_login_key_required = intval($_POST['config_login_key_required']);
     $config_login_key_secret = sanitizeInput($_POST['config_login_key_secret']);
+    $config_login_remember_me_expire = intval($_POST['config_login_remember_me_expire']);
 
-    mysqli_query($mysqli,"UPDATE settings SET config_login_message = '$config_login_message', config_login_key_required = '$config_login_key_required', config_login_key_secret = '$config_login_key_secret' WHERE company_id = 1");
+    mysqli_query($mysqli,"UPDATE settings SET config_login_message = '$config_login_message', config_login_key_required = '$config_login_key_required', config_login_key_secret = '$config_login_key_secret', config_login_remember_me_expire = $config_login_remember_me_expire WHERE company_id = 1");
 
     // Logging
     mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Settings', log_action = 'Modify', log_description = '$session_name modified login key settings', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
@@ -564,6 +565,63 @@ if (isset($_GET['cancel_mail'])) {
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 
+}
+
+if (isset($_POST['bulk_cancel_emails'])) {
+    validateAdminRole();
+    validateCSRFToken($_POST['csrf_token']);
+
+    $count = 0; // Default 0
+    $email_ids = $_POST['email_ids']; // Get array of email IDs to be cancelled
+
+    if (!empty($email_ids)) {
+
+        // Cycle through array and mark each email as failed
+        foreach ($email_ids as $email_id) {
+
+            $email_id = intval($email_id);
+            mysqli_query($mysqli,"UPDATE email_queue SET email_status = 2, email_attempts = 99, email_failed_at = NOW() WHERE email_id = $email_id");
+
+            $count++;
+        }
+
+        // Logging
+        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Email', log_action = 'Cancel', log_description = '$session_name bulk cancelled $count emails from the mail Queue', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+
+        $_SESSION['alert_message'] = "Cancelled $count email(s)";
+
+    }
+
+    header("Location: " . $_SERVER["HTTP_REFERER"]);
+}
+
+if (isset($_POST['bulk_delete_emails'])) {
+    validateAdminRole();
+    validateCSRFToken($_POST['csrf_token']);
+
+    $count = 0; // Default 0
+    $email_ids = $_POST['email_ids']; // Get array of email IDs to be deleted
+
+    if (!empty($email_ids)) {
+
+        // Cycle through array and delete each email
+        foreach ($email_ids as $email_id) {
+
+            $email_id = intval($email_id);
+            mysqli_query($mysqli,"DELETE FROM email_queue WHERE email_id = $email_id");
+
+            $count++;
+        }
+
+        // Logging
+        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Email', log_action = 'Delete', log_description = '$session_name bulk deleted $count emails from the mail Queue', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+
+        $_SESSION['alert_type'] = "danger";
+        $_SESSION['alert_message'] = "Deleted $count email(s)";
+
+    }
+
+    header("Location: " . $_SERVER["HTTP_REFERER"]);
 }
 
 if (isset($_GET['download_database'])) {

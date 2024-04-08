@@ -3,30 +3,31 @@ require_once "inc_all_admin.php";
 
 
 $sql = mysqli_query($mysqli, "SELECT * FROM contacts
+    LEFT JOIN clients ON client_id = contact_client_id
     WHERE contact_archived_at IS NULL
     AND contact_email != ''
     AND (contact_primary = 1 OR
     contact_important = 1 OR
     contact_billing = 1 OR
     contact_technical = 1)
-    ORDER BY contact_primary DESC,
+    ORDER BY client_name ASC, contact_primary DESC,
     contact_important DESC"
 );
 
 ?>
     
-<form action="post.php" method="post">   
 
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title mt-2"><i class="fa fa-fw fa-envelope-open mr-2"></i>Bulk Mail</h3>
-            <div class="card-tools">
-                <button type="submit" class="btn btn-primary" name="send_bulk_mail_now">
-                    <i class="fas fa-paper-plane mr-2"></i>Send Now
-                </button>
-            </div>
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title mt-2 mb-2"><i class="fa fa-fw fa-envelope-open mr-2"></i>Bulk Mail</h3>
+        <div class="card-tools">
+            <button id="bulkActionButton" hidden class="btn btn-primary" type="submit" form='bulkActions' name="send_bulk_mail_now">
+                <i class="fas fa-fw fa-paper-plane mr-2"></i>Send Now (<span id="selectedCount">0</span>)
+            </button>
         </div>
-        <div class="card-body">
+    </div>
+    <div class="card-body">
+        <form id="bulkActions" action="post.php" method="post">
 
             <div class="row">
                 
@@ -37,11 +38,15 @@ $sql = mysqli_query($mysqli, "SELECT * FROM contacts
                     <hr>
                     
                     <div class="form-group">
-                        <select type="text" class="form-control select2" name="mail_from" >
-                            <option value="<?php echo $config_mail_from_email; ?>"><?php echo $config_mail_from_email; ?></option>
-                            <option value="<?php echo $config_invoice_from_email; ?>"><?php echo $config_invoice_from_email; ?></option>
-                            <option value="<?php echo $config_quote_from_email; ?>"><?php echo $config_quote_from_email; ?></option>
-                            <option value="<?php echo $config_ticket_from_email; ?>"><?php echo $config_ticket_from_email; ?></option>
+                        <select type="text" class="form-control select2" name="mail_from">
+                            <option value="<?php echo nullable_htmlentities($config_mail_from_email); ?>">
+                                <?php echo nullable_htmlentities("$config_mail_from_name - $config_mail_from_email"); ?></option>
+                            <option value="<?php echo nullable_htmlentities($config_invoice_from_email); ?>">
+                                <?php echo nullable_htmlentities("$config_invoice_from_name - $config_invoice_from_email"); ?></option>
+                            <option value="<?php echo nullable_htmlentities($config_quote_from_email); ?>">
+                                <?php echo nullable_htmlentities("$config_quote_from_name - $config_quote_from_email"); ?></option>
+                            <option value="<?php echo nullable_htmlentities($config_ticket_from_email); ?>">
+                                <?php echo nullable_htmlentities("$config_ticket_from_name - $config_ticket_from_email"); ?></option>
                         </select>
                     </div>
 
@@ -79,9 +84,10 @@ $sql = mysqli_query($mysqli, "SELECT * FROM contacts
                                     <tr>
                                         <td>
                                             <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" id="selectAllCheckbox" onchange="toggleCheckboxes()">
+                                                <input type="checkbox" class="form-check-input" id="selectAllCheckbox" onclick="checkAll(this)">
                                             </div>
                                         </td>
+                                        <th>Client</th>
                                         <th>Name</th>
                                         <th>Title</th>
                                         <th>Email</th>
@@ -105,13 +111,15 @@ $sql = mysqli_query($mysqli, "SELECT * FROM contacts
                                     $contact_billing = intval($row['contact_billing']);
                                     $contact_technical = intval($row['contact_technical']);
                                     $contact_client_id = intval($row['contact_client_id']);
+                                    $client_name = nullable_htmlentities($row['client_name']);
                                 ?>
                                 <tr>
                                     <td>
                                         <div class="form-check">
-                                            <input type="checkbox" class="form-check-input" name="contact[]" value="<?php echo $contact_id; ?>">
+                                            <input type="checkbox" class="form-check-input bulk-select" name="contact_ids[]" value="<?php echo $contact_id; ?>">
                                         </div>
                                     </td>
+                                    <td><?php echo $client_name; ?></td>
                                     <td>
                                         <a href="client_contact_details.php?client_id=<?php echo $contact_client_id; ?>&contact_id=<?php echo $contact_id; ?>" target="_blank">
                                             <?php echo $contact_name; ?>
@@ -130,23 +138,13 @@ $sql = mysqli_query($mysqli, "SELECT * FROM contacts
                 </div>
 
             </div>
-        </div>
+
+        </form>
     </div>
+</div>
 
-</form>
 
-<script>
-function toggleCheckboxes() {
-    // Get the state of the 'selectAllCheckbox'
-    var selectAllChecked = document.getElementById('selectAllCheckbox').checked;
-    
-    // Find all checkboxes with the name 'contact[]' and set their state
-    var checkboxes = document.querySelectorAll('input[type="checkbox"][name="contact[]"]');
-    checkboxes.forEach(function(checkbox) {
-        checkbox.checked = selectAllChecked;
-    });
-}
-</script>
+<script src="js/bulk_actions.js"></script>
 
 <?php
 

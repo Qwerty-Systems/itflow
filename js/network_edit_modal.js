@@ -17,9 +17,13 @@ function populateNetworkEditModal(client_id, network_id) {
             document.getElementById("editNetworkHeader").innerText = network.network_name;
             document.getElementById("editNetworkId").value = network_id;
             document.getElementById("editNetworkName").value = network.network_name;
+            document.getElementById("editNetworkDescription").value = network.network_description;
             document.getElementById("editNetworkVlan").value = network.network_vlan;
             document.getElementById("editNetworkCidr").value = network.network;
+            document.getElementById("editNetworkSubnet").value = network.network_subnet;
             document.getElementById("editNetworkGw").value = network.network_gateway;
+            document.getElementById("editNetworkPrimaryDNS").value = network.network_primary_dns;
+            document.getElementById("editNetworkSecondaryDNS").value = network.network_secondary_dns;
             document.getElementById("editNetworkDhcp").value = network.network_dhcp_range;
             document.getElementById("editNetworkNotes").value = network.network_notes;
 

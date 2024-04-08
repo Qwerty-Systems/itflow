@@ -9,7 +9,6 @@ if (isset($_GET['asset_id'])) {
     $sql = mysqli_query($mysqli, "SELECT * FROM assets 
         LEFT JOIN contacts ON asset_contact_id = contact_id 
         LEFT JOIN locations ON asset_location_id = location_id 
-        LEFT JOIN logins ON login_asset_id = asset_id
         WHERE asset_id = $asset_id
         AND asset_client_id = $client_id
     ");
@@ -62,13 +61,10 @@ if (isset($_GET['asset_id'])) {
         $location_name_display = $location_name;
     }
 
-    $login_id = intval($row['login_id']);
-    $login_username = nullable_htmlentities(decryptLoginEntry($row['login_username']));
-    $login_password = nullable_htmlentities(decryptLoginEntry($row['login_password']));
-
     // Related Tickets Query
     $sql_related_tickets = mysqli_query($mysqli, "SELECT * FROM tickets 
         LEFT JOIN users on ticket_assigned_to = user_id
+        LEFT JOIN ticket_statuses ON ticket_status_id = ticket_status
         WHERE ticket_asset_id = $asset_id
         ORDER BY ticket_number DESC"
     );
@@ -93,9 +89,8 @@ if (isset($_GET['asset_id'])) {
     $file_count = mysqli_num_rows($sql_related_files);
 
     // Related Logins Query
-    $sql_related_logins = mysqli_query($mysqli, "SELECT * FROM asset_logins 
-        LEFT JOIN logins ON asset_logins.login_id = logins.login_id
-        WHERE asset_logins.asset_id = $asset_id
+    $sql_related_logins = mysqli_query($mysqli, "SELECT * FROM logins
+        WHERE login_asset_id = $asset_id
         AND login_archived_at IS NULL
         ORDER BY login_name DESC"
     );
@@ -435,7 +430,8 @@ if (isset($_GET['asset_id'])) {
                                 $ticket_number = intval($row['ticket_number']);
                                 $ticket_subject = nullable_htmlentities($row['ticket_subject']);
                                 $ticket_priority = nullable_htmlentities($row['ticket_priority']);
-                                $ticket_status = nullable_htmlentities($row['ticket_status']);
+                                $ticket_status_name = nullable_htmlentities($row['ticket_status_name']);
+                                $ticket_status_color = nullable_htmlentities($row['ticket_status_color']);
                                 $ticket_created_at = nullable_htmlentities($row['ticket_created_at']);
                                 $ticket_updated_at = nullable_htmlentities($row['ticket_updated_at']);
                                 if (empty($ticket_updated_at)) {
@@ -449,14 +445,6 @@ if (isset($_GET['asset_id'])) {
                                 }
                                 $ticket_closed_at = nullable_htmlentities($row['ticket_closed_at']);
 
-                                if ($ticket_status == "Open") {
-                                    $ticket_status_display = "<span class='p-2 badge badge-primary'>$ticket_status</span>";
-                                } elseif ($ticket_status == "Working") {
-                                    $ticket_status_display = "<span class='p-2 badge badge-success'>$ticket_status</span>";
-                                } else {
-                                    $ticket_status_display = "<span class='p-2 badge badge-secondary'>$ticket_status</span>";
-                                }
-
                                 if ($ticket_priority == "High") {
                                     $ticket_priority_display = "<span class='p-2 badge badge-danger'>$ticket_priority</span>";
                                 } elseif ($ticket_priority == "Medium") {
@@ -468,7 +456,7 @@ if (isset($_GET['asset_id'])) {
                                 }
                                 $ticket_assigned_to = intval($row['ticket_assigned_to']);
                                 if (empty($ticket_assigned_to)) {
-                                    if ($ticket_status == "Closed") {
+                                    if ($ticket_status == 5) {
                                         $ticket_assigned_to_display = "<p>Not Assigned</p>";
                                     } else {
                                         $ticket_assigned_to_display = "<p class='text-danger'>Not Assigned</p>";
@@ -483,7 +471,9 @@ if (isset($_GET['asset_id'])) {
                                     <td><a href="ticket.php?ticket_id=<?php echo $ticket_id; ?>"><span class="badge badge-pill badge-secondary p-3"><?php echo "$ticket_prefix$ticket_number"; ?></span></a></td>
                                     <td><a href="ticket.php?ticket_id=<?php echo $ticket_id; ?>"><?php echo $ticket_subject; ?></a></td>
                                     <td><?php echo $ticket_priority_display; ?></td>
-                                    <td><?php echo $ticket_status_display; ?></td>
+                                    <td>
+                                        <span class='badge badge-pill text-light p-2' style="background-color: <?php echo $ticket_status_color; ?>"><?php echo $ticket_status_name; ?></span>
+                                    </td>
                                     <td><?php echo $ticket_assigned_to_display; ?></td>
                                     <td><?php echo $ticket_updated_at_display; ?></td>
                                     <td><?php echo $ticket_created_at; ?></td>

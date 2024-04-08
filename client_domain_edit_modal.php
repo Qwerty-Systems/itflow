@@ -19,6 +19,9 @@
                         <li class="nav-item">
                             <a class="nav-link" data-toggle="pill" href="#pills-records">Records</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-toggle="pill" href="#pillsEditNotes">Notes</a>
+                        </li>
                     </ul>
 
                     <hr>
@@ -34,6 +37,16 @@
                                         <span class="input-group-text"><i class="fa fa-fw fa-globe"></i></span>
                                     </div>
                                     <input type="text" class="form-control" id="editDomainName" name="name" placeholder="Domain name example.com" value="" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Description</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i class="fa fa-fw fa-angle-right"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control" id="editDomainDescription" name="description" placeholder="Short Description">
                                 </div>
                             </div>
 
@@ -67,11 +80,6 @@
                                     </div>
                                     <input type="date" class="form-control" id="editDomainExpire" name="expire" max="2999-12-31">
                                 </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Notes</label>
-                                <textarea class="form-control" id="editDomainNotes" name="notes" rows="3" placeholder="Enter some notes"></textarea>
                             </div>
 
                         </div>
@@ -128,6 +136,12 @@
                                 </div>
                             </div>
 
+                        </div>
+
+                        <div class="tab-pane fade" id="pillsEditNotes">
+                            <div class="form-group">
+                                <textarea class="form-control" id="editDomainNotes" name="notes" rows="12" placeholder="Enter some notes"></textarea>
+                            </div>
                         </div>
 
                     </div>

@@ -7,7 +7,8 @@
 if (isset($_POST['upload_files'])) {
     $client_id = intval($_POST['client_id']);
     $folder_id = intval($_POST['folder_id']);
-    
+    $description = sanitizeInput($_POST['description']);
+
     if (!file_exists("uploads/clients/$client_id")) {
         mkdir("uploads/clients/$client_id");
     }
@@ -22,8 +23,8 @@ if (isset($_POST['upload_files'])) {
             'size' => $_FILES['file']['size'][$i]
         ];
 
-        if ($file_reference_name = checkFileUpload($single_file, array('jpg', 'jpeg', 'gif', 'png', 'webp', 'pdf', 'txt', 'md', 'doc', 'docx', 'odt', 'csv', 'xls', 'xlsx', 'ods', 'pptx', 'odp', 'zip', 'tar', 'gz', 'xml', 'msg', 'json', 'wav', 'mp3', 'ogg', 'mov', 'mp4', 'av1', 'ovpn', 'cfg', 'ps1', 'vsdx', 'drawio'))) {
-            
+        if ($file_reference_name = checkFileUpload($single_file, array('jpg', 'jpeg', 'gif', 'png', 'webp', 'pdf', 'txt', 'md', 'doc', 'docx', 'odt', 'csv', 'xls', 'xlsx', 'ods', 'pptx', 'odp', 'zip', 'tar', 'gz', 'xml', 'msg', 'json', 'wav', 'mp3', 'ogg', 'mov', 'mp4', 'av1', 'ovpn', 'cfg', 'ps1', 'vsdx', 'drawio', 'pfx'))) {
+
             $file_tmp_path = $_FILES['file']['tmp_name'][$i];
 
             $file_name = sanitizeInput($_FILES['file']['name'][$i]);
@@ -39,7 +40,7 @@ if (isset($_POST['upload_files'])) {
             // Extract .ext from reference file name to be used to store SHA256 hash
             $file_hash = strstr($file_reference_name, '.', true) ?: $file_reference_name;
 
-            mysqli_query($mysqli,"INSERT INTO files SET file_reference_name = '$file_reference_name', file_name = '$file_name', file_ext = '$file_extension', file_hash = '$file_hash', file_folder_id = $folder_id, file_client_id = $client_id");
+            mysqli_query($mysqli,"INSERT INTO files SET file_reference_name = '$file_reference_name', file_name = '$file_name', file_description = '$description', file_ext = '$file_extension', file_hash = '$file_hash', file_folder_id = $folder_id, file_client_id = $client_id");
 
             //Logging
             $file_id = intval(mysqli_insert_id($mysqli));
@@ -158,7 +159,7 @@ if (isset($_POST['bulk_move_files'])) {
 
     // Get Selected file Count
     $file_count = count($_POST['file_ids']);
-    
+
     // Move Documents to Folder Loop
     if (!empty($_POST['file_ids'])) {
         foreach($_POST['file_ids'] as $file_id) {

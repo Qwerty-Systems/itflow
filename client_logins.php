@@ -24,11 +24,11 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
 <div class="card card-dark">
     <div class="card-header py-2">
-        <h3 class="card-title mt-2"><i class="fa fa-fw fa-key mr-2"></i>Logins</h3>
+        <h3 class="card-title mt-2"><i class="fa fa-fw fa-key mr-2"></i>Credentials</h3>
         <div class="card-tools">
             <div class="btn-group">
                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addLoginModal">
-                    <i class="fas fa-plus mr-2"></i>New Login
+                    <i class="fas fa-plus mr-2"></i>New Credential
                 </button>
                 <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
                 <div class="dropdown-menu">
@@ -50,9 +50,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                 <div class="col-md-4">
                     <div class="input-group mb-3 mb-md-0">
-                        <input type="search" class="form-control" name="q" value="<?php if (isset($q)) {
-                                                                                        echo stripslashes(nullable_htmlentities($q));
-                                                                                    } ?>" placeholder="Search Logins">
+                        <input type="search" class="form-control" name="q" value="<?php if (isset($q)) { echo stripslashes(nullable_htmlentities($q)); } ?>" placeholder="Search Credentials">
                         <div class="input-group-append">
                             <button class="btn btn-dark"><i class="fa fa-search"></i></button>
                         </div>
@@ -74,7 +72,6 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                         } ?>">
                     <tr>
                         <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=login_name&order=<?php echo $disp; ?>">Name</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=login_description&order=<?php echo $disp; ?>">Description</a></th>
                         <th>Username</th>
                         <th>Password</th>
                         <th>OTP</th>
@@ -89,23 +86,18 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         $login_id = intval($row['login_id']);
                         $login_name = nullable_htmlentities($row['login_name']);
                         $login_description = nullable_htmlentities($row['login_description']);
-                        if (empty($login_description)) {
-                            $login_description_display = "-";
-                        } else {
-                            $login_description_display = $login_description;
-                        }
                         $login_uri = nullable_htmlentities($row['login_uri']);
                         if (empty($login_uri)) {
                             $login_uri_display = "-";
                         } else {
-                            $login_uri_display = "$login_uri<button class='btn btn-sm clipboardjs' data-clipboard-text='$login_uri'><i class='far fa-copy text-secondary'></i></button><a href='$login_uri' target='_blank'><i class='fa fa-external-link-alt text-secondary'></i></a>";
+                            $login_uri_display = "$login_uri<button class='btn btn-sm clipboardjs' type='button' data-clipboard-text='$login_uri'><i class='far fa-copy text-secondary'></i></button>";
                         }
                         $login_uri_2 = nullable_htmlentities($row['login_uri_2']);
                         $login_username = nullable_htmlentities(decryptLoginEntry($row['login_username']));
                         if (empty($login_username)) {
                             $login_username_display = "-";
                         } else {
-                            $login_username_display = "$login_username<button class='btn btn-sm clipboardjs' data-clipboard-text='$login_username'><i class='far fa-copy text-secondary'></i></button>";
+                            $login_username_display = "$login_username<button class='btn btn-sm clipboardjs' type='button' data-clipboard-text='$login_username'><i class='far fa-copy text-secondary'></i></button>";
                         }
                         $login_password = nullable_htmlentities(decryptLoginEntry($row['login_password']));
                         $login_otp_secret = nullable_htmlentities($row['login_otp_secret']);
@@ -123,42 +115,48 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         $login_software_id = intval($row['login_software_id']);
 
                     ?>
-                        <tr class="<?php if (!empty($login_important)) {
-                                        echo "text-bold";
-                                    } ?>">
+                        <tr class="<?php if (!empty($login_important)) { echo "text-bold"; } ?>">
                             <td>
-                                <i class="fa fa-fw fa-key text-secondary"></i>
                                 <a class="text-dark" href="#" data-toggle="modal" data-target="#editLoginModal<?php echo $login_id; ?>">
-                                    <?php echo $login_name; ?>
+                                    <div class="media">
+                                        <i class="fa fa-fw fa-2x fa-key mr-3"></i>
+                                        <div class="media-body">
+                                            <div><?php echo $login_name; ?></div>
+                                            <div><small class="text-secondary"><?php echo $login_description; ?></small></div>
+                                        </div>
+                                    </div>
                                 </a>
                             </td>
-                            <td><?php echo $login_description_display; ?></td>
                             <td><?php echo $login_username_display; ?></td>
                             <td>
-                                <a tabindex="0" href="#" data-toggle="popover" data-trigger="focus" data-placement="top" data-content="<?php echo $login_password; ?>"><i class="fas fa-2x fa-ellipsis-h text-secondary"></i><i class="fas fa-2x fa-ellipsis-h text-secondary"></i></a><button class="btn btn-sm clipboardjs" data-clipboard-text="<?php echo $login_password; ?>"><i class="far fa-copy text-secondary"></i></button>
+                                <button class="btn p-0" type="button" data-toggle="popover" data-trigger="focus" data-placement="top" data-content="<?php echo $login_password; ?>"><i class="fas fa-2x fa-ellipsis-h text-secondary"></i><i class="fas fa-2x fa-ellipsis-h text-secondary"></i></button><button class="btn btn-sm clipboardjs" type="button" data-clipboard-text="<?php echo $login_password; ?>"><i class="far fa-copy text-secondary"></i></button>
                             </td>
                             <td><?php echo $otp_display; ?></td>
                             <td><?php echo $login_uri_display; ?></td>
-                            <td>
-                                <div class="dropdown dropleft text-center">
-                                    <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown">
-                                        <i class="fas fa-ellipsis-h"></i>
-                                    </button>
-                                    <div class="dropdown-menu">
-                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editLoginModal<?php echo $login_id; ?>">
-                                            <i class="fas fa-fw fa-edit mr-2"></i>Edit
-                                        </a>
-                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#shareModal" onclick="populateShareModal(<?php echo "$client_id, 'Login', $login_id"; ?>)">
-                                            <i class="fas fa-fw fa-share mr-2"></i>Share
-                                        </a>
-                                        <?php if ($session_user_role == 3) { ?>
-                                            <div class="dropdown-divider"></div>
-                                            <a class="dropdown-item text-danger text-bold" href="post.php?delete_login=<?php echo $login_id; ?>">
-                                                <i class="fas fa-fw fa-trash mr-2"></i>Delete
+                            <td class="text-center">
+                                <div class="btn-group">
+                                    <?php if ($login_uri) { ?>
+                                    <a href="<?php echo $login_uri; ?>" target="_blank" class="btn btn-default btn-sm"><i class="fa fa-fw fa-external-link-alt"></i></a>
+                                    <?php } ?>
+                                    <div class="dropdown dropleft text-center">
+                                        <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-h"></i>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editLoginModal<?php echo $login_id; ?>">
+                                                <i class="fas fa-fw fa-edit mr-2"></i>Edit
                                             </a>
-                                        <?php } ?>
+                                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#shareModal" onclick="populateShareModal(<?php echo "$client_id, 'Login', $login_id"; ?>)">
+                                                <i class="fas fa-fw fa-share mr-2"></i>Share
+                                            </a>
+                                            <?php if ($session_user_role == 3) { ?>
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item text-danger text-bold" href="post.php?delete_login=<?php echo $login_id; ?>">
+                                                    <i class="fas fa-fw fa-trash mr-2"></i>Delete
+                                                </a>
+                                            <?php } ?>
+                                        </div>
                                     </div>
-                                </div>
                             </td>
                         </tr>
 

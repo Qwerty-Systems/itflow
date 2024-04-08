@@ -107,6 +107,7 @@ $config_client_portal_enable = intval($row['config_client_portal_enable']);
 $config_login_message = $row['config_login_message'];
 $config_login_key_required = $row['config_login_key_required'];
 $config_login_key_secret = $row['config_login_key_secret'];
+$config_login_remember_me_expire = intval($row['config_login_remember_me_expire']);
 
 // Locale
 $config_currency_format = "US_en";
@@ -238,17 +239,10 @@ $asset_status_array = array (
 );
 
 $ticket_status_array = array (
-    'Pending-Assignment',
-    'Assigned',
-    'Client-Replied',
-    'In-Progress',
-    'Pending-Shipment',
-    'Pending-Client',
-    'Pending-Vendor',
-    'Scheduled',
-    'Closed',
     'Open',
-    'Auto Close'
+    'On Hold',
+    'Auto Close',
+    'Closed'
 );
 
 $industry_select_array = array(

@@ -52,9 +52,7 @@ $sql_years_select = mysqli_query(
                     $year_select = date('Y');
                 }
             ?>
-                <option <?php if ($year == $year_select) {
-                            echo "selected";
-                        } ?>> <?php echo $year_select; ?></option>
+                <option <?php if ($year == $year_select) { echo "selected"; } ?>> <?php echo $year_select; ?></option>
 
             <?php
             }
@@ -63,18 +61,14 @@ $sql_years_select = mysqli_query(
 
         <?php if ($session_user_role == 1 || $session_user_role == 3 && $config_module_enable_accounting == 1) { ?>
             <div class="custom-control custom-switch mr-sm-3">
-                <input type="checkbox" onchange="this.form.submit()" class="custom-control-input" id="customSwitch1" name="enable_financial" value="1" <?php if ($user_config_dashboard_financial_enable == 1) {
-                                                                                                                                                            echo "checked";
-                                                                                                                                                        } ?>>
+                <input type="checkbox" onchange="this.form.submit()" class="custom-control-input" id="customSwitch1" name="enable_financial" value="1" <?php if ($user_config_dashboard_financial_enable == 1) { echo "checked"; } ?>>
                 <label class="custom-control-label" for="customSwitch1">Toggle Financial</label>
             </div>
         <?php } ?>
 
         <?php if ($session_user_role >= 2 && $config_module_enable_ticketing == 1) { ?>
             <div class="custom-control custom-switch">
-                <input type="checkbox" onchange="this.form.submit()" class="custom-control-input" id="customSwitch2" name="enable_technical" value="1" <?php if ($user_config_dashboard_technical_enable == 1) {
-                                                                                                                                                            echo "checked";
-                                                                                                                                                        } ?>>
+                <input type="checkbox" onchange="this.form.submit()" class="custom-control-input" id="customSwitch2" name="enable_technical" value="1" <?php if ($user_config_dashboard_technical_enable == 1) { echo "checked"; } ?>>
                 <label class="custom-control-label" for="customSwitch2">Toggle Technical</label>
             </div>
         <?php } ?>
@@ -91,8 +85,10 @@ if ($user_config_dashboard_financial_enable == 1) {
         exit('<script type="text/javascript">window.location.href = \'dashboard_technical.php\';</script>');
     }
 
+
     //Define var so it doesnt throw errors in logs
     $largest_income_month = 0;
+
 
     //Get Total income
     $sql_total_payments_to_invoices = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS total_payments_to_invoices FROM payments WHERE YEAR(payment_date) = $year");
@@ -173,7 +169,7 @@ if ($user_config_dashboard_financial_enable == 1) {
 
     if ($config_module_enable_ticketing && $config_module_enable_accounting) {
         //Get Unbilled, closed tickets
-        $sql_unbilled_tickets = mysqli_query($mysqli, "SELECT COUNT('ticket_id') AS unbilled_tickets FROM tickets WHERE ticket_status = 'Closed' AND ticket_billable = 1 AND ticket_invoice_id = 0 AND YEAR(ticket_created_at) = $year");
+        $sql_unbilled_tickets = mysqli_query($mysqli, "SELECT COUNT('ticket_id') AS unbilled_tickets FROM tickets WHERE ticket_closed_at IS NOT NULL AND ticket_billable = 1 AND ticket_invoice_id = 0 AND YEAR(ticket_created_at) = $year");
         $row = mysqli_fetch_array($sql_unbilled_tickets);
         $unbilled_tickets = intval($row['unbilled_tickets']);
     } else {
@@ -183,11 +179,10 @@ if ($user_config_dashboard_financial_enable == 1) {
     }
 
 
-
-
     //Get Total Clients added
     $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('client_id') AS clients_added FROM clients WHERE YEAR(client_created_at) = $year AND client_archived_at IS NULL"));
     $clients_added = intval($row['clients_added']);
+
 
     //Get Total Vendors added
     $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('vendor_id') AS vendors_added FROM vendors WHERE YEAR(vendor_created_at) = $year AND vendor_client_id = 0 AND vendor_template = 0 AND vendor_archived_at IS NULL"));
@@ -207,7 +202,7 @@ if ($user_config_dashboard_financial_enable == 1) {
                     <small>Receivables: <?php echo numfmt_format_currency($currency_format, $receivables, "$session_company_currency"); ?></h3></small>
                 </div>
                 <div class="icon">
-                    <i class="fa fa-money-check"></i>
+                    <i class="fa fa-hand-holding-usd"></i>
                 </div>
             </a>
         </div>
@@ -235,7 +230,7 @@ if ($user_config_dashboard_financial_enable == 1) {
                     <p>Profit</p>
                 </div>
                 <div class="icon">
-                    <i class="fa fa-heart"></i>
+                    <i class="fa fa-balance-scale"></i>
                 </div>
             </a>
         </div>
@@ -608,7 +603,7 @@ if ($user_config_dashboard_technical_enable == 1) {
         $mysqli,
         "SELECT COUNT('ticket_id') AS active_tickets
     FROM tickets
-    WHERE ticket_status != 'Closed'"
+    WHERE ticket_closed_at IS NULL"
     ));
     $active_tickets = $sql_tickets['active_tickets'];
 
@@ -617,7 +612,7 @@ if ($user_config_dashboard_technical_enable == 1) {
         $mysqli,
         "SELECT COUNT('ticket_id') AS your_tickets
     FROM tickets
-    WHERE ticket_status != 'Closed'
+    WHERE ticket_closed_at IS NULL
     AND ticket_assigned_to = $session_user_id"
     ));
     $your_tickets = $sql_your_tickets['your_tickets'];
@@ -649,12 +644,13 @@ if ($user_config_dashboard_technical_enable == 1) {
     $sql_your_tickets = mysqli_query(
         $mysqli,
         "SELECT * FROM tickets
-    LEFT JOIN clients ON ticket_client_id = client_id
-    LEFT JOIN contacts ON ticket_contact_id = contact_id
-    WHERE ticket_assigned_to = $session_user_id
-    AND ticket_status != 'Closed'
-    ORDER BY ticket_number DESC"
-    );
+            LEFT JOIN ticket_statuses ON ticket_status = ticket_status_id
+            LEFT JOIN clients ON ticket_client_id = client_id
+            LEFT JOIN contacts ON ticket_contact_id = contact_id
+            WHERE ticket_assigned_to = $session_user_id
+            AND ticket_closed_at IS NULL
+            ORDER BY ticket_number DESC"
+        );
 
 ?>
 
@@ -777,13 +773,15 @@ if ($user_config_dashboard_technical_enable == 1) {
                                     $ticket_number = intval($row['ticket_number']);
                                     $ticket_subject = nullable_htmlentities($row['ticket_subject']);
                                     $ticket_priority = nullable_htmlentities($row['ticket_priority']);
-                                    $ticket_status = nullable_htmlentities($row['ticket_status']);
+                                    $ticket_status_id = intval($row['ticket_status']);
+                                    $ticket_status_name = nullable_htmlentities($row['ticket_status_name']);
+                                    $ticket_status_color = nullable_htmlentities($row['ticket_status_color']);
                                     $ticket_created_at = nullable_htmlentities($row['ticket_created_at']);
                                     $ticket_created_at_time_ago = timeAgo($row['ticket_created_at']);
                                     $ticket_updated_at = nullable_htmlentities($row['ticket_updated_at']);
                                     $ticket_updated_at_time_ago = timeAgo($row['ticket_updated_at']);
                                     if (empty($ticket_updated_at)) {
-                                        if ($ticket_status == "Closed") {
+                                        if (!empty($ticket_closed_at)) {
                                             $ticket_updated_at_display = "<p>Never</p>";
                                         } else {
                                             $ticket_updated_at_display = "<p class='text-danger'>Never</p>";
@@ -795,17 +793,8 @@ if ($user_config_dashboard_technical_enable == 1) {
                                     $client_name = nullable_htmlentities($row['client_name']);
                                     $contact_id = intval($row['ticket_contact_id']);
                                     $contact_name = nullable_htmlentities($row['contact_name']);
-                                    if ($ticket_status == "Pending-Assignment") {
-                                        $ticket_status_color = "danger";
-                                    } elseif ($ticket_status == "Assigned") {
-                                        $ticket_status_color = "primary";
-                                    } elseif ($ticket_status == "In-Progress") {
-                                        $ticket_status_color = "success";
-                                    } elseif ($ticket_status == "Closed") {
-                                        $ticket_status_color = "dark";
-                                    } else {
-                                        $ticket_status_color = "secondary";
-                                    }
+
+                                    
 
                                     if ($ticket_priority == "High") {
                                         $ticket_priority_color = "danger";
@@ -835,7 +824,9 @@ if ($user_config_dashboard_technical_enable == 1) {
                                         </td>
                                         <td><?php echo $contact_display; ?></td>
                                         <td><span class='p-2 badge badge-pill badge-<?php echo $ticket_priority_color; ?>'><?php echo $ticket_priority; ?></span></td>
-                                        <td><span class='p-2 badge badge-pill badge-<?php echo $ticket_status_color; ?>'><?php echo $ticket_status; ?></span></td>
+                                        <td>
+                                            <span class='badge badge-pill text-light p-2' style="background-color: <?php echo $ticket_status_color; ?>"><?php echo $ticket_status_name; ?></span>
+                                        </td>
                                         <td><?php echo $ticket_updated_at_display; ?></td>
                                     </tr>
 
