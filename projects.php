@@ -108,6 +108,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <table class="table table-striped table-hover table-borderless">
                     <thead class="<?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
                     <tr>
+                        <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_number&order=<?php echo $disp; ?>">Number</a></th>
                         <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_name&order=<?php echo $disp; ?>">Project</a></th>
                         <th>Tickets / Tasks</th>
                         <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_due&order=<?php echo $disp; ?>">Due</a></th>
@@ -126,6 +127,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                     while ($row = mysqli_fetch_array($sql_projects)) {
                         $project_id = intval($row['project_id']);
+                        $project_prefix = nullable_htmlentities($row['project_prefix']);
+                        $project_number = intval($row['project_number']);
                         $project_name = nullable_htmlentities($row['project_name']);
                         $project_description = nullable_htmlentities($row['project_description']);
                         $project_due = nullable_htmlentities($row['project_due']);
@@ -158,7 +161,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         
                         // Ticket Closed Percent
                         if($ticket_count) {
-                            $tickets_closed_percent = ($closed_ticket_count / $ticket_count) * 100;
+                            $tickets_closed_percent = round(($closed_ticket_count / $ticket_count) * 100);
                         }
                         // Get All Tasks
                         $sql_tasks = mysqli_query($mysqli,
@@ -179,12 +182,17 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                         // Tasks Completed Percent
                         if($task_count) {
-                            $tasks_completed_percent = ($completed_task_count / $task_count) * 100;
+                            $tasks_completed_percent = round(($completed_task_count / $task_count) * 100);
                         }
 
                         ?>
 
                         <tr>
+                            <td>
+                                <a class="text-dark" href="project_details.php?project_id=<?php echo $project_id; ?>">
+                                    <?php echo "$project_prefix$project_number"; ?>
+                                </a>
+                            </td>
                             <td>
                                 <a class="text-dark" href="project_details.php?project_id=<?php echo $project_id; ?>">
                                     <div class="media">
@@ -200,13 +208,13 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 <?php if($ticket_count) { ?>
                                 <div class="progress" style="height: 20px;">
                                     <i class="fa fas fa-fw fa-life-ring mr-2"></i>
-                                    <div class="progress-bar bg-success" style="width: <?php echo $tickets_closed_percent; ?>%;"><?php echo $closed_ticket_count; ?> / <?php echo $ticket_count; ?></div>
+                                    <div class="progress-bar bg-primary" style="width: <?php echo $tickets_closed_percent; ?>%;"><?php echo $closed_ticket_count; ?> / <?php echo $ticket_count; ?></div>
                                 </div>
                                 <?php } else { echo "<div>-</div>"; } ?>
                                 <?php if($task_count) { ?>
                                 <div class="progress mt-2" style="height: 20px;">
                                     <i class="fa fas fa-fw fa-tasks mr-2"></i>
-                                    <div class="progress-bar" style="width: <?php echo $tasks_completed_percent; ?>%;"><?php echo $completed_task_count; ?> / <?php echo $task_count; ?></div>
+                                    <div class="progress-bar bg-secondary" style="width: <?php echo $tasks_completed_percent; ?>%;"><?php echo $completed_task_count; ?> / <?php echo $task_count; ?></div>
                                 </div>
                                 <?php } ?>
                             </td>

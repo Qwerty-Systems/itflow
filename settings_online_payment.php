@@ -1,6 +1,6 @@
 <?php
 
-require_once "inc_all_settings.php";
+require_once "inc_all_admin.php";
 
 
 ?>
@@ -64,6 +64,12 @@ require_once "inc_all_settings.php";
                             ?>
                         </select>
                     </div>
+                </div>
+
+                <hr>
+
+                <div class="alert alert-danger" role="alert">
+                    "Client Pays Fees" / The ability to pass Stripe fees onto clients will be removed in a future version of ITFlow.
                 </div>
 
                 <div class="form-group">

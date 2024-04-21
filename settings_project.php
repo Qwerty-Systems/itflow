@@ -4,19 +4,21 @@ require_once "inc_all_admin.php";
 
     <div class="card card-dark">
         <div class="card-header py-3">
-            <h3 class="card-title"><i class="fas fa-fw fa-comment-dollar mr-2"></i>Quote Settings</h3>
+            <h3 class="card-title"><i class="fas fa-fw fa-project-diagram mr-2"></i>Project Settings</h3>
         </div>
         <div class="card-body">
             <form action="post.php" method="post" autocomplete="off">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
 
+                <h4>Project</h4>
+
                 <div class="form-group">
-                    <label>Quote Prefix</label>
+                    <label>Project Prefix</label>
                     <div class="input-group">
                         <div class="input-group-prepend">
                             <span class="input-group-text"><i class="fa fa-fw fa-barcode"></i></span>
                         </div>
-                        <input type="text" class="form-control" name="config_quote_prefix" placeholder="Quote Prefix" value="<?php echo nullable_htmlentities($config_quote_prefix); ?>" required>
+                        <input type="text" class="form-control" name="config_project_prefix" placeholder="Project Prefix" value="<?php echo nullable_htmlentities($config_project_prefix); ?>" required>
                     </div>
                 </div>
 
@@ -26,18 +28,13 @@ require_once "inc_all_admin.php";
                         <div class="input-group-prepend">
                             <span class="input-group-text"><i class="fa fa-fw fa-barcode"></i></span>
                         </div>
-                        <input type="number" min="0" class="form-control" name="config_quote_next_number" placeholder="Next Quote Number" value="<?php echo intval($config_quote_next_number); ?>" required>
+                        <input type="number" min="0" class="form-control" name="config_project_next_number" placeholder="Next Project Number" value="<?php echo intval($config_project_next_number); ?>" required>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Quote Footer</label>
-                    <textarea class="form-control" rows="4" name="config_quote_footer"><?php echo nullable_htmlentities($config_quote_footer); ?></textarea>
                 </div>
 
                 <hr>
 
-                <button type="submit" name="edit_quote_settings" class="btn btn-primary text-bold"><i class="fa fa-check mr-2"></i>Save</button>
+                <button type="submit" name="edit_project_settings" class="btn btn-primary text-bold"><i class="fas fa-check mr-2"></i>Save</button>
 
             </form>
         </div>
@@ -45,4 +42,3 @@ require_once "inc_all_admin.php";
 
 <?php
 require_once "footer.php";
-

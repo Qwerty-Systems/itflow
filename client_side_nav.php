@@ -1,7 +1,7 @@
 <!-- Main Sidebar Container -->
 <aside class="main-sidebar sidebar-dark-<?php echo nullable_htmlentities($config_theme); ?> d-print-none">
 
-    <a class="brand-link pb-1 mt-1" href="clients.php">    
+    <a class="brand-link pb-1 mt-1" href="clients.php">
         <p class="h5"><i class="nav-icon fas fa-arrow-left ml-3 mr-2"></i> Back | <strong><?php echo shortenClient($client_name); ?></strong></p>
     </a>
 
@@ -46,12 +46,12 @@
                     </a>
                 </li>
 
-                
+
                 <?php if ($config_module_enable_ticketing == 1) { ?>
                 <li class="nav-header mt-3">SUPPORT</li>
 
                 <li class="nav-item">
-                    <a href="client_tickets.php?client_id=<?php echo $client_id; ?>" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "client_tickets.php" || basename($_SERVER["PHP_SELF"]) == "client_recurring_tickets.php") { echo "active"; } ?>">
+                    <a href="client_tickets.php?client_id=<?php echo $client_id; ?>" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "client_tickets.php") { echo "active"; } ?>">
                         <i class="nav-icon fas fa-life-ring"></i>
                         <p>
                             Tickets
@@ -64,6 +64,19 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="client_recurring_tickets.php?client_id=<?php echo $client_id; ?>" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "client_recurring_tickets.php") { echo "active"; } ?>">
+                        <i class="nav-icon fas fa-redo-alt"></i>
+                        <p>
+                            Recurring
+                            <?php
+                            if ($num_scheduled_tickets) { ?>
+                                <span class="right badge"><?php echo $num_scheduled_tickets; ?></span>
+                            <?php } ?>
+
+                        </p>
+                    </a>
+                </li>
 
                 <?php } ?>
 
@@ -224,13 +237,26 @@
                     <li class="nav-header mt-3">FINANCE</li>
 
                     <li class="nav-item">
-                        <a href="client_invoices.php?client_id=<?php echo $client_id; ?>" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "client_invoices.php" || basename($_SERVER["PHP_SELF"]) == "client_recurring_invoices.php" || basename($_SERVER["PHP_SELF"]) == "client_recurring_invoice.php") { echo "active"; } ?>">
+                        <a href="client_invoices.php?client_id=<?php echo $client_id; ?>" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "client_invoices.php") { echo "active"; } ?>">
                             <i class="nav-icon fas fa-file-invoice"></i>
                             <p>
                                 Invoices
                                 <?php
                                 if ($num_invoices > 0) { ?>
                                     <span class="right badge <?php if ($num_invoices_open > 0) { ?> badge-danger <?php } ?> text-light"><?php echo $num_invoices; ?></span>
+                                <?php } ?>
+                            </p>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="client_recurring_invoices.php?client_id=<?php echo $client_id; ?>" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "client_recurring_invoices.php" || basename($_SERVER["PHP_SELF"]) == "client_recurring_invoice.php") { echo "active"; } ?>">
+                            <i class="nav-icon fas fa-redo-alt"></i>
+                            <p>
+                                Recurring
+                                <?php
+                                if ($num_recurring > 0) { ?>
+                                    <span class="right badge"><?php echo $num_recurring; ?></span>
                                 <?php } ?>
                             </p>
                         </a>
@@ -287,7 +313,7 @@
 
                 <?php } ?>
 
-                <li class="nav-header mt-3">MORE</li>
+                <li class="nav-header mt-3">MISC</li>
 
                 <li class="nav-item">
                     <a href="client_bulk_mail.php?client_id=<?php echo $client_id; ?>" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "client_bulk_mail.php") { echo "active"; } ?>">
@@ -327,7 +353,7 @@
         <!-- /.sidebar-menu -->
 
         <div class="mb-3"></div>
-        
+
     </div>
     <!-- /.sidebar -->
 </aside>

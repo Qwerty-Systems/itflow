@@ -32,6 +32,7 @@ if (isset($_GET['client_id'])) {
 
         $row = mysqli_fetch_array($sql);
         $client_name = nullable_htmlentities($row['client_name']);
+        $client_name_title = $row['client_name'];
         $client_is_lead = intval($row['client_lead']);
         $client_type = nullable_htmlentities($row['client_type']);
         $client_website = nullable_htmlentities($row['client_website']);
@@ -114,7 +115,7 @@ if (isset($_GET['client_id'])) {
 
         $recurring_monthly = $recurring_monthly_total + $recurring_yearly_total;
 
-        //Badge Counts
+        // Badge Counts
 
         $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('contact_id') AS num FROM contacts WHERE contact_archived_at IS NULL AND contact_client_id = $client_id"));
         $num_contacts = $row['num'];
@@ -125,7 +126,7 @@ if (isset($_GET['client_id'])) {
         $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('asset_id') AS num FROM assets WHERE asset_archived_at IS NULL AND asset_client_id = $client_id"));
         $num_assets = $row['num'];
 
-        $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('ticket_id') AS num FROM tickets WHERE ticket_archived_at IS NULL AND ticket_closed_at IS NULL AND ticket_status != 'Auto Close' AND ticket_client_id = $client_id"));
+        $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('ticket_id') AS num FROM tickets WHERE ticket_archived_at IS NULL AND ticket_closed_at IS NULL AND ticket_status != 4 AND ticket_client_id = $client_id"));
         $num_active_tickets = $row['num'];
 
         $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('ticket_id') AS num FROM tickets WHERE ticket_archived_at IS NULL AND ticket_closed_at IS NOT NULL AND ticket_client_id = $client_id"));
@@ -240,3 +241,7 @@ require_once "inc_client_top_head.php";
 
 require_once "pagination_head.php";
 
+?>
+
+<!-- Set the browser window title to the clients name -->
+<script>document.title = "<?php echo $client_name_title; ?>"</script>

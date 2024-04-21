@@ -43,7 +43,7 @@ $sql_stale_tickets = mysqli_query(
     "SELECT * FROM tickets
     WHERE ticket_client_id = $client_id
     AND ticket_updated_at < CURRENT_DATE - INTERVAL 3 DAY
-    AND ticket_status != 'Closed'
+    AND ticket_closed_at IS NULL
     ORDER BY ticket_updated_at DESC"
 );
 
@@ -99,7 +99,7 @@ $sql_asset_retire = mysqli_query(
 
         <div class="col-md-12">
 
-            <div class="card card-dark mb-3 elevation-3">
+            <div class="card card-dark mb-3">
                 <div class="card-header">
                     <h5 class="card-title"><i class="fa fa-fw fa-edit mr-2"></i>Quick Notes</h5>
                 </div>

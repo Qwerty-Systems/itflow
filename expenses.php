@@ -6,6 +6,15 @@ $order = "DESC";
 
 require_once "inc_all.php";
 
+// Account Filter
+if (isset($_GET['account']) & !empty($_GET['account'])) {
+    $account_query = 'AND (expense_account_id = ' . intval($_GET['account']) . ')';
+    $account = intval($_GET['account']);
+} else {
+    // Default - any
+    $account_query = '';
+}
+
 //Rebuild URL
 $url_query_strings_sort = http_build_query($get_copy);
 
@@ -19,13 +28,11 @@ $sql = mysqli_query(
     WHERE expense_vendor_id > 0
     AND DATE(expense_date) BETWEEN '$dtf' AND '$dtt'
     AND (vendor_name LIKE '%$q%' OR client_name LIKE '%$q%' OR category_name LIKE '%$q%' OR account_name LIKE '%$q%' OR expense_description LIKE '%$q%' OR expense_amount LIKE '%$q%')
+    $account_query
     ORDER BY $sort $order LIMIT $record_from, $record_to"
 );
 
 $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
-
-$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('recurring_expense_id') AS num FROM recurring_expenses WHERE recurring_expense_archived_at IS NULL"));
-$recurring_expense_count = $row['num'];
 
 ?>
 
@@ -51,7 +58,6 @@ $recurring_expense_count = $row['num'];
                     </div>
                     <div class="col-sm-8">
                         <div class="btn-group float-right">
-                            <a href="recurring_expenses.php" class="btn btn-outline-primary"><i class="fa fa-fw fa-redo-alt mr-2"></i>Recurring | <b><?php echo $recurring_expense_count; ?></b></a>
                             <div class="dropdown ml-2" id="bulkActionButton" hidden>
                                 <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown">
                                     <i class="fas fa-fw fa-layer-group mr-2"></i>Bulk Action (<span id="selectedCount">0</span>)
@@ -73,7 +79,7 @@ $recurring_expense_count = $row['num'];
                         </div>
                     </div>
                 </div>
-                <div class="collapse mt-3 <?php if (!empty($_GET['dtf']) || $_GET['canned_date'] !== "custom" ) { echo "show"; } ?>" id="advancedFilter">
+                <div class="collapse mt-3 <?php if ($_GET['dtf'] || $_GET['canned_date'] !== "custom" || $_GET['account']) { echo "show"; } ?>" id="advancedFilter">
                     <div class="row">
                         <div class="col-md-2">
                             <div class="form-group">
@@ -103,7 +109,27 @@ $recurring_expense_count = $row['num'];
                                 <input onchange="this.form.submit()" type="date" class="form-control" name="dtt" max="2999-12-31" value="<?php echo nullable_htmlentities($dtt); ?>">
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-sm-2">
+                            <div class="form-group">
+                                <label>Account</label>
+                                <select class="form-control select2" name="account" onchange="this.form.submit()">
+                                    <option value="" <?php if ($account == "") { echo "selected"; } ?>>- All Accounts -</option>
+
+                                    <?php
+                                    $sql_accounts_filter = mysqli_query($mysqli, "SELECT * FROM accounts WHERE account_archived_at IS NULL ORDER BY account_name ASC");
+                                    while ($row = mysqli_fetch_array($sql_accounts_filter)) {
+                                        $account_id = intval($row['account_id']);
+                                        $account_name = nullable_htmlentities($row['account_name']);
+                                    ?>
+                                        <option <?php if ($account == $account_id) { echo "selected"; } ?> value="<?php echo $account_id; ?>"><?php echo $account_name; ?></option>
+                                    <?php
+                                    }
+                                    ?>
+
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
                             <div class="float-right">
                                 <button type="button" class="btn btn-default mt-4" data-toggle="modal" data-target="#exportExpensesModal"><i class="fa fa-fw fa-download mr-2"></i>Export</button>
                             </div>
