@@ -188,6 +188,7 @@ if (isset($_POST['edit_ticket'])) {
     $ticket_id = intval($_POST['ticket_id']);
     $contact_id = intval($_POST['contact']);
     $notify = intval($_POST['contact_notify']);
+    $category = intval($_POST['category']);
     $subject = sanitizeInput($_POST['subject']);
     $billable = intval($_POST['billable']);
     $priority = sanitizeInput($_POST['priority']);
@@ -200,7 +201,7 @@ if (isset($_POST['edit_ticket'])) {
     $client_id = intval($_POST['client_id']);
     $ticket_number = sanitizeInput($_POST['ticket_number']);
 
-    mysqli_query($mysqli, "UPDATE tickets SET ticket_subject = '$subject', ticket_priority = '$priority', ticket_billable = $billable, ticket_details = '$details', ticket_vendor_ticket_number = '$vendor_ticket_number', ticket_contact_id = $contact_id, ticket_vendor_id = $vendor_id, ticket_location_id = $location_id, ticket_asset_id = $asset_id, ticket_project_id = $project_id WHERE ticket_id = $ticket_id");
+    mysqli_query($mysqli, "UPDATE tickets SET ticket_category = $category, ticket_subject = '$subject', ticket_priority = '$priority', ticket_billable = $billable, ticket_details = '$details', ticket_vendor_ticket_number = '$vendor_ticket_number', ticket_contact_id = $contact_id, ticket_vendor_id = $vendor_id, ticket_location_id = $location_id, ticket_asset_id = $asset_id, ticket_project_id = $project_id WHERE ticket_id = $ticket_id");
 
     // Notify new contact if selected
     if ($notify && !empty($config_smtp_host)) {
@@ -1104,9 +1105,14 @@ if (isset($_POST['add_ticket_reply'])) {
 
     $client_id = intval($_POST['client_id']);
 
-    if (isset($_POST['public_reply_type'])) {
+    $send_email = 0;
+
+    if ($_POST['public_reply_type'] == 1 ){
         $ticket_reply_type = 'Public';
-    } else {
+    } elseif ($_POST['public_reply_type'] == 2 ) {
+        $ticket_reply_type = 'Public';
+        $send_email = 1;
+    } else { 
         $ticket_reply_type = 'Internal';
     }
 
@@ -1156,7 +1162,7 @@ if (isset($_POST['add_ticket_reply'])) {
     $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone']));
 
     // Send e-mail to client if public update & email is set up
-    if ($ticket_reply_type == 'Public' && !empty($config_smtp_host)) {
+    if ($ticket_reply_type == 'Public' && $send_email == 1 && !empty($config_smtp_host)) {
 
         if (filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
 
@@ -1285,7 +1291,7 @@ if (isset($_POST['merge_ticket'])) {
     $ticket_prefix = sanitizeInput($row['ticket_prefix']);
     $ticket_number = intval($row['ticket_number']);
     $ticket_subject = sanitizeInput($row['ticket_subject']);
-    $ticket_details = sanitizeInput($row['ticket_details']);
+    $ticket_details = mysqli_escape_string($mysqli, $row['ticket_details']);
 
     // NEW PARENT ticket details
     // Get merge into ticket id (as it may differ from the number)
@@ -1596,7 +1602,7 @@ if (isset($_POST['add_recurring_ticket'])) {
     }
 
     // Add scheduled ticket
-    mysqli_query($mysqli, "INSERT INTO scheduled_tickets SET scheduled_ticket_subject = '$subject', scheduled_ticket_details = '$details', scheduled_ticket_priority = '$priority', scheduled_ticket_frequency = '$frequency', scheduled_ticket_start_date = '$start_date', scheduled_ticket_next_run = '$start_date', scheduled_ticket_assigned_to = $assigned_to, scheduled_ticket_created_by = $session_user_id, scheduled_ticket_client_id = $client_id, scheduled_ticket_contact_id = $contact_id, scheduled_ticket_asset_id = $asset_id");
+    mysqli_query($mysqli, "INSERT INTO scheduled_tickets SET scheduled_ticket_subject = '$subject', scheduled_ticket_details = '$details', scheduled_ticket_priority = '$priority', scheduled_ticket_frequency = '$frequency', scheduled_ticket_billable = $billable, scheduled_ticket_start_date = '$start_date', scheduled_ticket_next_run = '$start_date', scheduled_ticket_assigned_to = $assigned_to, scheduled_ticket_created_by = $session_user_id, scheduled_ticket_client_id = $client_id, scheduled_ticket_contact_id = $contact_id, scheduled_ticket_asset_id = $asset_id");
 
     $scheduled_ticket_id = mysqli_insert_id($mysqli);
 
@@ -1625,7 +1631,7 @@ if (isset($_POST['edit_recurring_ticket'])) {
     }
 
     // Edit scheduled ticket
-    mysqli_query($mysqli, "UPDATE scheduled_tickets SET scheduled_ticket_subject = '$subject', scheduled_ticket_details = '$details', scheduled_ticket_priority = '$priority', scheduled_ticket_frequency = '$frequency', scheduled_ticket_next_run = '$next_run_date', scheduled_ticket_assigned_to = $assigned_to, scheduled_ticket_asset_id = $asset_id, scheduled_ticket_contact_id = $contact_id WHERE scheduled_ticket_id = $scheduled_ticket_id");
+    mysqli_query($mysqli, "UPDATE scheduled_tickets SET scheduled_ticket_subject = '$subject', scheduled_ticket_details = '$details', scheduled_ticket_priority = '$priority', scheduled_ticket_frequency = '$frequency', scheduled_ticket_billable = $billable, scheduled_ticket_next_run = '$next_run_date', scheduled_ticket_assigned_to = $assigned_to, scheduled_ticket_asset_id = $asset_id, scheduled_ticket_contact_id = $contact_id WHERE scheduled_ticket_id = $scheduled_ticket_id");
 
     // Logging
     mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Recurring Ticket', log_action = 'Modify', log_description = '$session_name modified recurring ticket for $subject - $frequency', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $scheduled_ticket_id");

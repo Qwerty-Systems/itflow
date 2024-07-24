@@ -39,16 +39,29 @@ if ($view == 1) {
 // Set Folder Location Var used when creating folders
 $folder_location = 1;
 
-$sql = mysqli_query(
-    $mysqli,
-    "SELECT SQL_CALC_FOUND_ROWS * FROM files
-    WHERE file_client_id = $client_id
-    AND file_folder_id = $folder_id
-    AND file_archived_at IS NULL
-    AND (file_name LIKE '%$q%' OR file_ext LIKE '%$q%' OR file_description LIKE '%$q%')
-    $query_images
-    ORDER BY $sort $order LIMIT $record_from, $record_to"
-);
+if ($get_folder_id == 0 && isset($_GET["q"])) {
+    $sql = mysqli_query(
+        $mysqli,
+        "SELECT SQL_CALC_FOUND_ROWS * FROM files
+        WHERE file_client_id = $client_id
+        
+        AND file_archived_at IS NULL
+        AND (file_name LIKE '%$q%' OR file_ext LIKE '%$q%' OR file_description LIKE '%$q%')
+        $query_images
+        ORDER BY $sort $order LIMIT $record_from, $record_to"
+    );
+}else{
+    $sql = mysqli_query(
+        $mysqli,
+        "SELECT SQL_CALC_FOUND_ROWS * FROM files
+        WHERE file_client_id = $client_id
+        AND file_folder_id = $folder_id
+        AND file_archived_at IS NULL
+        AND (file_name LIKE '%$q%' OR file_ext LIKE '%$q%' OR file_description LIKE '%$q%')
+        $query_images
+        ORDER BY $sort $order LIMIT $record_from, $record_to"
+    );
+}
 
 $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
@@ -233,7 +246,7 @@ $num_of_files = mysqli_num_rows($sql);
                             
                             <thead class="thead-light <?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
                             <tr>
-                                <td class="bg-light">
+                                <td class="bg-light pr-0">
                                     <div class="form-check">
                                         <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                     </div>
@@ -280,7 +293,7 @@ $num_of_files = mysqli_num_rows($sql);
                                 ?>
 
                                 <tr>
-                                    <td class="bg-light">
+                                    <td class="bg-light pr-0">
                                         <div class="form-check">
                                             <input class="form-check-input bulk-select" type="checkbox" name="file_ids[]" value="<?php echo $file_id ?>">
                                         </div>
@@ -318,6 +331,9 @@ $num_of_files = mysqli_num_rows($sql);
                                                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#moveFileModal<?php echo $file_id; ?>">
                                                     <i class="fas fa-fw fa-exchange-alt mr-2"></i>Move
                                                 </a>
+                                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#linkAssetToFileModal<?php echo $file_id; ?>">
+                                                    <i class="fas fa-fw fa-desktop mr-2"></i>Asset
+                                                </a>
                                                 <div class="dropdown-divider"></div>
                                                 <a class="dropdown-item text-danger confirm-link" href="post.php?archive_file=<?php echo $file_id; ?>">
                                                     <i class="fas fa-fw fa-archive mr-2"></i>Archive
@@ -334,6 +350,8 @@ $num_of_files = mysqli_num_rows($sql);
                                 require "client_file_rename_modal.php";
 
                                 require "client_file_move_modal.php";
+
+                                require "client_file_link_asset_modal.php";
 
                             }
                             ?>

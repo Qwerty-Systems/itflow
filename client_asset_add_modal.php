@@ -8,7 +8,7 @@
                 </button>
             </div>
 
-            <form action="post.php" method="post" autocomplete="off">
+            <form action="post.php" method="post" enctype="multipart/form-data" autocomplete="off">
 
                 <input type="hidden" name="client_id" value="<?php echo $client_id; ?>">
 
@@ -175,6 +175,16 @@
                             </div>
 
                             <div class="form-group">
+                                <label>IPv6 Address</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i class="fa fa-fw fa-ethernet"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control" name="ipv6" placeholder="ex. 2001:0db8:0000:0000:0000:ff00:0042:8329">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
                                 <label>MAC Address</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
@@ -207,6 +217,16 @@
                         </div>
 
                         <div class="tab-pane fade" id="pills-assignment">
+
+                            <div class="form-group">
+                                <label>Physical Location</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i class="fa fa-fw fa-map-marker-alt"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control" name="physical_location" placeholder="Physical location eg. Floor 2, Closet B">
+                                </div>
+                            </div>
 
                             <div class="form-group">
                                 <label>Location</label>
@@ -352,6 +372,11 @@
                         </div>
 
                         <div class="tab-pane fade" id="pills-notes">
+
+                            <div class="form-group">
+                                <label>Upload Photo</label>
+                                <input type="file" class="form-control-file" name="file">
+                            </div>
 
                             <div class="form-group">
                                 <textarea class="form-control" rows="8" placeholder="Enter some notes" name="notes"></textarea>

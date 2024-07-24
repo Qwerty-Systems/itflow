@@ -20,9 +20,15 @@
                 <li class="nav-item">
                     <a href="clients.php" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "clients.php") { echo "active"; } ?>">
                         <i class="nav-icon fas fa-user-friends"></i>
-                        <p>Clients</p>
+                        <p>
+                          Clients
+                          <?php if ($num_active_clients) { ?>
+                                  <span class="right badge text-light"><?php echo $num_active_clients; ?></span>
+                          <?php } ?>
+                        </p>
                     </a>
                 </li>
+                
                 <?php if ($session_user_role >= 2 && $config_module_enable_ticketing == 1) { ?>
                     <li class="nav-header mt-3">SUPPORT</li>
                     <li class="nav-item">
@@ -157,7 +163,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="budget.php" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "budget.php") { echo "active"; } ?>">
+                        <a href="budget.php" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "budget.php" || basename($_SERVER["PHP_SELF"]) == "budget_edit.php") { echo "active"; } ?>">
                             <i class="nav-icon fas fa-balance-scale"></i>
                             <p>Budget</p>
                         </a>

@@ -144,10 +144,17 @@ if (isset($_POST['edit_your_user_password'])) {
     header('Location: post.php?logout');
 }
 
-if (isset($_POST['edit_your_user_browser_extention'])) {
+if (isset($_POST['edit_your_user_preferences'])) {
 
     // CSRF Check
     validateCSRFToken($_POST['csrf_token']);
+
+    $calendar_first_day = intval($_POST['calendar_first_day']);
+
+    // Calendar
+    if (isset($calendar_first_day)) {
+        mysqli_query($mysqli, "UPDATE user_settings SET user_config_calendar_first_day = $calendar_first_day WHERE user_id = $session_user_id");
+    }
 
     // Enable extension access, only if it isn't already setup (user doesn't have cookie)
     if (isset($_POST['extension']) && $_POST['extension'] == 'Yes') {
@@ -200,6 +207,9 @@ if(isset($_POST['enable_2fa'])){
     $token = sanitizeInput($_POST['token']);
 
     mysqli_query($mysqli,"UPDATE users SET user_token = '$token' WHERE user_id = $session_user_id");
+
+    // Delete any existing 2FA tokens - these browsers should be re-validated
+    mysqli_query($mysqli, "DELETE FROM remember_tokens WHERE remember_token_user_id = $session_user_id");
 
     //Logging
     mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'User Settings', log_action = 'Modify', log_description = '$session_name enabled 2FA on their account', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");

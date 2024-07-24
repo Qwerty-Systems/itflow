@@ -173,7 +173,19 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                     </div>
                 </div>
 
-                <div class="collapse <?php if (!empty($_GET['dtf']) || (isset($_GET['canned_date']) && $_GET['canned_date'] !== "custom") || (isset($_GET['status']) && is_array($_GET['status']))) { echo "show"; } ?>" id="advancedFilter">
+                <div 
+                    class="collapse 
+                        <?php 
+                        if (
+                            !empty($_GET['dtf']) 
+                            || (isset($_GET['canned_date']) && $_GET['canned_date'] !== "custom") 
+                            || (isset($_GET['status']) && is_array($_GET['status']) 
+                            || (isset($_GET['assigned']) && $_GET['assigned']
+                        ))) 
+                            { echo "show"; } 
+                        ?>" 
+                    id="advancedFilter"
+                >
                     <div class="row">
                         <div class="col-md-2">
                             <div class="form-group">
@@ -284,7 +296,7 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                             </td>
                             <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_number&order=<?php echo $disp; ?>">Number</a>
                             </th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_subject&order=<?php echo $disp; ?>">Subject</a>
+                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_subject&order=<?php echo $disp; ?>">Subject / Tasks</a>
                             </th>
                             <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">Client / Contact</a>
                             </th>
@@ -395,6 +407,23 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                                 $ticket_reply_created_at_time_ago = timeAgo($ticket_reply_created_at);
                             }
 
+
+                            // Get Tasks
+                            $sql_tasks = mysqli_query( $mysqli, "SELECT * FROM tasks WHERE task_ticket_id = $ticket_id ORDER BY task_created_at ASC");
+                            $task_count = mysqli_num_rows($sql_tasks);
+                                    // Get Completed Task Count
+                            $sql_tasks_completed = mysqli_query($mysqli,
+                                "SELECT * FROM tasks
+                                WHERE task_ticket_id = $ticket_id
+                                AND task_completed_at IS NOT NULL"
+                            );
+                            $completed_task_count = mysqli_num_rows($sql_tasks_completed);
+
+                            // Tasks Completed Percent
+                            if($task_count) {
+                                $tasks_completed_percent = round(($completed_task_count / $task_count) * 100);
+                            }
+                            
                             ?>
 
                             <tr class="<?php if(empty($ticket_closed_at) && empty($ticket_updated_at)) { echo "text-bold"; }?> <?php if (empty($ticket_closed_at) && $ticket_reply_type == "Client") { echo "table-warning"; } ?>">
@@ -418,6 +447,17 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                                 <!-- Ticket Subject -->
                                 <td>
                                     <a href="ticket.php?ticket_id=<?php echo $ticket_id; ?>"><?php echo $ticket_subject; ?></a>
+
+                                    <?php if($task_count && $completed_task_count > 0) { ?>
+                                    <div class="progress mt-2" style="height: 20px;"> 
+                                        <div class="progress-bar" style="width: <?php echo $tasks_completed_percent; ?>%;"><?php echo $completed_task_count.' / '.$task_count; ?></div>
+                                    </div>
+                                    <?php } ?>
+                                    <?php if($task_count && $completed_task_count == 0) { ?>
+                                    <div class="mt-2" style="height: 20px; background-color:#e9ecef;">   
+                                        <p class="text-center" ><?php echo $completed_task_count.' / '.$task_count; ?></p>
+                                    </div>
+                                    <?php } ?>
                                 </td>
 
                                 <!-- Ticket Contact -->
@@ -433,9 +473,9 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                                         <a href="#" data-toggle="modal" data-target="#editTicketBillableModal<?php echo $ticket_id; ?>">
                                             <?php
                                             if ($ticket_billable == 1) {
-                                                echo "<span class='badge badge-pill badge-success'>$</span>";
+                                                echo "<span class='badge badge-pill badge-success p-2'>Yes</span>";
                                             } else {
-                                                echo "<span class='badge badge-pill badge-secondary'>X</span>";
+                                                echo "<span class='badge badge-pill badge-secondary p-2'>No</span>";
                                             }
                                             ?>
                                     </td>

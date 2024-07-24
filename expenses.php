@@ -13,6 +13,27 @@ if (isset($_GET['account']) & !empty($_GET['account'])) {
 } else {
     // Default - any
     $account_query = '';
+    $account = '';
+}
+
+// Vendor Filter
+if (isset($_GET['vendor']) & !empty($_GET['vendor'])) {
+    $vendor_query = 'AND (vendor_id = ' . intval($_GET['vendor']) . ')';
+    $vendor = intval($_GET['vendor']);
+} else {
+    // Default - any
+    $vendor_query = '';
+    $vendor = '';
+}
+
+// Category Filter
+if (isset($_GET['category']) & !empty($_GET['category'])) {
+    $category_query = 'AND (category_id = ' . intval($_GET['category']) . ')';
+    $category = intval($_GET['category']);
+} else {
+    // Default - any
+    $category_query = '';
+    $category = '';
 }
 
 //Rebuild URL
@@ -27,6 +48,8 @@ $sql = mysqli_query(
     LEFT JOIN clients ON expense_client_id = client_id
     WHERE expense_vendor_id > 0
     AND DATE(expense_date) BETWEEN '$dtf' AND '$dtt'
+    $vendor_query
+    $category_query
     AND (vendor_name LIKE '%$q%' OR client_name LIKE '%$q%' OR category_name LIKE '%$q%' OR account_name LIKE '%$q%' OR expense_description LIKE '%$q%' OR expense_amount LIKE '%$q%')
     $account_query
     ORDER BY $sort $order LIMIT $record_from, $record_to"
@@ -40,7 +63,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
         <div class="card-header py-2">
             <h3 class="card-title mt-2"><i class="fas fa-fw fa-shopping-cart mr-2"></i>Expenses</h3>
             <div class="card-tools">
-                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addExpenseModal"><i class="fas fa-plus mr-2"></i>New Expense</button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addExpenseModal"><i class="fas fa-plus mr-2"></i>New Expense</button>
+                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportExpensesModal">
+                            <i class="fa fa-fw fa-download mr-2"></i>Export
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -79,7 +110,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         </div>
                     </div>
                 </div>
-                <div class="collapse mt-3 <?php if ($_GET['dtf'] || $_GET['canned_date'] !== "custom" || $_GET['account']) { echo "show"; } ?>" id="advancedFilter">
+                <div class="collapse mt-3 <?php if (isset($_GET['dtf']) || $_GET['canned_date'] !== "custom" || isset($_GET['account']) || isset($_GET['vendor']) || isset($_GET['category'])) { echo "show"; } ?>" id="advancedFilter">
                     <div class="row">
                         <div class="col-md-2">
                             <div class="form-group">
@@ -111,6 +142,46 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         </div>
                         <div class="col-sm-2">
                             <div class="form-group">
+                                <label>Vendor</label>
+                                <select class="form-control select2" name="vendor" onchange="this.form.submit()">
+                                    <option value="" <?php if ($vendor == "") { echo "selected"; } ?>>- All Vendors -</option>
+
+                                    <?php
+                                    $sql_vendors_filter = mysqli_query($mysqli, "SELECT * FROM vendors WHERE vendor_client_id = 0 AND vendor_template = 0 ORDER BY vendor_name ASC");
+                                    while ($row = mysqli_fetch_array($sql_vendors_filter)) {
+                                        $vendor_id = intval($row['vendor_id']);
+                                        $vendor_name = nullable_htmlentities($row['vendor_name']);
+                                    ?>
+                                        <option <?php if ($vendor == $vendor_id) { echo "selected"; } ?> value="<?php echo $vendor_id; ?>"><?php echo $vendor_name; ?></option>
+                                    <?php
+                                    }
+                                    ?>
+
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select class="form-control select2" name="category" onchange="this.form.submit()">
+                                    <option value="" <?php if ($category == "") { echo "selected"; } ?>>- All Categories -</option>
+
+                                    <?php
+                                    $sql_categories_filter = mysqli_query($mysqli, "SELECT * FROM categories WHERE category_type = 'Expense' ORDER BY category_name ASC");
+                                    while ($row = mysqli_fetch_array($sql_categories_filter)) {
+                                        $category_id = intval($row['category_id']);
+                                        $category_name = nullable_htmlentities($row['category_name']);
+                                    ?>
+                                        <option <?php if ($category == $category_id) { echo "selected"; } ?> value="<?php echo $category_id; ?>"><?php echo $category_name; ?></option>
+                                    <?php
+                                    }
+                                    ?>
+
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-2">
+                            <div class="form-group">
                                 <label>Account</label>
                                 <select class="form-control select2" name="account" onchange="this.form.submit()">
                                     <option value="" <?php if ($account == "") { echo "selected"; } ?>>- All Accounts -</option>
@@ -127,11 +198,6 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     ?>
 
                                 </select>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="float-right">
-                                <button type="button" class="btn btn-default mt-4" data-toggle="modal" data-target="#exportExpensesModal"><i class="fa fa-fw fa-download mr-2"></i>Export</button>
                             </div>
                         </div>
                     </div>
@@ -245,8 +311,6 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                             require "expense_refund_modal.php";
 
-                            require "expense_export_modal.php";
-
 
                         }
 
@@ -268,5 +332,6 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
 <?php
 require_once "expense_add_modal.php";
+require_once "expense_export_modal.php";
 
 require_once "footer.php";

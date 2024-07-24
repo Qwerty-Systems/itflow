@@ -8,7 +8,8 @@ if (isset($_GET['asset_id'])) {
 
     $sql = mysqli_query($mysqli, "SELECT * FROM assets 
         LEFT JOIN contacts ON asset_contact_id = contact_id 
-        LEFT JOIN locations ON asset_location_id = location_id 
+        LEFT JOIN locations ON asset_location_id = location_id
+        LEFT JOIN asset_interfaces ON interface_asset_id = asset_id AND interface_primary = 1
         WHERE asset_id = $asset_id
         AND asset_client_id = $client_id
     ");
@@ -22,21 +23,25 @@ if (isset($_GET['asset_id'])) {
     $asset_model = nullable_htmlentities($row['asset_model']);
     $asset_serial = nullable_htmlentities($row['asset_serial']);
     $asset_os = nullable_htmlentities($row['asset_os']);
-    $asset_ip = nullable_htmlentities($row['asset_ip']);
-    $asset_nat_ip = nullable_htmlentities($row['asset_nat_ip']);
-    $asset_mac = nullable_htmlentities($row['asset_mac']);
     $asset_uri = nullable_htmlentities($row['asset_uri']);
     $asset_uri_2 = nullable_htmlentities($row['asset_uri_2']);
     $asset_status = nullable_htmlentities($row['asset_status']);
     $asset_purchase_date = nullable_htmlentities($row['asset_purchase_date']);
     $asset_warranty_expire = nullable_htmlentities($row['asset_warranty_expire']);
     $asset_install_date = nullable_htmlentities($row['asset_install_date']);
+    $asset_photo = nullable_htmlentities($row['asset_photo']);
+    $asset_physical_location = nullable_htmlentities($row['asset_physical_location']);
     $asset_notes = nullable_htmlentities($row['asset_notes']);
     $asset_created_at = nullable_htmlentities($row['asset_created_at']);
     $asset_vendor_id = intval($row['asset_vendor_id']);
     $asset_location_id = intval($row['asset_location_id']);
     $asset_contact_id = intval($row['asset_contact_id']);
-    $asset_network_id = intval($row['asset_network_id']);
+
+    $asset_ip = nullable_htmlentities($row['interface_ip']);
+    $asset_ipv6 = nullable_htmlentities($row['interface_ipv6']);
+    $asset_nat_ip = nullable_htmlentities($row['interface_nat_ip']);
+    $asset_mac = nullable_htmlentities($row['interface_mac']);
+    $asset_network_id = intval($row['interface_network_id']);
 
     $device_icon = getAssetIcon($asset_type);
 
@@ -79,6 +84,16 @@ if (isset($_GET['asset_id'])) {
     );
     $document_count = mysqli_num_rows($sql_related_documents);
 
+    // Network Interfaces
+    $sql_related_interfaces = mysqli_query($mysqli, "SELECT * FROM asset_interfaces 
+        LEFT JOIN assets ON asset_id = interface_asset_id
+        LEFT JOIN networks ON network_id = interface_network_id
+        WHERE asset_id = $asset_id
+        AND interface_archived_at IS NULL 
+        ORDER BY interface_name DESC"
+    );
+    $interface_count = mysqli_num_rows($sql_related_interfaces);
+
     // Related Files
     $sql_related_files = mysqli_query($mysqli, "SELECT * FROM asset_files 
         LEFT JOIN files ON asset_files.file_id = files.file_id
@@ -86,7 +101,19 @@ if (isset($_GET['asset_id'])) {
         AND file_archived_at IS NULL
         ORDER BY file_name DESC"
     );
-    $file_count = mysqli_num_rows($sql_related_files);
+    $files_count = mysqli_num_rows($sql_related_files);
+    // View Mode -- 0 List, 1 Thumbnail
+    if (!empty($_GET['view'])) {
+        $view = intval($_GET['view']);
+    } else {
+        $view = 0;
+    }
+    if ($view == 1) {
+        $query_images = "AND (file_ext LIKE 'JPG' OR file_ext LIKE 'jpg' OR file_ext LIKE 'JPEG' OR file_ext LIKE 'jpeg' OR file_ext LIKE 'png' OR file_ext LIKE 'PNG' OR file_ext LIKE 'webp' OR file_ext LIKE 'WEBP')";
+    } else {
+        $query_images = '';
+    }
+
 
     // Related Logins Query
     $sql_related_logins = mysqli_query($mysqli, "SELECT * FROM logins
@@ -108,6 +135,8 @@ if (isset($_GET['asset_id'])) {
 
     $software_count = mysqli_num_rows($sql_related_software);
 
+
+
     ?>
 
     <div class="row">
@@ -120,6 +149,9 @@ if (isset($_GET['asset_id'])) {
                         <i class="fas fa-fw fa-edit"></i>
                     </button>
                     <h3 class="text-bold"><i class="fa fa-fw text-secondary fa-<?php echo $device_icon; ?> mr-3"></i><?php echo $asset_name; ?></h3>
+                    <?php if ($asset_photo) { ?>
+                        <img class="img-fluid img-circle p-3" alt="asset_photo" src="<?php echo "uploads/clients/$client_id/$asset_photo"; ?>">
+                    <?php } ?>
                     <?php if ($asset_description) { ?>
                         <div class="text-secondary"><?php echo $asset_description; ?></div>
                     <?php } ?>
@@ -167,7 +199,7 @@ if (isset($_GET['asset_id'])) {
                         <div class="mt-2"><i class="fa fa-fw fa-link text-secondary mr-3"></i><a href="<?php echo $asset_uri; ?>" target="_blank">Link</a></div>
                     <?php }
                     if ($asset_uri_2) { ?>
-                        <div class="mt-2"><i class="fa fa-fw fa-link text-secondary mr-3"></i><a href="<?php echo $asset_uri; ?>" target="_blank">Link 2</a></div>
+                        <div class="mt-2"><i class="fa fa-fw fa-link text-secondary mr-3"></i><a href="<?php echo $asset_uri_2; ?>" target="_blank">Link 2</a></div>
                     <?php } ?>
                 </div>
             </div>
@@ -222,6 +254,109 @@ if (isset($_GET['asset_id'])) {
                 </li>
                 <li class="breadcrumb-item active"><?php echo $asset_name; ?></li>
             </ol>
+
+            <div class="card card-dark">
+                <div class="card-header py-2">
+                    <h3 class="card-title mt-2"><i class="fa fa-fw fa-ethernet mr-2"></i>Network Interfaces</h3>
+                    <div class="card-tools">      
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addAssetInterfaceModal"><i class="fas fa-plus mr-2"></i>New Interface</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive-sm">
+                        <table class="table table-striped table-borderless table-hover">
+                            <thead class="<?php if ($interface_count == 0) { echo "d-none"; } ?>">
+                            <tr>
+                                <th>Name</th>
+                                <th>MAC</th>
+                                <th>IP</th>
+                                <th>Port</th>
+                                <th>Connected To</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php
+
+                            while ($row = mysqli_fetch_array($sql_related_interfaces)) {
+                                $interface_id = intval($row['interface_id']);
+                                $interface_name = nullable_htmlentities($row['interface_name']);
+                                $interface_mac = nullable_htmlentities($row['interface_mac']);
+                                if ($interface_mac) {
+                                    $interface_mac_display = "$interface_mac";
+                                } else {
+                                    $interface_mac_display = "-";
+                                }
+                                $interface_ip = nullable_htmlentities($row['interface_ip']);
+                                if ($interface_ip) {
+                                    $interface_ip_display = "$interface_ip";
+                                } else {
+                                    $interface_ip_display = "-";
+                                }
+                                $interface_ipv6 = nullable_htmlentities($row['interface_ipv6']);
+                                $interface_port = nullable_htmlentities($row['interface_port']);
+                                if ($interface_port) {
+                                    $interface_port_display = "$interface_port";
+                                } else {
+                                    $interface_port_display = "-";
+                                }
+                                $interface_primary = intval($row['interface_primary']);
+                                $network_id = intval($row['network_id']);
+                                $network_name = nullable_htmlentities($row['network_name']);
+                                if ($network_name) {
+                                    $network_name_display = "<i class='fas fa-fw fa-network-wired mr-2'></i>$network_name";
+                                } else {
+                                    $network_name_display = "-";
+                                }
+                                $interface_notes = nullable_htmlentities($row['interface_notes']);
+                    
+
+                                ?>
+                                <tr>
+                                    <td>
+                                        <i class="fa fa-fw fa-ethernet text-secondary mr-2"></i>
+                                        <a class="text-dark" href="#" data-toggle="modal" data-target="#editAssetInterfaceModal<?php echo $interface_id; ?>">
+                                            <?php echo $interface_name; ?>
+                                        </a>
+                                    </td>
+                                    <td><?php echo $interface_mac_display; ?></td>
+                                    <td><?php echo $interface_ip_display; ?></td>
+                                    <td><?php echo $interface_port_display; ?></td>
+                                    <td><?php echo $network_name_display; ?></td>
+                                    <td>
+                                        <div class="dropdown dropleft text-center">
+                                            <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-h"></i>
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editAssetInterfaceModal<?php echo $interface_id; ?>">
+                                                    <i class="fas fa-fw fa-edit mr-2"></i>Edit
+                                                </a>
+                                                <?php if ($session_user_role == 3 && $interface_primary == 0) { ?>
+                                                    <div class="dropdown-divider"></div>
+                                                    <a class="dropdown-item text-danger text-bold" href="post.php?delete_asset_interface=<?php echo $interface_id; ?>">
+                                                        <i class="fas fa-fw fa-trash mr-2"></i>Delete
+                                                    </a>
+                                                <?php } ?>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <?php
+
+                                require "client_asset_interface_edit_modal.php";
+
+                            }
+
+                            ?>
+
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
 
             <div class="card card-dark <?php if ($login_count == 0) { echo "d-none"; } ?>">
                 <div class="card-header">
@@ -327,7 +462,7 @@ if (isset($_GET['asset_id'])) {
 
                 </div>
             </div>
-
+            
             <div class="card card-dark <?php if ($software_count == 0) { echo "d-none"; } ?>">
                 <div class="card-header">
                     <h3 class="card-title"><i class="fa fa-fw fa-cube mr-2"></i>Licenses</h3>
@@ -389,6 +524,87 @@ if (isset($_GET['asset_id'])) {
                                     <td><?php echo $software_type; ?></td>
                                     <td><?php echo $software_license_type; ?></td>
                                     <td><?php echo "$seat_count / $software_seats"; ?></td>
+                                </tr>
+
+                                <?php
+
+                            }
+
+                            ?>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-dark <?php if ($files_count == 0) { echo "d-none"; } ?>">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fa fa-fw fa-cube mr-2"></i>Files</h3>
+                    <div class="btn-group float-right">
+                        <?php
+                            if ($view == 0) {
+                        ?>
+                        <a href="?client_id=<?=$client_id?>&asset_id=<?=$asset_id?>&view=0" class="btn btn-primary"><i class="fas fa-list-ul"></i></a>
+                        <a href="?client_id=<?=$client_id?>&asset_id=<?=$asset_id?>&view=1" class="btn btn-outline-secondary"><i class="fas fa-th-large"></i></a>
+                        <?php
+                            } else {
+                        ?>
+                        <a href="?client_id=<?=$client_id?>&asset_id=<?=$asset_id?>&view=0" class="btn btn-outline-secondary"><i class="fas fa-list-ul"></i></a>
+                        <a href="?client_id=<?=$client_id?>&asset_id=<?=$asset_id?>&view=1" class="btn btn-primary"><i class="fas fa-th-large"></i></a>
+                        <?php
+                            }
+                        ?>
+
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive-sm">
+                        <table class="table table-striped table-borderless table-hover">
+                            <thead class="text-dark">
+                            <tr>
+                                <th>Name</th>
+                                <th>Uploaded</th>
+                                
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php
+
+                            while ($row = mysqli_fetch_array($sql_related_files)) {
+                                $file_id = intval($row['file_id']);
+                                $file_name = nullable_htmlentities($row['file_name']);
+                                $file_description = nullable_htmlentities($row['file_description']);
+                                $file_reference_name = nullable_htmlentities($row['file_reference_name']);
+                                $file_ext = nullable_htmlentities($row['file_ext']);
+                                if ($file_ext == 'pdf') {
+                                    $file_icon = "file-pdf";
+                                } elseif ($file_ext == 'gz' || $file_ext == 'tar' || $file_ext == 'zip' || $file_ext == '7z' || $file_ext == 'rar') {
+                                    $file_icon = "file-archive";
+                                } elseif ($file_ext == 'txt' || $file_ext == 'md') {
+                                    $file_icon = "file-alt";
+                                } elseif ($file_ext == 'msg') {
+                                    $file_icon = "envelope";
+                                } elseif ($file_ext == 'doc' || $file_ext == 'docx' || $file_ext == 'odt') {
+                                    $file_icon = "file-word";
+                                } elseif ($file_ext == 'xls' || $file_ext == 'xlsx' || $file_ext == 'ods') {
+                                    $file_icon = "file-excel";
+                                } elseif ($file_ext == 'pptx' || $file_ext == 'odp') {
+                                    $file_icon = "file-powerpoint";
+                                } elseif ($file_ext == 'mp3' || $file_ext == 'wav' || $file_ext == 'ogg') {
+                                    $file_icon = "file-audio";
+                                } elseif ($file_ext == 'mov' || $file_ext == 'mp4' || $file_ext == 'av1') {
+                                    $file_icon = "file-video";
+                                } elseif ($file_ext == 'jpg' || $file_ext == 'jpeg' || $file_ext == 'png' || $file_ext == 'gif' || $file_ext == 'webp' || $file_ext == 'bmp' || $file_ext == 'tif') {
+                                    $file_icon = "file-image";
+                                } else {
+                                    $file_icon = "file";
+                                }
+                                $file_created_at = nullable_htmlentities($row['file_created_at']);
+                                ?>
+                                <tr>
+                                    <td><a class="text-dark" href="<?php echo "uploads/clients/$client_id/$file_reference_name"; ?>" target="_blank" ><?php echo "$file_name<br><span class='text-secondary'>$file_description</span>"; ?></a></td>
+                                    <td><?php echo $file_created_at; ?></td>
                                 </tr>
 
                                 <?php
@@ -536,5 +752,8 @@ if (isset($_GET['asset_id'])) {
 </script>
 
 <?php
+
+require_once "client_asset_interface_add_modal.php";
+
 require_once "footer.php";
 

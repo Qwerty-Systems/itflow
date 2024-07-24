@@ -12,6 +12,7 @@
                 <input type="hidden" name="client_id" value="<?php echo $client_id; ?>">
                 <input type="hidden" name="ticket_number" value="<?php echo "$ticket_prefix$ticket_number"; ?>">
                 <input type="hidden" name="contact_notify" value="0"> <!-- Default 0 -->
+                <input type="hidden" name="billable" value="0">
                 <div class="modal-body bg-white">
 
                     <ul class="nav nav-pills nav-justified mb-3">
@@ -55,36 +56,56 @@
                                 <textarea class="form-control tinymce" rows="8" name="details"><?php echo $ticket_details; ?></textarea>
                             </div>
 
-                            <div class="form-group">
-                                <label>Priority <strong class="text-danger">*</strong></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text"><i class="fa fa-fw fa-thermometer-half"></i></span>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label>Priority <strong class="text-danger">*</strong></label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text"><i class="fa fa-fw fa-thermometer-half"></i></span>
+                                            </div>
+                                            <select class="form-control select2" name="priority" required>
+                                                <option <?php if ($ticket_priority == 'Low') { echo "selected"; } ?> >Low</option>
+                                                <option <?php if ($ticket_priority == 'Medium') { echo "selected"; } ?> >Medium</option>
+                                                <option <?php if ($ticket_priority == 'High') { echo "selected"; } ?> >High</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <select class="form-control select2" name="priority" required>
-                                        <option <?php if ($ticket_priority == 'Low') { echo "selected"; } ?> >Low</option>
-                                        <option <?php if ($ticket_priority == 'Medium') { echo "selected"; } ?> >Medium</option>
-                                        <option <?php if ($ticket_priority == 'High') { echo "selected"; } ?> >High</option>
-                                    </select>
+                                </div>
+
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label>Category</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text"><i class="fa fa-fw fa-layer-group"></i></span>
+                                            </div>
+                                            <select class="form-control select2" name="category">
+                                                <option value="">- Ticket Category -</option>
+                                                <?php
+                                                $sql_categories = mysqli_query($mysqli, "SELECT * FROM categories WHERE category_type = 'Ticket' AND categories.category_archived_at IS NULL");
+                                                while ($row = mysqli_fetch_array($sql_categories)) {
+                                                    $category_id = intval($row['category_id']);
+                                                    $category_name = nullable_htmlentities($row['category_name']);
+
+                                                    ?>
+                                                    <option <?php if ($ticket_category == $category_id) {echo "selected";} ?> value="<?php echo $category_id; ?>"><?php echo $category_name; ?></option>
+                                                <?php } ?>
+
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <?php if ($config_module_enable_accounting) {
-                                ?>
+                            <?php if ($config_module_enable_accounting) { ?>
                             <div class="form-group">
-                                <label>Billable</label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text"><i class="fa fa-fw fa-money-bill"></i></span>
-                                    </div>
-                                    <select class="form-control" name="billable">
-                                        <option <?php if ($ticket_billable == 1) { echo "selected"; } ?> value="1">Yes</option>
-                                        <option <?php if ($ticket_billable == 0) { echo "selected"; } ?> value="0">No</option>
-                                    </select>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" name="billable" <?php if ($ticket_billable == 1) { echo "checked"; } ?> value="1" id="billableSwitch<?php echo $ticket_id; ?>">
+                                    <label class="custom-control-label" for="billableSwitch<?php echo $ticket_id; ?>">Mark Billable</label>
                                 </div>
                             </div>
                             <?php } ?>
-
 
                         </div>
 

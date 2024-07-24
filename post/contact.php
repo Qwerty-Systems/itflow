@@ -19,13 +19,17 @@ if (isset($_POST['add_contact'])) {
         $password_hash = password_hash(randomString(), PASSWORD_DEFAULT);
     }
 
-    if (!file_exists("uploads/clients/$client_id")) {
-        mkdir("uploads/clients/$client_id");
-    }
-
     mysqli_query($mysqli,"INSERT INTO contacts SET contact_name = '$name', contact_title = '$title', contact_phone = '$phone', contact_extension = '$extension', contact_mobile = '$mobile', contact_email = '$email', contact_pin = '$pin', contact_notes = '$notes', contact_important = $contact_important, contact_billing = $contact_billing, contact_technical = $contact_technical, contact_auth_method = '$auth_method', contact_password_hash = '$password_hash', contact_department = '$department', contact_location_id = $location_id, contact_client_id = $client_id");
 
     $contact_id = mysqli_insert_id($mysqli);
+
+    // Add Tags
+    if (isset($_POST['tags'])) {
+        foreach($_POST['tags'] as $tag) {
+            $tag = intval($tag);
+            mysqli_query($mysqli, "INSERT INTO contact_tags SET contact_id = $contact_id, tag_id = $tag");
+        }
+    }
 
     //Update Primary contact in clients if primary contact is checked
     if ($contact_primary == 1) {
@@ -34,29 +38,27 @@ if (isset($_POST['add_contact'])) {
     }
 
     // Check for and process image/photo
-    $extended_alert_description = '';
-    if ($_FILES['file']['tmp_name'] != '') {
+    if ($_FILES['file']['tmp_name']) {
         if ($new_file_name = checkFileUpload($_FILES['file'], array('jpg', 'jpeg', 'gif', 'png'))) {
 
             $file_tmp_path = $_FILES['file']['tmp_name'];
 
             // directory in which the uploaded file will be moved
+            if (!file_exists("uploads/clients/$client_id")) {
+                mkdir("uploads/clients/$client_id");
+            }
             $upload_file_dir = "uploads/clients/$client_id/";
             $dest_path = $upload_file_dir . $new_file_name;
             move_uploaded_file($file_tmp_path, $dest_path);
 
             mysqli_query($mysqli,"UPDATE contacts SET contact_photo = '$new_file_name' WHERE contact_id = $contact_id");
-            $extended_alert_description = '. File successfully uploaded.';
-        } else {
-            $_SESSION['alert_type'] = "error";
-            $extended_alert_description = '. Error uploading file. Check upload directory is writable/correct file type/size';
         }
     }
 
     //Logging
     mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Contact', log_action = 'Create', log_description = '$session_name created contact $name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $contact_id");
 
-    $_SESSION['alert_message'] = "Contact <strong>$name</strong> created" . $extended_alert_description;
+    $_SESSION['alert_message'] = "Contact <strong>$name</strong> created";
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 
@@ -81,6 +83,34 @@ if (isset($_POST['edit_contact'])) {
     }
 
     mysqli_query($mysqli,"UPDATE contacts SET contact_name = '$name', contact_title = '$title', contact_phone = '$phone', contact_extension = '$extension', contact_mobile = '$mobile', contact_email = '$email', contact_pin = '$pin', contact_notes = '$notes', contact_important = $contact_important, contact_billing = $contact_billing, contact_technical = $contact_technical, contact_auth_method = '$auth_method', contact_department = '$department', contact_location_id = $location_id WHERE contact_id = $contact_id");
+
+    // Upload Photo
+    if ($_FILES['file']['tmp_name']) {
+        if ($new_file_name = checkFileUpload($_FILES['file'], array('jpg', 'jpeg', 'gif', 'png'))) {
+
+            // Set directory in which the uploaded file will be moved
+            $file_tmp_path = $_FILES['file']['tmp_name'];
+            $upload_file_dir = "uploads/clients/$client_id/";
+            $dest_path = $upload_file_dir . $new_file_name;
+
+            move_uploaded_file($file_tmp_path, $dest_path);
+
+            //Delete old file
+            unlink("uploads/clients/$client_id/$existing_file_name");
+
+            mysqli_query($mysqli,"UPDATE contacts SET contact_photo = '$new_file_name' WHERE contact_id = $contact_id");
+        }
+    }
+
+    // Tags
+    // Delete existing tags
+    mysqli_query($mysqli, "DELETE FROM contact_tags WHERE contact_id = $contact_id");
+
+    // Add new tags
+    foreach($_POST['tags'] as $tag) {
+        $tag = intval($tag);
+        mysqli_query($mysqli, "INSERT INTO contact_tags SET contact_id = $contact_id, tag_id = $tag");
+    }
 
     // Update Primary contact in clients if primary contact is checked
     if ($contact_primary == 1) {
@@ -140,33 +170,10 @@ if (isset($_POST['edit_contact'])) {
 
     }
 
-    // Check for and process image/photo
-    $extended_alert_description = '';
-    if ($_FILES['file']['tmp_name'] != '') {
-        if ($new_file_name = checkFileUpload($_FILES['file'], array('jpg', 'jpeg', 'gif', 'png'))) {
-
-            // Set directory in which the uploaded file will be moved
-            $file_tmp_path = $_FILES['file']['tmp_name'];
-            $upload_file_dir = "uploads/clients/$client_id/";
-            $dest_path = $upload_file_dir . $new_file_name;
-
-            move_uploaded_file($file_tmp_path, $dest_path);
-
-            //Delete old file
-            unlink("uploads/clients/$client_id/$existing_file_name");
-
-            mysqli_query($mysqli,"UPDATE contacts SET contact_photo = '$new_file_name' WHERE contact_id = $contact_id");
-
-            $extended_alert_description = '. Photo successfully uploaded. ';
-        } else {
-            $extended_alert_description = '. Error uploading photo.';
-        }
-    }
-
     //Logging
     mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Contact', log_action = 'Modify', log_description = '$session_name modified contact $name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $contact_id");
 
-    $_SESSION['alert_message'] = "Contact <strong>$name</strong> updated" . $extended_alert_description;
+    $_SESSION['alert_message'] = "Contact <strong>$name</strong> updated";
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 
@@ -315,6 +322,177 @@ if (isset($_POST['bulk_edit_contact_role'])) {
 
 }
 
+if (isset($_POST['bulk_assign_contact_tags'])) {
+
+    validateTechRole();
+
+    // Get Selected Contacts Count
+    $count = count($_POST['contact_ids']);
+
+    // Assign Location to Selected Contacts
+    if (!empty($_POST['contact_ids'])) {
+        foreach($_POST['contact_ids'] as $contact_id) {
+            $contact_id = intval($contact_id);
+
+            // Get Contact Details for Logging
+            $sql = mysqli_query($mysqli,"SELECT contact_name, contact_client_id FROM contacts WHERE contact_id = $contact_id");
+            $row = mysqli_fetch_array($sql);
+            $contact_name = sanitizeInput($row['contact_name']);
+            $client_id = intval($row['contact_client_id']);
+
+            if($_POST['bulk_remove_tags']) {
+                // Delete tags if chosed to do so
+                mysqli_query($mysqli, "DELETE FROM contact_tags WHERE contact_id = $contact_id");
+            }
+
+            // Add new tags
+            foreach($_POST['bulk_tags'] as $tag) {
+                $tag = intval($tag);
+                
+                $sql = mysqli_query($mysqli,"SELECT * FROM contact_tags WHERE contact_id = $contact_id AND tag_id = $tag");
+                if (mysqli_num_rows($sql) == 0) {
+                    mysqli_query($mysqli, "INSERT INTO contact_tags SET contact_id = $contact_id, tag_id = $tag");
+                }
+            }
+
+            //Logging
+            mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Contact', log_action = 'Modify', log_description = '$session_name added tags to $contact_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $contact_id");
+
+        } // End Assign Location Loop
+        
+        $_SESSION['alert_message'] = "Assigned tags for <b>$count</b> contacts";
+    }
+
+    header("Location: " . $_SERVER["HTTP_REFERER"]);
+
+}
+
+if (isset($_POST['bulk_archive_contacts'])) {
+    validateAdminRole();
+    //validateCSRFToken($_POST['csrf_token']);
+
+    $count = 0; // Default 0
+    $contact_ids = $_POST['contact_ids']; // Get array of contact IDs to be deleted
+
+    if (!empty($contact_ids)) {
+
+        // Cycle through array and archive each contact
+        foreach ($contact_ids as $contact_id) {
+
+            $contact_id = intval($contact_id);
+
+            // Get Contact Name and Client ID for logging and alert message
+            $sql = mysqli_query($mysqli,"SELECT contact_name, contact_client_id, contact_primary FROM contacts WHERE contact_id = $contact_id");
+            $row = mysqli_fetch_array($sql);
+            $contact_name = sanitizeInput($row['contact_name']);
+            $contact_primary = intval($row['contact_primary']);
+            $client_id = intval($row['contact_client_id']);
+
+
+            if($contact_primary == 0) {
+                mysqli_query($mysqli,"UPDATE contacts SET contact_important = 0, contact_billing = 0, contact_technical = 0, contact_auth_method = '', contact_password_hash = '', contact_archived_at = NOW() WHERE contact_id = $contact_id");
+
+                // Individual Contact logging
+                mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Contact', log_action = 'Archive', log_description = '$session_name archived contact $contact_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $contact_id");
+                $count++;
+            }
+
+        }
+
+        // Bulk Logging
+        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Contact', log_action = 'Archive', log_description = '$session_name archived $count contacts', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id");
+
+        $_SESSION['alert_type'] = "error";
+        $_SESSION['alert_message'] = "Archived $count contact(s)";
+
+    }
+
+    header("Location: " . $_SERVER["HTTP_REFERER"]);
+}
+
+if (isset($_POST['bulk_unarchive_contacts'])) {
+    validateAdminRole();
+    //validateCSRFToken($_POST['csrf_token']);
+
+    $count = 0; // Default 0
+    $contact_ids = $_POST['contact_ids']; // Get array of contact IDs
+
+    if (!empty($contact_ids)) {
+
+        // Cycle through array and unarchive each contact
+        foreach ($contact_ids as $contact_id) {
+
+            $contact_id = intval($contact_id);
+
+            // Get Contact Name and Client ID for logging and alert message
+            $sql = mysqli_query($mysqli,"SELECT contact_name, contact_client_id FROM contacts WHERE contact_id = $contact_id");
+            $row = mysqli_fetch_array($sql);
+            $contact_name = sanitizeInput($row['contact_name']);
+            $client_id = intval($row['contact_client_id']);
+
+            mysqli_query($mysqli,"UPDATE contacts SET contact_archived_at = NULL WHERE contact_id = $contact_id");
+
+            // Individual Contact logging
+            mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Asset', log_action = 'Unarchive', log_description = '$session_name Unarchived contact $contact_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $contact_id");
+
+
+            $count++;
+        }
+
+        // Bulk Logging
+        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Asset', log_action = 'Unarchive', log_description = '$session_name Unarchived $count contacts', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id");
+
+        $_SESSION['alert_message'] = "Unarchived $count contact(s)";
+
+    }
+
+    header("Location: " . $_SERVER["HTTP_REFERER"]);
+}
+
+if (isset($_POST['bulk_delete_contacts'])) {
+    validateAdminRole();
+    validateCSRFToken($_POST['csrf_token']);
+
+    $count = 0; // Default 0
+    $contact_ids = $_POST['contact_ids']; // Get array of IDs to be deleted
+
+    if (!empty($contact_ids)) {
+
+        // Cycle through array and delete each record
+        foreach ($contact_ids as $contact_id) {
+
+            $contact_id = intval($contact_id);
+
+            // Get Name and Client ID for logging and alert message
+            $sql = mysqli_query($mysqli,"SELECT contact_name, contact_client_id FROM contacts WHERE contact_id = $contact_id");
+            $row = mysqli_fetch_array($sql);
+            $contact_name = sanitizeInput($row['contact_name']);
+            $client_id = intval($row['contact_client_id']);
+            
+            mysqli_query($mysqli, "DELETE FROM contacts WHERE contact_id = $contact_id AND contact_client_id = $client_id");
+
+            // Remove Relations
+            mysqli_query($mysqli, "DELETE FROM contact_tags WHERE contact_id = $contact_id");
+            mysqli_query($mysqli, "DELETE FROM contact_assets WHERE contact_id = $contact_id");
+            mysqli_query($mysqli, "DELETE FROM contact_documents WHERE contact_id = $contact_id");
+            mysqli_query($mysqli, "DELETE FROM contact_files WHERE contact_id = $contact_id");
+            mysqli_query($mysqli, "DELETE FROM contact_logins WHERE contact_id = $contact_id");
+
+            mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Contact', log_action = 'Delete', log_description = '$session_name deleted contact $contact_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $contact_id");
+
+            $count++;
+        }
+
+        // Logging
+        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Contact', log_action = 'Delete', log_description = '$session_name bulk deleted $count contacts', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id");
+
+        $_SESSION['alert_message'] = "Deleted $count contact(s)";
+
+    }
+
+    header("Location: " . $_SERVER["HTTP_REFERER"]);
+}
+
 if (isset($_GET['anonymize_contact'])) {
 
     validateAdminRole();
@@ -434,6 +612,28 @@ if (isset($_GET['archive_contact'])) {
 
 }
 
+if (isset($_GET['unarchive_contact'])) {
+
+    validateAdminRole();
+
+    $contact_id = intval($_GET['unarchive_contact']);
+
+    // Get Contact Name and Client ID for logging and alert message
+    $sql = mysqli_query($mysqli,"SELECT contact_name, contact_client_id FROM contacts WHERE contact_id = $contact_id");
+    $row = mysqli_fetch_array($sql);
+    $contact_name = sanitizeInput($row['contact_name']);
+    $client_id = intval($row['contact_client_id']);
+
+    mysqli_query($mysqli,"UPDATE contacts SET contact_archived_at = NULL WHERE contact_id = $contact_id");
+
+    //logging
+    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Contact', log_action = 'Unarchive', log_description = '$session_name unarchived contact $contact_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $contact_id");
+
+    $_SESSION['alert_message'] = "Contact <strong>$contact_name</strong> Unarchived";
+
+    header("Location: " . $_SERVER["HTTP_REFERER"]);
+
+}
 if (isset($_GET['delete_contact'])) {
 
     validateAdminRole();
@@ -447,6 +647,13 @@ if (isset($_GET['delete_contact'])) {
     $client_id = intval($row['contact_client_id']);
 
     mysqli_query($mysqli,"DELETE FROM contacts WHERE contact_id = $contact_id");
+
+    // Remove Relations
+    mysqli_query($mysqli, "DELETE FROM contact_tags WHERE contact_id = $contact_id");
+    mysqli_query($mysqli, "DELETE FROM contact_assets WHERE contact_id = $contact_id");
+    mysqli_query($mysqli, "DELETE FROM contact_documents WHERE contact_id = $contact_id");
+    mysqli_query($mysqli, "DELETE FROM contact_files WHERE contact_id = $contact_id");
+    mysqli_query($mysqli, "DELETE FROM contact_logins WHERE contact_id = $contact_id");
 
     //Logging
     mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Contact', log_action = 'Delete', log_description = '$session_name deleted contact $contact_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $contact_id");

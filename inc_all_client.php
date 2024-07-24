@@ -6,13 +6,21 @@ require_once "functions.php";
 
 require_once "check_login.php";
 
-require_once "header.php";
-
-require_once "top_nav.php";
-
-
 if (isset($_GET['client_id'])) {
     $client_id = intval($_GET['client_id']);
+
+    // Check to see if the logged in user has permission to access this client (Admins have access to all no matter what perms are set)
+    if(!in_array($client_id, $client_access_array) AND !empty($client_access_string) AND $session_user_role < 3) {
+        // Logging
+        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Client', log_action = 'Access', log_description = '$session_name was denied permission from accessing client', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $client_id");
+
+        $_SESSION['alert_type'] = "error";
+        $_SESSION['alert_message'] = "Access Denied - You do not have permission to access that client!";
+
+        echo "<script>window.history.back();</script>";
+
+        exit();
+    }
 
     $sql = mysqli_query($mysqli, "UPDATE clients SET client_accessed_at = NOW() WHERE client_id = $client_id");
 
@@ -43,6 +51,7 @@ if (isset($_GET['client_id'])) {
             $client_net_terms = $config_default_net_terms;
         }
         $client_tax_id_number = nullable_htmlentities($row['client_tax_id_number']);
+        $client_abbreviation = nullable_htmlentities($row['client_abbreviation']);
         $client_rate = floatval($row['client_rate']);
         $client_notes = nullable_htmlentities($row['client_notes']);
         $client_created_at = nullable_htmlentities($row['client_created_at']);
@@ -69,7 +78,7 @@ if (isset($_GET['client_id'])) {
 
         $client_tag_name_display_array = array();
         $client_tag_id_array = array();
-        $sql_client_tags = mysqli_query($mysqli, "SELECT * FROM client_tags LEFT JOIN tags ON client_tags.client_tag_tag_id = tags.tag_id WHERE client_tags.client_tag_client_id = $client_id ORDER BY tag_name ASC");
+        $sql_client_tags = mysqli_query($mysqli, "SELECT * FROM client_tags LEFT JOIN tags ON client_tags.tag_id = tags.tag_id WHERE client_id = $client_id ORDER BY tag_name ASC");
         while ($row = mysqli_fetch_array($sql_client_tags)) {
 
             $client_tag_id = intval($row['tag_id']);
@@ -146,6 +155,9 @@ if (isset($_GET['client_id'])) {
 
         $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('network_id') AS num FROM networks WHERE network_archived_at IS NULL AND network_client_id = $client_id"));
         $num_networks = $row['num'];
+
+        $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('rack_id') AS num FROM racks WHERE rack_archived_at IS NULL AND rack_client_id = $client_id"));
+        $num_racks = $row['num'];
 
         $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('domain_id') AS num FROM domains WHERE domain_archived_at IS NULL AND domain_client_id = $client_id"));
         $num_domains = $row['num'];
@@ -230,6 +242,10 @@ if (isset($_GET['client_id'])) {
 
     }
 }
+
+require_once "header.php";
+
+require_once "top_nav.php";
 
 require_once "client_side_nav.php";
 

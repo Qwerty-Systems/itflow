@@ -31,9 +31,15 @@ if (isset($_GET['contact_id'])) {
     $contact_location_id = intval($row['contact_location_id']);
     $location_name = nullable_htmlentities($row['location_name']);
     $auth_method = nullable_htmlentities($row['contact_auth_method']);
+    $contact_client_id = intval($row['contact_client_id']);
+
+    // Check to see if Contact belongs to client
+    if($contact_client_id !== $client_id) {
+        exit();
+    }
 
     // Related Assets Query
-    $sql_related_assets = mysqli_query($mysqli, "SELECT * FROM assets WHERE asset_contact_id = $contact_id ORDER BY asset_name DESC");
+    $sql_related_assets = mysqli_query($mysqli, "SELECT * FROM assets LEFT JOIN asset_interfaces ON interface_asset_id = asset_id AND interface_primary = 1 WHERE asset_contact_id = $contact_id ORDER BY asset_name DESC");
     $asset_count = mysqli_num_rows($sql_related_assets);
 
     // Related Logins Query
@@ -58,6 +64,28 @@ if (isset($_GET['contact_id'])) {
         LEFT JOIN ticket_statuses ON ticket_status = ticket_status_id
         WHERE ticket_contact_id = $contact_id ORDER BY ticket_id DESC");
     $ticket_count = mysqli_num_rows($sql_related_tickets);
+
+    // Tags
+    $contact_tag_name_display_array = array();
+    $contact_tag_id_array = array();
+    $sql_contact_tags = mysqli_query($mysqli, "SELECT * FROM contact_tags LEFT JOIN tags ON contact_tags.tag_id = tags.tag_id WHERE contact_id = $contact_id ORDER BY tag_name ASC");
+    while ($row = mysqli_fetch_array($sql_contact_tags)) {
+
+        $contact_tag_id = intval($row['tag_id']);
+        $contact_tag_name = nullable_htmlentities($row['tag_name']);
+        $contact_tag_color = nullable_htmlentities($row['tag_color']);
+        if (empty($contact_tag_color)) {
+            $contact_tag_color = "dark";
+        }
+        $contact_tag_icon = nullable_htmlentities($row['tag_icon']);
+        if (empty($contact_tag_icon)) {
+            $contact_tag_icon = "tag";
+        }
+
+        $contact_tag_id_array[] = $contact_tag_id;
+        $contact_tag_name_display_array[] = "<a href='client_contacts.php?client_id=$client_id&q=$contact_tag_name'><span class='badge text-light p-1 mr-1' style='background-color: $contact_tag_color;'><i class='fa fa-fw fa-$contact_tag_icon mr-2'></i>$contact_tag_name</span></a>";
+    }
+    $contact_tags_display = implode('', $contact_tag_name_display_array);
 
     ?>
 
@@ -85,6 +113,12 @@ if (isset($_GET['contact_id'])) {
                             </span>
                         <?php } ?>
                     </div>
+                    <?php
+                    if (!empty($contact_tags_display)) { ?>
+                        <div class="mt-1">
+                            <?php echo $contact_tags_display; ?>
+                        </div>
+                    <?php } ?>
                     <hr>
                     <?php if ($location_name) { ?>
                         <div><i class="fa fa-fw fa-map-marker-alt text-secondary mr-2"></i><?php echo $location_name; ?></div>
@@ -143,13 +177,26 @@ if (isset($_GET['contact_id'])) {
                 <li class="breadcrumb-item active"><?php echo "$contact_name"; ?></li>
             </ol>
 
+            <div class="dropdown dropleft mb-3">
+                <button type="button" class="btn btn-primary" data-toggle="dropdown"><i class="fas fa-fw fa-plus mr-2"></i>New</button>
+                <div class="dropdown-menu">
+                    <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#addTicketModal">
+                        <i class="fa fa-fw fa-plus mr-2"></i>New Ticket
+                    </a>
+                    <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#addTicketFromTemplateModal">
+                        <i class="fa fa-fw fa-plus mr-2"></i>From Template
+                    </a>
+                    <div class="dropdown-divider"></div>
+                </div>
+            </div>
+
             <div class="card card-dark <?php if ($asset_count == 0) { echo "d-none"; } ?>">
                 <div class="card-header">
                     <h3 class="card-title"><i class="fa fa-fw fa-desktop mr-2"></i>Related Assets</h3>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive-sm">
-                        <table class="table table-striped table-borderless table-hover">
+                        <table class="table table-striped table-borderless table-hover dataTables" style="width:100%">
                             <thead>
                             <tr>
                                 <th>Name/Description</th>
@@ -183,13 +230,15 @@ if (isset($_GET['contact_id'])) {
                                 } else {
                                     $asset_os_display = $asset_os;
                                 }
-                                $asset_ip = nullable_htmlentities($row['asset_ip']);
+                                $asset_ip = nullable_htmlentities($row['interface_ip']);
                                 if (empty($asset_ip)) {
                                     $asset_ip_display = "-";
                                 } else {
                                     $asset_ip_display = "$asset_ip<button class='btn btn-sm' data-clipboard-text='$asset_ip'><i class='far fa-copy text-secondary'></i></button>";
                                 }
-                                $asset_mac = nullable_htmlentities($row['asset_mac']);
+                                $asset_nat_ip = nullable_htmlentities($row['interface_nat_ip']);
+                                $asset_ipv6 = nullable_htmlentities($row['interface_ipv6']);
+                                $asset_mac = nullable_htmlentities($row['interface_mac']);
                                 $asset_status = nullable_htmlentities($row['asset_status']);
                                 $asset_purchase_date = nullable_htmlentities($row['asset_purchase_date']);
                                 $asset_warranty_expire = nullable_htmlentities($row['asset_warranty_expire']);
@@ -199,11 +248,15 @@ if (isset($_GET['contact_id'])) {
                                 } else {
                                     $asset_install_date_display = $asset_install_date;
                                 }
+                                $asset_uri = nullable_htmlentities($row['asset_uri']);
+                                $asset_uri_2 = nullable_htmlentities($row['asset_uri_2']);
+                                $asset_photo = nullable_htmlentities($row['asset_photo']);
+                                $asset_physical_location = nullable_htmlentities($row['asset_physical_location']);
                                 $asset_notes = nullable_htmlentities($row['asset_notes']);
                                 $asset_created_at = nullable_htmlentities($row['asset_created_at']);
                                 $asset_vendor_id = intval($row['asset_vendor_id']);
                                 $asset_location_id = intval($row['asset_location_id']);
-                                $asset_network_id = intval($row['asset_network_id']);
+                                $asset_network_id = intval($row['interface_network_id']);
                                 $asset_contact_id = intval($row['asset_contact_id']);
 
                                 $login_id = $row['login_id'];
@@ -236,7 +289,6 @@ if (isset($_GET['contact_id'])) {
                                         <div class="dropdown dropleft text-center">
                                             <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>
                                             <div class="dropdown-menu">
-                                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#addAssetInterfaceModal<?php echo $asset_id; ?>">Interfaces</a>
                                                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editAssetModal<?php echo $asset_id; ?>">
                                                     <i class="fas fa-fw fa-edit mr-2"></i>Edit
                                                 </a>
@@ -263,8 +315,6 @@ if (isset($_GET['contact_id'])) {
 
                                 require "client_asset_copy_modal.php";
 
-                                require "client_asset_interface_add_modal.php";
-
 
                             }
 
@@ -282,8 +332,8 @@ if (isset($_GET['contact_id'])) {
                     <h3 class="card-title"><i class="fa fa-fw fa-key mr-2"></i>Related Logins</h3>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive-sm-sm">
-                        <table class="table table-striped table-borderless table-hover">
+                    <div class="table-responsive-sm">
+                        <table class="table table-striped table-borderless table-hover dataTables" style="width:100%">
                             <thead>
                             <tr>
                                 <th>Name</th>
@@ -308,6 +358,7 @@ if (isset($_GET['contact_id'])) {
                                 } else {
                                     $login_uri_display = "$login_uri<button class='btn btn-sm clipboardjs' data-clipboard-text='$login_uri'><i class='far fa-copy text-secondary'></i></button><a href='https://$login_uri' target='_blank'><i class='fa fa-external-link-alt text-secondary'></i></a>";
                                 }
+                                $login_uri_2 = nullable_htmlentities($row['login_uri_2']);
                                 $login_username = nullable_htmlentities(decryptLoginEntry($row['login_username']));
                                 if (empty($login_username)) {
                                     $login_username_display = "-";
@@ -388,7 +439,7 @@ if (isset($_GET['contact_id'])) {
                 </div>
                 <div class="card-body">
                     <div class="table-responsive-sm">
-                        <table class="table table-striped table-borderless table-hover">
+                        <table class="table table-striped table-borderless table-hover dataTables" style="width:100%">
                             <thead class="text-dark">
                             <tr>
                                 <th>Software</th>
@@ -413,11 +464,6 @@ if (isset($_GET['contact_id'])) {
                                 $software_notes = nullable_htmlentities($row['software_notes']);
 
                                 $seat_count = 0;
-
-                                // Get Login
-                                $login_id = intval($row['login_id']);
-                                $login_username = nullable_htmlentities(decryptLoginEntry($row['login_username']));
-                                $login_password = nullable_htmlentities(decryptLoginEntry($row['login_password']));
 
                                 // Asset Licenses
                                 $asset_licenses_sql = mysqli_query($mysqli, "SELECT asset_id FROM software_assets WHERE software_id = $software_id");
@@ -463,7 +509,7 @@ if (isset($_GET['contact_id'])) {
                 </div>
                 <div class="card-body">
                     <div class="table-responsive-sm">
-                        <table class="table table-striped table-borderless table-hover">
+                        <table class="table table-striped table-borderless table-hover dataTables" style="width:100%">
                             <thead class="text-dark">
                             <tr>
                                 <th>Number</th>
@@ -482,7 +528,7 @@ if (isset($_GET['contact_id'])) {
                                 $ticket_id = intval($row['ticket_id']);
                                 $ticket_prefix = nullable_htmlentities($row['ticket_prefix']);
                                 $ticket_number = intval($row['ticket_number']);
-                                $ticket_subject = intval($row['ticket_subject']);
+                                $ticket_subject = nullable_htmlentities($row['ticket_subject']);
                                 $ticket_priority = nullable_htmlentities($row['ticket_priority']);
                                 $ticket_status = nullable_htmlentities($row['ticket_status']);
                                 $ticket_status_name = nullable_htmlentities($row['ticket_status_name']);
@@ -610,5 +656,9 @@ if (isset($_GET['contact_id'])) {
     </script>
 
 <?php
+
+require_once "ticket_add_modal.php";
+require_once "ticket_add_from_template_modal.php";
+
 require_once "footer.php";
 

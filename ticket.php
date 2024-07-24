@@ -1,13 +1,6 @@
 <?php
 require_once "inc_all.php";
 
-?>
-
-<!-- Custom styling of time tracking elements -->
-<link rel="stylesheet" type="text/css" href="css/ticket_time_tracking.css">
-
-<?php
-
 // Initialize the HTML Purifier to prevent XSS
 require "plugins/htmlpurifier/HTMLPurifier.standalone.php";
 
@@ -26,10 +19,12 @@ if (isset($_GET['ticket_id'])) {
         LEFT JOIN users ON ticket_assigned_to = user_id
         LEFT JOIN locations ON ticket_location_id = location_id
         LEFT JOIN assets ON ticket_asset_id = asset_id
+        LEFT JOIN asset_interfaces ON interface_asset_id = asset_id AND interface_primary = 1
         LEFT JOIN vendors ON ticket_vendor_id = vendor_id
         LEFT JOIN projects ON ticket_project_id = project_id
         LEFT JOIN invoices ON ticket_invoice_id = invoice_id
         LEFT JOIN ticket_statuses ON ticket_status = ticket_status_id
+        LEFT JOIN categories ON ticket_category = category_id
         WHERE ticket_id = $ticket_id LIMIT 1"
     );
 
@@ -54,7 +49,8 @@ if (isset($_GET['ticket_id'])) {
 
         $ticket_prefix = nullable_htmlentities($row['ticket_prefix']);
         $ticket_number = intval($row['ticket_number']);
-        $ticket_category = nullable_htmlentities($row['ticket_category']);
+        $ticket_category = intval($row['ticket_category']);
+        $ticket_category_display = htmlentities($row['category_name']);
         $ticket_subject = nullable_htmlentities($row['ticket_subject']);
         $ticket_details = $purifier->purify($row['ticket_details']);
         $ticket_priority = nullable_htmlentities($row['ticket_priority']);
@@ -106,7 +102,7 @@ if (isset($_GET['ticket_id'])) {
         $contact_mobile = formatPhoneNumber($row['contact_mobile']);
 
         $asset_id = intval($row['asset_id']);
-        $asset_ip = nullable_htmlentities($row['asset_ip']);
+        $asset_ip = nullable_htmlentities($row['interface_ip']);
         $asset_name = nullable_htmlentities($row['asset_name']);
         $asset_type = nullable_htmlentities($row['asset_type']);
         $asset_uri = nullable_htmlentities($row['asset_uri']);
@@ -181,7 +177,7 @@ if (isset($_GET['ticket_id'])) {
         // Client Tags
         $client_tag_name_display_array = array();
         $client_tag_id_array = array();
-        $sql_client_tags = mysqli_query($mysqli, "SELECT * FROM client_tags LEFT JOIN tags ON client_tags.client_tag_tag_id = tags.tag_id WHERE client_tags.client_tag_client_id = $client_id ORDER BY tag_name ASC");
+        $sql_client_tags = mysqli_query($mysqli, "SELECT * FROM client_tags LEFT JOIN tags ON client_tags.tag_id = tags.tag_id WHERE client_id = $client_id ORDER BY tag_name ASC");
         while ($row = mysqli_fetch_array($sql_client_tags)) {
 
             $client_tag_id = intval($row['tag_id']);
@@ -205,6 +201,22 @@ if (isset($_GET['ticket_id'])) {
         $ticket_responses_sql = mysqli_query($mysqli, "SELECT COUNT(ticket_reply_id) AS ticket_responses FROM ticket_replies WHERE ticket_reply_archived_at IS NULL AND ticket_reply_ticket_id = $ticket_id");
         $row = mysqli_fetch_array($ticket_responses_sql);
         $ticket_responses = intval($row['ticket_responses']);
+
+        $ticket_all_comments_sql = mysqli_query($mysqli, "SELECT COUNT(ticket_reply_id) AS ticket_all_comments_count FROM ticket_replies WHERE ticket_reply_archived_at IS NULL AND ticket_reply_ticket_id = $ticket_id");
+        $row = mysqli_fetch_array($ticket_all_comments_sql);
+        $ticket_all_comments_count = intval($row['ticket_all_comments_count']);
+
+        $ticket_internal_notes_sql = mysqli_query($mysqli, "SELECT COUNT(ticket_reply_id) AS ticket_internal_notes_count FROM ticket_replies WHERE ticket_reply_archived_at IS NULL AND ticket_reply_type = 'Internal' AND ticket_reply_ticket_id = $ticket_id");
+        $row = mysqli_fetch_array($ticket_internal_notes_sql);
+        $ticket_internal_notes_count = intval($row['ticket_internal_notes_count']);
+
+        $ticket_public_comments_sql = mysqli_query($mysqli, "SELECT COUNT(ticket_reply_id) AS ticket_public_comments_count FROM ticket_replies WHERE ticket_reply_archived_at IS NULL AND (ticket_reply_type = 'Public' OR ticket_reply_type = 'Client') AND ticket_reply_ticket_id = $ticket_id");
+        $row = mysqli_fetch_array($ticket_public_comments_sql);
+        $ticket_public_comments_count = intval($row['ticket_public_comments_count']);
+
+        $ticket_events_sql = mysqli_query($mysqli, "SELECT COUNT(log_id) AS ticket_events_count FROM logs WHERE log_type = 'Ticket' AND  log_entity_id = $ticket_id");
+        $row = mysqli_fetch_array($ticket_events_sql);
+        $ticket_events_count = intval($row['ticket_events_count']);
 
 
         // Get & format asset warranty expiry
@@ -231,6 +243,14 @@ if (isset($_GET['ticket_id'])) {
             WHERE ticket_reply_ticket_id = $ticket_id
             AND ticket_reply_archived_at IS NULL
             ORDER BY ticket_reply_id DESC"
+        );
+
+        // Get all Events
+        $sql_ticket_events = mysqli_query($mysqli, "SELECT * FROM logs 
+            LEFT JOIN users ON log_user_id = user_id
+            WHERE log_type = 'Ticket'
+            AND log_entity_id = $ticket_id
+            ORDER BY log_id DESC"
         );
 
 
@@ -267,7 +287,7 @@ if (isset($_GET['ticket_id'])) {
 
 
         // Get Tasks
-        $sql_tasks = mysqli_query( $mysqli, "SELECT * FROM tasks WHERE task_ticket_id = $ticket_id ORDER BY task_created_at ASC");
+        $sql_tasks = mysqli_query( $mysqli, "SELECT * FROM tasks WHERE task_ticket_id = $ticket_id ORDER BY task_order ASC, task_id ASC");
         $task_count = mysqli_num_rows($sql_tasks);
 
         // Get Completed Task Count
@@ -371,13 +391,6 @@ if (isset($_GET['ticket_id'])) {
                                 </div>
                             <?php }
 
-                            // Time tracking
-                            if ($ticket_total_reply_time) { ?>
-                                <div class="mt-1">
-                                    <i class="far fa-fw fa-clock text-secondary mr-2"></i>Total time worked: <?php echo $ticket_total_reply_time; ?>
-                                </div>
-                            <?php }
-
                             // Billable
                             if ($config_module_enable_accounting) { ?>
                                 <?php if($invoice_id) { ?>
@@ -390,9 +403,9 @@ if (isset($_GET['ticket_id'])) {
                                     <a href="#" data-toggle="modal" data-target="#editTicketBillableModal<?php echo $ticket_id; ?>">
                                         <?php
                                         if ($ticket_billable == 1) {
-                                            echo "<span class='badge badge-pill badge-success p-2'>$</span>";
+                                            echo "<span class='badge badge-pill badge-success p-2'>Yes</span>";
                                         } else {
-                                            echo "<span class='badge badge-pill badge-secondary p-2'>X</span>";
+                                            echo "<span class='badge badge-pill badge-secondary p-2'>No</span>";
                                         }
                                         ?>
                                     </a>
@@ -404,18 +417,33 @@ if (isset($_GET['ticket_id'])) {
                 </div>
 
                 <div class="col-sm-3">
-                    <?php if($task_count) { ?>
+                    <?php if ($task_count) { ?>
                     Tasks Completed<span class="float-right text-bold"><?php echo $tasks_completed_percent; ?>%</span>
                     <div class="progress mt-2" style="height: 20px;">
                         <div class="progress-bar" style="width: <?php echo $tasks_completed_percent; ?>%;"><?php echo $completed_task_count; ?> / <?php echo $task_count; ?></div>
                     </div>
                     <?php } ?>
 
-                    <?php if($ticket_collaborators) { ?>
+                    <?php
+                    // Time tracking
+                    if ($ticket_total_reply_time) { ?>
+                        <div class="mt-1">
+                            <i class="far fa-fw fa-clock text-secondary mr-2"></i>Total time worked: <?php echo $ticket_total_reply_time; ?>
+                        </div>
+                    <?php } ?>
+
+                    <?php if ($ticket_collaborators) { ?>
                     <div class="mt-2">
                         <i class="fas fa-fw fa-users mr-2 text-secondary"></i><?php echo $ticket_collaborators; ?>
                     </div>
                     <?php } ?>
+
+                    <?php if ($ticket_category > 0) { ?>
+                        <div class="mt-2">
+                            <i class="fas fa-fw fa-layer-group mr-2 text-secondary"></i><?php echo $ticket_category_display; ?>
+                        </div>
+                    <?php } ?>
+
                 </div>
 
                 <div class="col-sm-3">
@@ -451,7 +479,7 @@ if (isset($_GET['ticket_id'])) {
                         <?php }
 
                         if (empty($ticket_closed_at)) { ?>
-                            <?php if($task_count == $completed_task_count) { ?>
+                            <?php if ($task_count == $completed_task_count) { ?>
                             <a href="post.php?close_ticket=<?php echo $ticket_id; ?>" class="btn btn-dark btn-sm confirm-link" id="ticket_close">
                                 <i class="fas fa-fw fa-gavel mr-2"></i>Close
                             </a>
@@ -513,28 +541,39 @@ if (isset($_GET['ticket_id'])) {
 
                 <!-- Only show ticket reply modal if status is not closed -->
                 <?php if (empty($ticket_closed_at)) { ?>
+
                     <form class="mb-3 d-print-none" action="post.php" method="post" autocomplete="off">
                         <input type="hidden" name="ticket_id" id="ticket_id" value="<?php echo $ticket_id; ?>">
                         <input type="hidden" name="client_id" id="client_id" value="<?php echo $client_id; ?>">
+
                         <div class="form-group">
+                            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                                <label class="btn btn-light active">
+                                    <input type="radio" name="public_reply_type" value="2" checked>Public Comment & Email
+                                </label>
+                                <label class="btn btn-light">
+                                    <input type="radio" name="public_reply_type" value="1">Public Comment
+                                </label>
+                                <label class="btn btn-light">
+                                    <input type="radio" name="public_reply_type" value="0">Internal Note
+                                </label>
+                            </div>
                             <?php if ($config_ai_enable) { ?>
-                            <div class="form-group">
-                                <textarea class="form-control tinymceai" id="textInput" name="ticket_reply" placeholder="Type a response"></textarea>
-                            </div>
-
-                            <div class="mb-3">
-                                <button id="rewordButton" class="btn btn-secondary" type="button"><i class="fas fa-fw fa-robot mr-2"></i>AI Reword</button>
-                                <button id="undoButton" class="btn btn-secondary" type="button" style="display:none;"><i class="fas fa-fw fa-redo-alt mr-2"></i>Undo</button>
-                            </div>
-                            <?php } else { ?>
-                            <div class="form-group">
-                                <textarea class="form-control tinymce" name="ticket_reply" placeholder="Type a response"></textarea>
-                            </div>
+                                <div class="float-right">
+                                    <button id="rewordButton" class="btn btn-secondary" type="button"><i class="fas fa-fw fa-robot mr-2"></i>AI Reword</button>
+                                    <button id="undoButton" class="btn btn-secondary" type="button" style="display:none;"><i class="fas fa-fw fa-redo-alt mr-2"></i>Undo</button>
+                                </div>
                             <?php } ?>
-
                         </div>
+
+                        
+                        
+                        <div class="form-group">
+                            <textarea class="form-control tinymce<?php if ($config_ai_enable) { echo "ai"; } ?>" id="textInput" name="ticket_reply" placeholder="Type a response"></textarea>
+                        </div>
+                        
                         <div class="form-row">
-                            <div class="col-md-2">
+                            <div class="col-md-4">
                                 <div class="input-group mb-3">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-thermometer-half"></i></span>
@@ -554,69 +593,32 @@ if (isset($_GET['ticket_id'])) {
                                 </div>
                             </div>
 
-
-                            <div class="custom-tt-horizontal-spacing"></div> <!-- Add custom class for smaller spacing -->
-
                             <!-- Time Tracking -->
-                            <div class="col-sm-3 col-lg-2">
+                            <div class="col-md-6">
                                 <div class="input-group mb-3">
-                                    <div class="form-row">
-
-                                        <div class="input-group custom-tt-width">
-                                            <input type="text" class="form-control" inputmode="numeric" id="hours" name="hours" placeholder="Hrs" min="0" max="23" pattern="0?[0-9]|1[0-9]|2[0-3]">
-                                        </div>
-
-                                        <div class="input-group custom-tt-width">
-                                            <input type="text" class="form-control" inputmode="numeric" id="minutes" name="minutes" placeholder="Mins" min="0" max="59" pattern="[0-5]?[0-9]">
-                                        </div>
-
-                                        <div class="input-group custom-tt-width">
-                                            <input type="text" class="form-control" inputmode="numeric" id="seconds" name="seconds" placeholder="Secs" min="0" max="59" pattern="[0-5]?[0-9]">
-                                        </div>
-
+                                    <div class="input-group pr-0 col-2">
+                                        <input type="text" class="form-control" inputmode="numeric" id="hours" name="hours" placeholder="Hrs" min="0" max="23" pattern="0?[0-9]|1[0-9]|2[0-3]">
                                     </div>
+
+                                    <div class="input-group px-0 col-2">
+                                        <input type="text" class="form-control" inputmode="numeric" id="minutes" name="minutes" placeholder="Mins" min="0" max="59" pattern="[0-5]?[0-9]">
+                                    </div>
+
+                                    <div class="input-group px-0 col-2">
+                                        <input type="text" class="form-control" inputmode="numeric" id="seconds" name="seconds" placeholder="Secs" min="0" max="59" pattern="[0-5]?[0-9]">
+                                    </div>
+
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-success" id="startStopTimer"><i class="fas fa-fw fa-pause"></i></button>
+                                        <button type="button" class="btn btn-danger" id="resetTimer"><i class="fas fa-fw fa-redo-alt"></i></button>
+                                    </div>      
                                 </div>
                             </div>
-
-                            <!-- Timer Controls -->
-                            <div class="col-sm-2">
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-success" id="startStopTimer"><i class="fas fa-fw fa-pause"></i></button>
-                                    <button type="button" class="btn btn-danger" id="resetTimer"><i class="fas fa-fw fa-redo-alt"></i></button>
-                                </div>
-                            </div>
-
-
-
-                            <?php
-                            // Set the initial ticket response type (private/internal note)
-                            //  Future updates of the wording/icon are done by Javascript
-
-                            // Public responses by default (maybe configurable in future?)
-                            $ticket_reply_button_wording = "Respond";
-                            $ticket_reply_button_check = "checked";
-                            $ticket_reply_button_icon = "paper-plane";
-
-                            // Internal responses by default if 1) the contact email is empty or 2) the contact email matches the agent responding
-                            if (empty($contact_email) || $contact_email == $session_email) {
-                                // Internal
-                                $ticket_reply_button_wording = "Add note";
-                                $ticket_reply_button_check = "";
-                                $ticket_reply_button_icon = "sticky-note";
-                            } ?>
-
-
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="ticket_reply_type_checkbox" name="public_reply_type" value="1" <?php echo $ticket_reply_button_check ?>>
-                                            <label class="custom-control-label" for="ticket_reply_type_checkbox">Public Update<br><small class="text-secondary">(Emails contact)</small></label>
-                                        </div>
-                                    </div>
-                                </div>
 
                             <div class="col-md-2">
-                                <button type="submit" id="ticket_add_reply" name="add_ticket_reply" class="btn btn-primary text-bold"><i class="fas fa-<?php echo $ticket_reply_button_icon ?> mr-2"></i><?php echo $ticket_reply_button_wording ?></button>
+                                <div class="float-right">
+                                    <button type="submit" id="ticket_add_reply" name="add_ticket_reply" class="btn btn-primary btn-block text-bold"><i class="fas fa-check mr-2"></i>Submit</button>
+                                </div>
                             </div>
 
                         </div>
@@ -625,7 +627,88 @@ if (isset($_GET['ticket_id'])) {
                     <!-- End IF for reply modal -->
                 <?php } ?>
 
-                <?php if($ticket_responses) { ?><h5 class="mb-4">Responses (<?php echo $ticket_responses; ?>)</h5><?php } ?>
+                <!-- Ticket Responses -->
+                <ul class="nav nav-tabs" id="ticketComments">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="all-comments-tab" data-toggle="tab" data-target="#allComments" type="button">
+                            All Comments
+                            <span class="right badge badge-pill badge-dark ml-2"><?php echo $ticket_all_comments_count; ?></span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="public-comments-tab" data-toggle="tab" data-target="#publicComments" type="button">
+                            Public
+                            <span class="right badge badge-pill badge-dark ml-2"><?php echo $ticket_public_comments_count; ?></span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="notes-tab" data-toggle="tab" data-target="#notes" type="button">
+                            Internal Notes
+                            <span class="right badge badge-pill badge-dark ml-2"><?php echo $ticket_internal_notes_count; ?></span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="public-comments-tab" data-toggle="tab" data-target="#publicComments" type="button">
+                            Client Communication
+                            <span class="right badge badge-pill badge-dark ml-2"><?php echo $ticket_public_comments_count; ?></span>
+                        </button>
+                    </li>
+                    <li class="nav-item ml-auto">
+                        <button class="nav-link" id="events-tab" data-toggle="tab" data-target="#events" type="button">
+                            Events
+                            <span class="right badge badge-pill badge-dark ml-2"><?php echo $ticket_events_count; ?></span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="tasks-tab" data-toggle="tab" data-target="#tasks" type="button">
+                            Tasks
+                            <span class="right badge badge-pill badge-dark ml-2"><?php echo $task_count; ?></span>
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="allComments">All Comments</div>
+                    <div class="tab-pane fade" id="publicComments">Public Comments</div>
+                    <div class="tab-pane fade" id="notes">Internal Notes</div>
+                    <div class="tab-pane fade" id="events">
+                        <div class="card">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Description</th>
+                                        <th>User</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+
+
+                                    <!-- Ticket Events -->
+                                    <?php
+
+                                    while ($row = mysqli_fetch_array($sql_ticket_events)) {
+                                        $log_id = intval($row['log_id']);
+                                        $log_description = nullable_htmlentities($row['log_description']);
+                                        $log_created_at = nullable_htmlentities($row['log_created_at']);
+                                        $log_user_id = intval($row['log_user_id']);
+                                        $log_user_name = nullable_htmlentities($row['user_name']);
+                                    ?>
+                                        <tr>
+                                            <td><?php echo $log_created_at; ?></td>
+                                            <td><?php echo $log_description; ?></td>
+                                            <td><?php echo $log_user_name; ?></td>
+                                        </tr>
+                                    <?php
+                                    }
+                                    ?>
+                                </tbody>
+
+                            </table>
+                        </div>
+                        
+                    </div>
+                    <div class="tab-pane fade" id="tasks">Tasks</div>
+                </div>
 
                 <!-- Ticket replies -->
                 <?php
@@ -832,12 +915,13 @@ if (isset($_GET['ticket_id'])) {
                         while($row = mysqli_fetch_array($sql_tasks)){
                             $task_id = intval($row['task_id']);
                             $task_name = nullable_htmlentities($row['task_name']);
+                            $task_order = intval($row['task_order']);
                             $task_description = nullable_htmlentities($row['task_description']);
                             $task_completed_at = nullable_htmlentities($row['task_completed_at']);
                         ?>
                             <tr>
                                 <td>
-                                    <?php if($task_completed_at) { ?>
+                                    <?php if ($task_completed_at) { ?>
                                     <i class="far fa-fw fa-check-square text-primary"></i>
                                     <?php } else { ?>
                                     <a href="post.php?complete_task=<?php echo $task_id; ?>">
@@ -1099,7 +1183,6 @@ require_once "footer.php";
 
     <!-- Ticket collision detect JS (jQuery is called in footer, so collision detection script MUST be below it) -->
     <script src="js/ticket_collision_detection.js"></script>
-    <script src="js/ticket_button_respond_note.js"></script>
 <?php } ?>
 
 <script src="js/pretty_content.js"></script>

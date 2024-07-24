@@ -193,27 +193,47 @@ if (isset($_POST['test_email_smtp'])) {
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 }
 
-if (isset($_POST['test_email_imap'])) {
 
+// Test IMAP
+// Autoload Composer dependencies
+// require_once __DIR__ . '/../plugins/php-imap/vendor/autoload.php';
+
+// Webklex PHP-IMAP
+//use Webklex\PHPIMAP\ClientManager;
+
+if (isset($_POST['test_email_imap'])) {
+/*
     validateCSRFToken($_POST['csrf_token']);
     validateAdminRole();
 
-    // Prepare connection string with encryption (TLS/SSL/<blank>)
-    $imap_mailbox = "$config_imap_host:$config_imap_port/imap/readonly/$config_imap_encryption";
+    try {
+        // Initialize the client manager and create the client
+        $clientManager = new ClientManager();
+        $client = $clientManager->make([
+            'host'          => $config_imap_host,
+            'port'          => $config_imap_port,
+            'encryption'    => $config_imap_encryption,
+            'validate_cert' => true,
+            'username'      => $config_imap_username,
+            'password'      => $config_imap_password,
+            'protocol'      => 'imap'
+        ]);
 
-    // Connect
-    $imap = imap_open("{{$imap_mailbox}}INBOX", $config_imap_username, $config_imap_password);
+        // Connect to the IMAP server
+        $client->connect();
 
-    if ($imap) {
         $_SESSION['alert_message'] = "Connected successfully";
-    } else {
+    } catch (Exception $e) {
         $_SESSION['alert_type'] = "error";
-        $_SESSION['alert_message'] = "Test IMAP connection failed";
+        $_SESSION['alert_message'] = "Test IMAP connection failed: " . $e->getMessage();
     }
+*/
+    $_SESSION['alert_message'] = "Test is Work In Progress";
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 
 }
+
 
 if (isset($_POST['edit_invoice_settings'])) {
 
@@ -286,11 +306,12 @@ if (isset($_POST['edit_ticket_settings'])) {
     $config_ticket_prefix = sanitizeInput($_POST['config_ticket_prefix']);
     $config_ticket_next_number = intval($_POST['config_ticket_next_number']);
     $config_ticket_email_parse = intval($_POST['config_ticket_email_parse']);
+    $config_ticket_default_billable = intval($_POST['config_ticket_default_billable']);
     $config_ticket_autoclose = intval($_POST['config_ticket_autoclose']);
     $config_ticket_autoclose_hours = intval($_POST['config_ticket_autoclose_hours']);
     $config_ticket_new_ticket_notification_email = sanitizeInput($_POST['config_ticket_new_ticket_notification_email']);
 
-    mysqli_query($mysqli,"UPDATE settings SET config_ticket_prefix = '$config_ticket_prefix', config_ticket_next_number = $config_ticket_next_number, config_ticket_email_parse = $config_ticket_email_parse, config_ticket_autoclose = $config_ticket_autoclose, config_ticket_autoclose_hours = $config_ticket_autoclose_hours, config_ticket_new_ticket_notification_email = '$config_ticket_new_ticket_notification_email' WHERE company_id = 1");
+    mysqli_query($mysqli,"UPDATE settings SET config_ticket_prefix = '$config_ticket_prefix', config_ticket_next_number = $config_ticket_next_number, config_ticket_email_parse = $config_ticket_email_parse, config_ticket_autoclose = $config_ticket_autoclose, config_ticket_autoclose_hours = $config_ticket_autoclose_hours, config_ticket_new_ticket_notification_email = '$config_ticket_new_ticket_notification_email', config_ticket_default_billable = $config_ticket_default_billable WHERE company_id = 1");
 
     //Logging
     mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Settings', log_action = 'Modify', log_description = '$session_name modified ticket settings', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
@@ -316,8 +337,9 @@ if (isset($_POST['edit_default_settings'])) {
     $calendar = intval($_POST['calendar']);
     $net_terms = intval($_POST['net_terms']);
     $hourly_rate = floatval($_POST['hourly_rate']);
+    $phone_mask = intval($_POST['phone_mask']);
 
-    mysqli_query($mysqli,"UPDATE settings SET config_start_page = '$start_page', config_default_expense_account = $expense_account, config_default_payment_account = $payment_account, config_default_payment_method = '$payment_method', config_default_expense_payment_method = '$expense_payment_method', config_default_transfer_from_account = $transfer_from_account, config_default_transfer_to_account = $transfer_to_account, config_default_calendar = $calendar, config_default_net_terms = $net_terms, config_default_hourly_rate = $hourly_rate WHERE company_id = 1");
+    mysqli_query($mysqli,"UPDATE settings SET config_start_page = '$start_page', config_default_expense_account = $expense_account, config_default_payment_account = $payment_account, config_default_payment_method = '$payment_method', config_default_expense_payment_method = '$expense_payment_method', config_default_transfer_from_account = $transfer_from_account, config_default_transfer_to_account = $transfer_to_account, config_default_calendar = $calendar, config_default_net_terms = $net_terms, config_default_hourly_rate = $hourly_rate, config_phone_mask = $phone_mask WHERE company_id = 1");
 
     //Logging
     mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Settings', log_action = 'Modify', log_description = '$session_name modified default settings', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
@@ -523,8 +545,9 @@ if (isset($_POST['edit_security_settings'])) {
     $config_login_key_required = intval($_POST['config_login_key_required']);
     $config_login_key_secret = sanitizeInput($_POST['config_login_key_secret']);
     $config_login_remember_me_expire = intval($_POST['config_login_remember_me_expire']);
+    $config_log_retention = intval($_POST['config_log_retention']);
 
-    mysqli_query($mysqli,"UPDATE settings SET config_login_message = '$config_login_message', config_login_key_required = '$config_login_key_required', config_login_key_secret = '$config_login_key_secret', config_login_remember_me_expire = $config_login_remember_me_expire WHERE company_id = 1");
+    mysqli_query($mysqli,"UPDATE settings SET config_login_message = '$config_login_message', config_login_key_required = '$config_login_key_required', config_login_key_secret = '$config_login_key_secret', config_login_remember_me_expire = $config_login_remember_me_expire, config_log_retention = $config_log_retention WHERE company_id = 1");
 
     // Logging
     mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Settings', log_action = 'Modify', log_description = '$session_name modified login key settings', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
@@ -760,14 +783,14 @@ if (isset($_GET['update'])) {
 
     validateAdminRole();
 
-    exec("git pull");
-
-    //FORCE UPDATE FUNCTION (Will be added later as a checkbox)
     //git fetch downloads the latest from remote without trying to merge or rebase anything. Then the git reset resets the master branch to what you just fetched. The --hard option changes all the files in your working tree to match the files in origin/master
 
-    //exec("git fetch --all");
-    //exec("git reset --hard origin/master");
-
+    if(isset($_GET['force_update']) == 1) {
+        exec("git fetch --all");
+        exec("git reset --hard origin/master");
+    } else {
+        exec("git pull");
+    }
     //header("Location: post.php?update_db");
 
 

@@ -33,17 +33,31 @@ if (!empty($_GET['folder_id'])) {
 // Set Folder Location Var used when creating folders
 $folder_location = 0;
 
-$sql = mysqli_query(
-    $mysqli,
-    "SELECT SQL_CALC_FOUND_ROWS * FROM documents
-    LEFT JOIN users ON document_created_by = user_id
-    WHERE document_client_id = $client_id
-    AND document_template = 0
-    AND document_folder_id = $folder
-    AND document_archived_at IS NULL
-    $query_snippet
-    ORDER BY $sort $order LIMIT $record_from, $record_to"
-);
+if ($get_folder_id == 0 && $_GET["q"]) {
+    $sql = mysqli_query(
+        $mysqli,
+        "SELECT SQL_CALC_FOUND_ROWS * FROM documents
+        LEFT JOIN users ON document_created_by = user_id
+        WHERE document_client_id = $client_id
+        AND document_template = 0
+        
+        AND document_archived_at IS NULL
+        $query_snippet
+        ORDER BY $sort $order LIMIT $record_from, $record_to"
+    );
+}else{
+    $sql = mysqli_query(
+        $mysqli,
+        "SELECT SQL_CALC_FOUND_ROWS * FROM documents
+        LEFT JOIN users ON document_created_by = user_id
+        WHERE document_client_id = $client_id
+        AND document_template = 0
+        AND document_folder_id = $folder
+        AND document_archived_at IS NULL
+        $query_snippet
+        ORDER BY $sort $order LIMIT $record_from, $record_to"
+    );
+}
 
 $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
@@ -186,10 +200,10 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     <form id="bulkActions" action="post.php" method="post">
 
                         <div class="table-responsive-sm">
-                            <table class="table table-striped table-sm table-borderless table-hover">
-                                <thead class="text-dark <?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
+                            <table class="table table-border">
+                                <thead class="thead-light <?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
                                 <tr>
-                                    <td class="bg-light">
+                                    <td class="bg-light pr-0">
                                         <div class="form-check">
                                             <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                         </div>
@@ -224,7 +238,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     ?>
 
                                     <tr>
-                                        <td class="bg-light">
+                                        <td class="bg-light pr-0">
                                             <div class="form-check">
                                                 <input class="form-check-input bulk-select" type="checkbox" name="document_ids[]" value="<?php echo $document_id ?>">
                                             </div>

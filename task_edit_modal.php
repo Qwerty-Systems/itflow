@@ -9,6 +9,9 @@
             </div>
             <form action="post.php" method="post" autocomplete="off">
                 <input type="hidden" name="task_id" value="<?php echo $task_id; ?>">
+                <!-- Check to see if its a ticket template task or ticket task by checking to see if ticket_id is set -->
+                <input type="hidden" name="is_ticket" value="<?php if ($ticket_id) { echo 1; } else { echo 0; } ?>">
+                
                 <div class="modal-body bg-white">
 
                     <div class="form-group">
@@ -18,6 +21,16 @@
                                 <span class="input-group-text"><i class="fa fa-fw fa-tag"></i></span>
                             </div>
                             <input type="text" class="form-control" name="name" placeholder="Name the task" value="<?php echo $task_name; ?>" required autofocus>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Order</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fa fa-fw fa-sort-numeric-down"></i></span>
+                            </div>
+                            <input type="number" class="form-control" name="order" placeholder="Order" value="<?php echo $task_order; ?>">
                         </div>
                     </div>
                 

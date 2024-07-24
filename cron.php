@@ -67,8 +67,11 @@ $config_telemetry = intval($row['config_telemetry']);
 $config_enable_alert_domain_expire = intval($row['config_enable_alert_domain_expire']);
 $config_send_invoice_reminders = intval($row['config_send_invoice_reminders']);
 
-// Remmeber Token Expire
+// Remember-me Token Expiry
 $config_login_remember_me_expire = intval($row['config_login_remember_me_expire']);
+
+// Log retention
+$config_log_retention = intval($row['config_log_retention']);
 
 // Set Currency Format
 $currency_format = numfmt_create($company_locale, NumberFormatter::CURRENCY);
@@ -120,8 +123,11 @@ mysqli_query($mysqli, "DELETE FROM notifications WHERE notification_dismissed_at
 // Clean-up mail queue
 mysqli_query($mysqli, "DELETE FROM email_queue WHERE email_queued_at < CURDATE() - INTERVAL 90 DAY");
 
-// Clean-up old remember me tokens (2 or more days old)
+// Clean-up old remember me tokens
 mysqli_query($mysqli, "DELETE FROM remember_tokens WHERE remember_token_created_at < CURDATE() - INTERVAL $config_login_remember_me_expire DAY");
+
+// Cleanup old audit logs
+mysqli_query($mysqli, "DELETE FROM logs WHERE log_created_at < CURDATE() - INTERVAL $config_log_retention DAY");
 
 //Logging
 //mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron cleaned up old data'");
@@ -252,6 +258,7 @@ if (mysqli_num_rows($sql_scheduled_tickets) > 0) {
         $details = mysqli_real_escape_string($mysqli, $row['scheduled_ticket_details']);
         $priority = sanitizeInput($row['scheduled_ticket_priority']);
         $frequency = sanitizeInput(strtolower($row['scheduled_ticket_frequency']));
+        $billable = intval($row['scheduled_ticket_billable']);
         $created_id = intval($row['scheduled_ticket_created_by']);
         $assigned_id = intval($row['scheduled_ticket_assigned_to']);
         $client_id = intval($row['scheduled_ticket_client_id']);
@@ -272,7 +279,7 @@ if (mysqli_num_rows($sql_scheduled_tickets) > 0) {
         mysqli_query($mysqli, "UPDATE settings SET config_ticket_next_number = $new_config_ticket_next_number WHERE company_id = 1");
 
         // Raise the ticket
-        mysqli_query($mysqli, "INSERT INTO tickets SET ticket_prefix = '$config_ticket_prefix', ticket_number = $ticket_number, ticket_subject = '$subject', ticket_details = '$details', ticket_priority = '$priority', ticket_status = '$ticket_status', ticket_created_by = $created_id, ticket_assigned_to = $assigned_id, ticket_contact_id = $contact_id, ticket_client_id = $client_id, ticket_asset_id = $asset_id");
+        mysqli_query($mysqli, "INSERT INTO tickets SET ticket_prefix = '$config_ticket_prefix', ticket_number = $ticket_number, ticket_subject = '$subject', ticket_details = '$details', ticket_priority = '$priority', ticket_status = '$ticket_status', ticket_billable = $billable, ticket_created_by = $created_id, ticket_assigned_to = $assigned_id, ticket_contact_id = $contact_id, ticket_client_id = $client_id, ticket_asset_id = $asset_id");
         $id = mysqli_insert_id($mysqli);
 
         // Logging
@@ -733,7 +740,7 @@ while ($row = mysqli_fetch_array($sql_recurring_expenses)) {
 
 // TELEMETRY
 
-if ($config_telemetry > 0 OR $config_telemetry = 2) {
+if ($config_telemetry > 0 OR $config_telemetry == 2) {
 
     $current_version = exec("git rev-parse HEAD");
 
@@ -978,6 +985,19 @@ if ($config_telemetry > 0 OR $config_telemetry = 2) {
     // Logging
     mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Telemetry', log_description = 'Cron sent telemetry results to ITFlow Developers'");
 }
+
+
+// Fetch Updates
+$updates = fetchUpdates();
+
+$update_message = $updates->update_message;
+
+if ($updates->current_version !== $updates->latest_version) {
+    // Send Alert to inform Updates Available
+    mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Update', notification = '$update_message', notification_action = 'admin_update.php'");
+}
+
+
 
 /*
  * ###############################################################################################################

@@ -57,6 +57,7 @@ $real_overdue_amount = $total_overdue_amount - $total_overdue_partial_amount;
 $total_unpaid_amount = $total_sent_amount + $total_viewed_amount + $total_partial_amount;
 $unpaid_count = $sent_count + $viewed_count + $partial_count;
 
+$overdue_query = '';
 //Invoice status from GET
 if (isset($_GET['status']) && ($_GET['status']) == 'Draft') {
     $status_query = "invoice_status = 'Draft'";
@@ -137,7 +138,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
         <div class="card-header py-2">
             <h3 class="card-title mt-2"><i class="fa fa-fw fa-file-invoice mr-2"></i>Invoices</h3>
             <div class="card-tools">
-                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addInvoiceModal"><i class="fas fa-plus mr-2"></i>New Invoice</button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addInvoiceModal"><i class="fas fa-plus mr-2"></i>New Invoice</button>
+                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportInvoicesModal">
+                            <i class="fa fa-fw fa-download mr-2"></i>Export
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -312,6 +321,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
 <?php
 require_once "invoice_add_modal.php";
+require_once "invoice_export_modal.php";
 
 require_once "footer.php";
 

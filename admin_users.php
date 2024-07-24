@@ -12,8 +12,9 @@ $url_query_strings_sort = http_build_query($get_copy);
 
 $sql = mysqli_query(
     $mysqli,
-    "SELECT SQL_CALC_FOUND_ROWS * FROM users, user_settings
+    "SELECT SQL_CALC_FOUND_ROWS * FROM users, user_settings, user_roles
     WHERE users.user_id = user_settings.user_id
+    AND user_settings.user_role = user_roles.user_role_id
     AND (user_name LIKE '%$q%' OR user_email LIKE '%$q%')
     AND user_archived_at IS NULL
     ORDER BY $sort $order LIMIT $record_from, $record_to"
@@ -98,13 +99,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     }
                     $user_config_force_mfa = intval($row['user_config_force_mfa']);
                     $user_role = $row['user_role'];
-                    if ($user_role == 3) {
-                        $user_role_display = "Administrator";
-                    } elseif ($user_role == 2) {
-                        $user_role_display = "Technician";
-                    } else {
-                        $user_role_display = "Accountant";
-                    }
+                    $user_role_display = nullable_htmlentities($row['user_role_name']);
                     $user_initials = nullable_htmlentities(initials($user_name));
 
                     $sql_last_login = mysqli_query(
@@ -125,8 +120,17 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         $last_login = "$log_created_at<small class='text-secondary'><div class='mt-1'>$log_user_os</div><div class='mt-1'>$log_user_browser</div><div class='mt-1'><i class='fa fa-fw fa-globe'></i> $log_ip</div></small>";
                     }
 
+                    // Get User Client Access Permissions
+                    $user_client_access_sql = mysqli_query($mysqli,"SELECT client_id FROM user_permissions WHERE user_id = $user_id");
+                    $client_access_array = [];
+                    while ($row = mysqli_fetch_assoc($user_client_access_sql)) {
+                        $client_access_array[] = intval($row['client_id']);
+                    }
+
                     $sql_remember_tokens = mysqli_query($mysqli, "SELECT * FROM remember_tokens WHERE remember_token_user_id = $user_id");
                     $remember_token_count = mysqli_num_rows($sql_remember_tokens);
+
+
 
                     ?>
                     <tr>

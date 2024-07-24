@@ -2,7 +2,14 @@
 <aside class="main-sidebar sidebar-dark-<?php echo nullable_htmlentities($config_theme); ?> d-print-none">
 
     <a class="brand-link pb-1 mt-1" href="clients.php">
-        <p class="h5"><i class="nav-icon fas fa-arrow-left ml-3 mr-2"></i> Back | <strong><?php echo shortenClient($client_name); ?></strong></p>
+        <p class="h5">
+            <i class="nav-icon fas fa-arrow-left ml-3 mr-2"></i>
+             Back | 
+             <strong>
+                <?php if($client_abbreviation) { echo $client_abbreviation; } else { echo shortenClient($client_name); } ?>
+                <i class="fas fa-hashtag"></i><?php echo $client_id; ?>
+            </strong>
+        </p>
     </a>
 
     <!-- Sidebar -->
@@ -157,6 +164,19 @@
                             <?php
                             if ($num_networks > 0) { ?>
                                 <span class="right badge text-light"><?php echo $num_networks; ?></span>
+                            <?php } ?>
+                        </p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="client_racks.php?client_id=<?php echo $client_id; ?>" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "client_racks.php") { echo "active"; } ?>">
+                        <i class="nav-icon fas fa-server"></i>
+                        <p>
+                            Racks
+                            <?php
+                            if ($num_racks > 0) { ?>
+                                <span class="right badge text-light"><?php echo $num_racks; ?></span>
                             <?php } ?>
                         </p>
                     </a>

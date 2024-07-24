@@ -6,15 +6,45 @@ $order = "ASC";
 
 require_once "inc_all_client.php";
 
+// Tags Filter
+if (isset($_GET['tags']) && is_array($_GET['tags']) && !empty($_GET['tags'])) {
+    // Sanitize each element of the status array
+    $sanitizedTags = array();
+    foreach ($_GET['tags'] as $tag) {
+        // Escape each status to prevent SQL injection
+        $sanitizedTags[] = "'" . intval($tag) . "'";
+    }
+
+    // Convert the sanitized tags into a comma-separated string
+    $sanitizedTagsString = implode(",", $sanitizedTags);
+    $tag_query = "AND tags.tag_id IN ($sanitizedTagsString)";
+} else {
+    $tag_query = '';
+}
+
+// Location Filter
+if (isset($_GET['location']) & !empty($_GET['location'])) {
+    $location_query = 'AND (contact_location_id = ' . intval($_GET['location']) . ')';
+    $location = intval($_GET['location']);
+} else {
+    // Default - any
+    $location_query = '';
+    $location = '';
+}
 
 //Rebuild URL
 $url_query_strings_sort = http_build_query($get_copy);
 
-$sql = mysqli_query($mysqli, "SELECT SQL_CALC_FOUND_ROWS * FROM contacts
+$sql = mysqli_query($mysqli, "SELECT SQL_CALC_FOUND_ROWS contacts.*, locations.*, GROUP_CONCAT(tags.tag_name) FROM contacts
     LEFT JOIN locations ON location_id = contact_location_id
+    LEFT JOIN contact_tags ON contact_tags.contact_id = contacts.contact_id
+    LEFT JOIN tags ON tags.tag_id = contact_tags.tag_id
     WHERE contact_$archive_query
-    AND (contact_name LIKE '%$q%' OR contact_title LIKE '%$q%' OR location_name LIKE '%$q%'  OR contact_email LIKE '%$q%' OR contact_department LIKE '%$q%' OR contact_phone LIKE '%$phone_query%' OR contact_extension LIKE '%$q%' OR contact_mobile LIKE '%$phone_query%')
-    AND contact_client_id = $client_id 
+    $tag_query
+    AND (contact_name LIKE '%$q%' OR contact_title LIKE '%$q%' OR location_name LIKE '%$q%'  OR contact_email LIKE '%$q%' OR contact_department LIKE '%$q%' OR contact_phone LIKE '%$phone_query%' OR contact_extension LIKE '%$q%' OR contact_mobile LIKE '%$phone_query%' OR tag_name LIKE '%$q%')
+    AND contact_client_id = $client_id
+    $location_query
+    GROUP BY contact_id
     ORDER BY contact_primary DESC, contact_important DESC, $sort $order LIMIT $record_from, $record_to"
 );
 
@@ -60,13 +90,48 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         </div>
                     </div>
 
-                    <div class="col-md-8">
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <select onchange="this.form.submit()" class="form-control select2" name="tags[]" data-placeholder="- Select Tags -" multiple>
+
+                                <?php $sql_tags = mysqli_query($mysqli, "SELECT * FROM tags WHERE tag_type = 3");
+                                while ($row = mysqli_fetch_array($sql_tags)) {
+                                    $tag_id = intval($row['tag_id']);
+                                    $tag_name = nullable_htmlentities($row['tag_name']); ?>
+
+                                    <option value="<?php echo $tag_id ?>" <?php if (isset($_GET['tags']) && is_array($_GET['tags']) && in_array($tag_id, $_GET['tags'])) { echo 'selected'; } ?>> <?php echo $tag_name ?> </option>
+
+                                <?php } ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <div class="input-group">
+                            <select class="form-control select2" name="location" onchange="this.form.submit()">
+                                <option value="" <?php if ($location == "") { echo "selected"; } ?>>- All Locations -</option>
+
+                                <?php
+                                $sql_locations_filter = mysqli_query($mysqli, "SELECT * FROM locations WHERE location_client_id = $client_id AND location_archived_at IS NULL ORDER BY location_name ASC");
+                                while ($row = mysqli_fetch_array($sql_locations_filter)) {
+                                    $location_id = intval($row['location_id']);
+                                    $location_name = nullable_htmlentities($row['location_name']);
+                                ?>
+                                    <option <?php if ($location == $location_id) { echo "selected"; } ?> value="<?php echo $location_id; ?>"><?php echo $location_name; ?></option>
+                                <?php
+                                }
+                                ?>
+
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
                         <div class="btn-group float-right">
-                            <?php if($archived == 1){ ?>
-                            <a href="?client_id=<?php echo $client_id; ?>&archived=0" class="btn btn-primary"><i class="fa fa-fw fa-archive mr-2"></i>Archived</a>
-                            <?php } else { ?>
-                            <a href="?client_id=<?php echo $client_id; ?>&archived=1" class="btn btn-default"><i class="fa fa-fw fa-archive mr-2"></i>Archived</a>
-                            <?php } ?>
+                            <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
+                                class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
+                                <i class="fa fa-fw fa-archive mr-2"></i>Archived
+                            </a>
                             <div class="dropdown ml-2" id="bulkActionButton" hidden>
                                 <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown">
                                     <i class="fas fa-fw fa-layer-group mr-2"></i>Bulk Action (<span id="selectedCount">0</span>)
@@ -87,6 +152,28 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkEditRoleModal">
                                         <i class="fas fa-fw fa-user-shield mr-2"></i>Set Roles
                                     </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkAssignTagsModal">
+                                        <i class="fas fa-fw fa-tags mr-2"></i>Assign Tags
+                                    </a>
+                                    <?php if ($archived) { ?>
+                                    <div class="dropdown-divider"></div>
+                                    <button class="dropdown-item text-info"
+                                        type="submit" form="bulkActions" name="bulk_unarchive_contacts">
+                                        <i class="fas fa-fw fa-redo mr-2"></i>Unarchive
+                                    </button>
+                                    <div class="dropdown-divider"></div>
+                                    <button class="dropdown-item text-danger text-bold"
+                                        type="submit" form="bulkActions" name="bulk_delete_contacts">
+                                        <i class="fas fa-fw fa-trash mr-2"></i>Delete
+                                    </button>
+                                    <?php } else { ?>
+                                    <div class="dropdown-divider"></div>
+                                    <button class="dropdown-item text-danger confirm-link"
+                                        type="submit" form="bulkActions" name="bulk_archive_contacts">
+                                        <i class="fas fa-fw fa-archive mr-2"></i>Archive
+                                    </button>
+                                    <?php } ?>
                                 </div>
                             </div>
                         </div>
@@ -169,6 +256,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             $contact_billing = intval($row['contact_billing']);
                             $contact_technical = intval($row['contact_technical']);
                             $contact_created_at = nullable_htmlentities($row['contact_created_at']);
+                            $contact_archived_at = nullable_htmlentities($row['contact_archived_at']);
                             if ($contact_primary == 1) {
                                 $contact_primary_display = "<small class='text-success'>Primary Contact</small>";
                             } else {
@@ -203,6 +291,28 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             $sql_related_tickets = mysqli_query($mysqli, "SELECT * FROM tickets WHERE ticket_contact_id = $contact_id ORDER BY ticket_id DESC");
                             $ticket_count = mysqli_num_rows($sql_related_tickets);
 
+                            // Tags
+                            $contact_tag_name_display_array = array();
+                            $contact_tag_id_array = array();
+                            $sql_contact_tags = mysqli_query($mysqli, "SELECT * FROM contact_tags LEFT JOIN tags ON contact_tags.tag_id = tags.tag_id WHERE contact_id = $contact_id ORDER BY tag_name ASC");
+                            while ($row = mysqli_fetch_array($sql_contact_tags)) {
+
+                                $contact_tag_id = intval($row['tag_id']);
+                                $contact_tag_name = nullable_htmlentities($row['tag_name']);
+                                $contact_tag_color = nullable_htmlentities($row['tag_color']);
+                                if (empty($contact_tag_color)) {
+                                    $contact_tag_color = "dark";
+                                }
+                                $contact_tag_icon = nullable_htmlentities($row['tag_icon']);
+                                if (empty($contact_tag_icon)) {
+                                    $contact_tag_icon = "tag";
+                                }
+
+                                $contact_tag_id_array[] = $contact_tag_id;
+                                $contact_tag_name_display_array[] = "<a href='client_contacts.php?client_id=$client_id&q=$contact_tag_name'><span class='badge text-light p-1 mr-1' style='background-color: $contact_tag_color;'><i class='fa fa-fw fa-$contact_tag_icon mr-2'></i>$contact_tag_name</span></a>";
+                            }
+                            $contact_tags_display = implode('', $contact_tag_name_display_array);
+
                             ?>
                             <tr>
                                 <td class="pr-0 bg-light">
@@ -234,6 +344,12 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                             </div>
                                         </div>
                                     </a>
+                                    <?php
+                                    if (!empty($contact_tags_display)) { ?>
+                                        <div class="mt-1">
+                                            <?php echo $contact_tags_display; ?>
+                                        </div>
+                                    <?php } ?>
                                 </td>
                                 <td><?php echo $contact_department_display; ?></td>
                                 <td><?php echo $contact_info_display; ?></td>
@@ -251,14 +367,22 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                                 <i class="fas fa-fw fa-edit mr-2"></i>Edit
                                             </a>
                                             <?php if ($session_user_role == 3 && $contact_primary == 0) { ?>
+                                                <?php if ($contact_archived_at) { ?>
                                                 <div class="dropdown-divider"></div>
-                                                <a class="dropdown-item text-danger confirm-link" href="post.php?anonymize_contact=<?php echo $contact_id; ?>">
-                                                    <i class="fas fa-fw fa-user-secret mr-2"></i>Anonymize & Archive
+                                                <a class="dropdown-item text-info confirm-link" href="post.php?unarchive_contact=<?php echo $contact_id; ?>">
+                                                    <i class="fas fa-fw fa-redo mr-2"></i>Unarchive
                                                 </a>
+                                                <?php } else { ?>
                                                 <div class="dropdown-divider"></div>
                                                 <a class="dropdown-item text-danger confirm-link" href="post.php?archive_contact=<?php echo $contact_id; ?>">
                                                     <i class="fas fa-fw fa-archive mr-2"></i>Archive
                                                 </a>
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item text-danger confirm-link" href="post.php?anonymize_contact=<?php echo $contact_id; ?>">
+                                                    <i class="fas fa-fw fa-user-secret mr-2"></i>Anonymize & Archive
+                                                </a>
+                                                <?php } ?>
+
                                                 <?php if ($config_destructive_deletes_enable) { ?>
                                                 <div class="dropdown-divider"></div>
                                                 <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?delete_contact=<?php echo $contact_id; ?>">
@@ -286,6 +410,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <?php require_once "client_contact_bulk_edit_phone_modal.php"; ?>
                 <?php require_once "client_contact_bulk_edit_department_modal.php"; ?>
                 <?php require_once "client_contact_bulk_edit_role_modal.php"; ?>
+                <?php require_once "client_contact_bulk_assign_tags_modal.php"; ?>
             </form>
             <?php require_once "pagination.php";
 ?>

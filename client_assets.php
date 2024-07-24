@@ -29,6 +29,7 @@ if (isset($_GET['location']) & !empty($_GET['location'])) {
 } else {
     // Default - any
     $location_query = '';
+    $location = '';
 }
 
 //Get Asset Counts
@@ -44,9 +45,10 @@ $row = mysqli_fetch_assoc(mysqli_query($mysqli, "
         SELECT assets.* FROM assets 
         LEFT JOIN contacts ON asset_contact_id = contact_id 
         LEFT JOIN locations ON asset_location_id = location_id 
+        LEFT JOIN asset_interfaces ON interface_asset_id = asset_id AND interface_primary = 1
         WHERE asset_client_id = $client_id
         AND asset_$archive_query
-        AND (asset_name LIKE '%$q%' OR asset_description LIKE '%$q%' OR asset_type LIKE '%$q%' OR asset_ip LIKE '%$q%' OR asset_make LIKE '%$q%' OR asset_model LIKE '%$q%' OR asset_serial LIKE '%$q%' OR asset_os LIKE '%$q%' OR contact_name LIKE '%$q%' OR location_name LIKE '%$q%')
+        AND (asset_name LIKE '%$q%' OR asset_description LIKE '%$q%' OR asset_type LIKE '%$q%' OR interface_ip LIKE '%$q%' OR interface_ipv6 LIKE '%$q%' OR asset_make LIKE '%$q%' OR asset_model LIKE '%$q%' OR asset_serial LIKE '%$q%' OR asset_os LIKE '%$q%' OR contact_name LIKE '%$q%' OR location_name LIKE '%$q%')
         $location_query
     ) AS filtered_assets;
 "));
@@ -77,9 +79,10 @@ $sql = mysqli_query(
     "SELECT SQL_CALC_FOUND_ROWS * FROM assets 
     LEFT JOIN contacts ON asset_contact_id = contact_id 
     LEFT JOIN locations ON asset_location_id = location_id 
+    LEFT JOIN asset_interfaces ON interface_asset_id = asset_id AND interface_primary = 1
     WHERE asset_client_id = $client_id
     AND asset_$archive_query
-    AND (asset_name LIKE '%$q%' OR asset_description LIKE '%$q%' OR asset_type LIKE '%$q%' OR asset_ip LIKE '%$q%' OR asset_make LIKE '%$q%' OR asset_model LIKE '%$q%' OR asset_serial LIKE '%$q%' OR asset_os LIKE '%$q%' OR contact_name LIKE '%$q%' OR location_name LIKE '%$q%')
+    AND (asset_name LIKE '%$q%' OR asset_description LIKE '%$q%' OR asset_type LIKE '%$q%' OR interface_ip LIKE '%$q%' OR interface_ipv6 LIKE '%$q%' OR asset_make LIKE '%$q%' OR asset_model LIKE '%$q%' OR asset_serial LIKE '%$q%' OR asset_os LIKE '%$q%' OR contact_name LIKE '%$q%' OR location_name LIKE '%$q%')
     AND ($type_query)
     $location_query
     ORDER BY $sort $order LIMIT $record_from, $record_to"
@@ -173,11 +176,10 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 } ?>
                             </div>
                             <div class="btn-group mr-2">
-                                <?php if($archived == 1) { ?>
-                                    <a href="?client_id=<?php echo $client_id; ?>&archived=0" class="btn btn-primary"><i class="fa fa-fw fa-archive mr-2"></i>Archived</a>
-                                <?php } else { ?>
-                                    <a href="?client_id=<?php echo $client_id; ?>&archived=1" class="btn btn-default"><i class="fa fa-fw fa-archive mr-2"></i>Archived</a>
-                                <?php } ?>
+                                <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
+                                    class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
+                                    <i class="fa fa-fw fa-archive mr-2"></i>Archived
+                                </a>
                                 <div class="dropdown ml-2" id="bulkActionButton" hidden>
                                     <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown">
                                         <i class="fas fa-fw fa-layer-group mr-2"></i>Bulk Action (<span id="selectedCount">0</span>)
@@ -194,6 +196,19 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                         <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkEditStatusModal">
                                             <i class="fas fa-fw fa-info mr-2"></i>Set Status
                                         </a>
+                                        <?php if ($archived) { ?>
+                                        <div class="dropdown-divider"></div>
+                                        <button class="dropdown-item text-info"
+                                            type="submit" form="bulkActions" name="bulk_unarchive_assets">
+                                            <i class="fas fa-fw fa-redo mr-2"></i>Unarchive
+                                        </button>
+                                        <?php } else { ?>
+                                        <div class="dropdown-divider"></div>
+                                        <button class="dropdown-item text-danger confirm-link"
+                                            type="submit" form="bulkActions" name="bulk_archive_assets">
+                                            <i class="fas fa-fw fa-archive mr-2"></i>Archive
+                                        </button>
+                                        <?php } ?>
                                     </div>
                                 </div>
                             </div>
@@ -225,7 +240,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             if ($_GET['type'] !== 'network' && $_GET['type'] !== 'other') { ?>
                                 <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_os&order=<?php echo $disp; ?>">OS</a></th>
                             <?php } ?>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_ip&order=<?php echo $disp; ?>">IP</a></th>
+                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=interface_ip&order=<?php echo $disp; ?>">IP</a></th>
                             <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_install_date&order=<?php echo $disp; ?>">Install Date</a></th>
                             <?php if ($_GET['type'] !== 'network' && $_GET['type'] !== 'servers' && $_GET['type'] !== 'other') { ?>
                                 <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">Assigned To</a></th>
@@ -262,14 +277,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             } else {
                                 $asset_os_display = $asset_os;
                             }
-                            $asset_ip = nullable_htmlentities($row['asset_ip']);
+                            $asset_ip = nullable_htmlentities($row['interface_ip']);
                             if (empty($asset_ip)) {
                                 $asset_ip_display = "-";
                             } else {
                                 $asset_ip_display = $asset_ip;
                             }
-                            $asset_nat_ip = nullable_htmlentities($row['asset_nat_ip']);
-                            $asset_mac = nullable_htmlentities($row['asset_mac']);
+                            $asset_ipv6 = nullable_htmlentities($row['interface_ipv6']);
+                            $asset_nat_ip = nullable_htmlentities($row['interface_nat_ip']);
+                            $asset_mac = nullable_htmlentities($row['interface_mac']);
                             $asset_uri = nullable_htmlentities($row['asset_uri']);
                             $asset_uri_2 = nullable_htmlentities($row['asset_uri_2']);
                             $asset_status = nullable_htmlentities($row['asset_status']);
@@ -281,12 +297,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             } else {
                                 $asset_install_date_display = $asset_install_date;
                             }
+                            $asset_photo = nullable_htmlentities($row['asset_photo']);
+                            $asset_physical_location = nullable_htmlentities($row['asset_physical_location']);
                             $asset_notes = nullable_htmlentities($row['asset_notes']);
                             $asset_created_at = nullable_htmlentities($row['asset_created_at']);
+                            $asset_archived_at = nullable_htmlentities($row['asset_archived_at']);
                             $asset_vendor_id = intval($row['asset_vendor_id']);
                             $asset_location_id = intval($row['asset_location_id']);
                             $asset_contact_id = intval($row['asset_contact_id']);
-                            $asset_network_id = intval($row['asset_network_id']);
+                            $asset_network_id = intval($row['interface_network_id']);
 
                             $device_icon = getAssetIcon($asset_type);
 
@@ -412,11 +431,26 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                         </div>
 
                                         <?php } ?>
-
-                                        <?php if (!empty($asset_uri)) { ?>
-                                            <a class="btn btn-default btn-sm" href="<?php echo $asset_uri; ?>" target="_blank"><i class="fas fa-fw fa-external-link-alt"></i></a>
+                                        <?php if ( !empty($asset_uri) || !empty($asset_uri_2) ) { ?>
+                                        <div class="dropdown dropleft text-center">
+                                            <button class="btn btn-default btn-sm" type="button" data-toggle="dropdown">
+                                                <i class="fa fa-fw fa-external-link-alt"></i>
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                <?php if ($asset_uri) { ?>
+                                                <a href="<?php echo $asset_uri; ?>" alt="<?php echo $asset_uri; ?>" target="_blank" class="dropdown-item" >
+                                                    <i class="fa fa-fw fa-external-link-alt"></i> <?php echo truncate($asset_uri,40); ?>
+                                                </a>
+                                                <?php } ?>
+                                                <?php if ($asset_uri_2) { ?>
+                                                <div class="dropdown-divider"></div>
+                                                <a href="<?php echo $asset_uri_2; ?>" target="_blank" class="dropdown-item" >
+                                                    <i class="fa fa-fw fa-external-link-alt"></i> <?php echo truncate($asset_uri_2,40); ?>
+                                                </a>
+                                                <?php } ?>
+                                            </div>
+                                        </div>
                                         <?php } ?>
-
                                         <div class="dropdown dropleft text-center">
                                             <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>
                                             <div class="dropdown-menu">
@@ -427,9 +461,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                                     <i class="fas fa-fw fa-copy mr-2"></i>Copy
                                                 </a>
                                                 <?php if ($session_user_role > 2) { ?>
+                                                    <?php if ($asset_archived_at) { ?>
+                                                    <a class="dropdown-item text-info" href="post.php?unarchive_asset=<?php echo $asset_id; ?>">
+                                                        <i class="fas fa-fw fa-redo mr-2"></i>Unarchive
+                                                    </a>
+                                                    <?php } else { ?>
                                                     <a class="dropdown-item text-danger confirm-link" href="post.php?archive_asset=<?php echo $asset_id; ?>">
                                                         <i class="fas fa-fw fa-archive mr-2"></i>Archive
                                                     </a>
+                                                    <?php } ?>
                                                     <?php if ($config_destructive_deletes_enable) { ?>
                                                     <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?delete_asset=<?php echo $asset_id; ?>">
                                                         <i class="fas fa-fw fa-archive mr-2"></i>Delete

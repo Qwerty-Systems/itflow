@@ -154,11 +154,11 @@ $total_tickets_closed = intval($row['total_tickets_closed']);
                     $ticket_closed_at = nullable_htmlentities($row['ticket_closed_at']);
 
                     if ($ticket_priority == "High") {
-                        $ticket_priority_display = "<span class='p-2 badge badge-danger'>$ticket_priority</span>";
+                        $ticket_priority_display = "<span class='p-2 badge badge-pill badge-danger'>$ticket_priority</span>";
                     } elseif ($ticket_priority == "Medium") {
-                        $ticket_priority_display = "<span class='p-2 badge badge-warning'>$ticket_priority</span>";
+                        $ticket_priority_display = "<span class='p-2 badge badge-pill badge-warning'>$ticket_priority</span>";
                     } elseif ($ticket_priority == "Low") {
-                        $ticket_priority_display = "<span class='p-2 badge badge-info'>$ticket_priority</span>";
+                        $ticket_priority_display = "<span class='p-2 badge badge-pill badge-info'>$ticket_priority</span>";
                     } else{
                         $ticket_priority_display = "-";
                     }
@@ -238,9 +238,9 @@ $total_tickets_closed = intval($row['total_tickets_closed']);
                                 <a href="#" data-toggle="modal" data-target="#editTicketBillableModal<?php echo $ticket_id; ?>">
                                     <?php
                                     if ($ticket_billable == 1) {
-                                        echo "<span class='badge badge-pill badge-success'>$</span>";
+                                        echo "<span class='badge badge-pill badge-success p-2'>Yes</span>";
                                     } else {
-                                        echo "<span class='badge badge-pill badge-secondary'>X</span>";
+                                        echo "<span class='badge badge-pill badge-secondary p-2'>No</span>";
                                     }
                                     ?>
                             </td>

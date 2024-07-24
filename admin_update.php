@@ -3,19 +3,12 @@ require_once "inc_all_admin.php";
 
 require_once "database_version.php";
 
-require_once "config.php";
 
+$updates = fetchUpdates();
 
-// Fetch the latest code changes but don't apply them
-exec("git fetch", $output, $result);
-$latest_version = exec("git rev-parse origin/$repo_branch");
-$current_version = exec("git rev-parse HEAD");
-
-if ($current_version == $latest_version) {
-    $update_message = "No Updates available";
-} else {
-    $update_message = "New Updates are Available [$latest_version]";
-}
+$latest_version = $updates->latest_version;
+$current_version = $updates->current_version;
+$result = $updates->result;
 
 $git_log = shell_exec("git log $repo_branch..origin/$repo_branch --pretty=format:'<tr><td>%h</td><td>%ar</td><td>%s</td></tr>'");
 
@@ -41,6 +34,7 @@ $git_log = shell_exec("git log $repo_branch..origin/$repo_branch --pretty=format
 
             <?php if (!empty($git_log)) { ?>
                 <a class="btn btn-primary btn-lg my-4" href="post.php?update"><i class="fas fa-fw fa-4x fa-download mb-1"></i><h5>Update App</h5></a>
+                <a class="btn btn-danger btn-lg" href="post.php?update&force_update=1"><i class="fas fa-fw fa-4x fa-hammer mb-1"></i><h5>FORCE Update App</h5></a>
                 <hr>
 
             <?php } else {

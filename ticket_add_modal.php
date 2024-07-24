@@ -8,6 +8,7 @@
                 </button>
             </div>
             <form action="post.php" method="post" autocomplete="off">
+                <input type="hidden" name="billable" value="0">
                 <div class="modal-body bg-white">
 
                     <?php if (isset($_GET['client_id'])) { ?>
@@ -139,6 +140,15 @@
                                 </div>
                             </div>
 
+                            <?php if ($config_module_enable_accounting) { ?>
+                            <div class="form-group">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" name="billable" <?php if ($config_ticket_default_billable == 1) { echo "checked"; } ?> value="1" id="billableSwitch">
+                                    <label class="custom-control-label" for="billableSwitch">Mark Billable</label>
+                                </div>
+                            </div>
+                            <?php } ?>
+
                         </div>
 
                         <?php if (isset($_GET['client_id'])) { ?>
@@ -180,7 +190,7 @@
                                                 }
 
                                                 ?>
-                                                <option value="<?php echo $contact_id; ?>" <?php if ($contact_primary == 1) { echo "selected"; } ?>><?php echo "$contact_name$contact_title_display$contact_primary_display$contact_technical_display"; ?></option>
+                                                <option value="<?php echo $contact_id; ?>" <?php if ($contact_primary == 1 || $contact_id == isset($_GET['contact_id'])) { echo "selected"; } ?>><?php echo "$contact_name$contact_title_display$contact_primary_display$contact_technical_display"; ?></option>
 
                                             <?php } ?>
                                         </select>

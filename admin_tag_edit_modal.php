@@ -30,6 +30,8 @@
               <select class="form-control select2" name="type" required>
                 <option value="">- Type -</option>
                 <option value="1" <?php if ($tag_type == 1) { echo "selected"; } ?>>Client Tag</option>
+                <option value="2" <?php if ($tag_type == 2) { echo "selected"; } ?>>Location Tag</option>
+                <option value="3" <?php if ($tag_type == 3) { echo "selected"; } ?>>Contact Tag</option>
               </select>
             </div>
           </div>

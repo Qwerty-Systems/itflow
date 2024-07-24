@@ -10,7 +10,8 @@ if (!isset($_SESSION)) {
     session_start();
 }
 
-//Check to see if setup is enabled
+
+// Check to see if setup is enabled
 if (!isset($config_enable_setup) || $config_enable_setup == 1) {
     header("Location: setup.php");
     exit;
@@ -18,12 +19,18 @@ if (!isset($config_enable_setup) || $config_enable_setup == 1) {
 
 // Check user is logged in with a valid session
 if (!isset($_SESSION['logged']) || !$_SESSION['logged']) {
-    header("Location: login.php");
+    if ($_SERVER["REQUEST_URI"] == "/") {
+        header("Location: login.php");
+    } else {
+        header("Location: login.php?last_visited=" . base64_encode($_SERVER["REQUEST_URI"]) );
+    }
     exit;
 }
 
+
 // Set Timezone
 require_once "inc_set_timezone.php";
+
 
 // User IP & UA
 $session_ip = sanitizeInput(getIP());
@@ -56,9 +63,37 @@ $session_company_country = $row['company_country'];
 $session_company_locale = $row['company_locale'];
 $session_company_currency = $row['company_currency'];
 
-//Set Currency Format
+
+// Set Currency Format
 $currency_format = numfmt_create($session_company_locale, NumberFormatter::CURRENCY);
 
+
+try {
+    // Get User Client Access Permissions
+    $user_client_access_sql = "SELECT client_id FROM user_permissions WHERE user_id = $session_user_id";
+    $user_client_access_result = mysqli_query($mysqli, $user_client_access_sql);
+
+    $client_access_array = [];
+    while ($row = mysqli_fetch_assoc($user_client_access_result)) {
+        $client_access_array[] = $row['client_id'];
+    }
+
+    $client_access_string = implode(',', $client_access_array);
+
+    // Role / Client Access Permission Check
+    if ($session_user_role < 3 && !empty($client_access_string)) {
+        $access_permission_query = "AND clients.client_id IN ($client_access_string)";
+    } else {
+        $access_permission_query = "";
+    }
+} catch (Exception $e) {
+    // Handle exception
+    error_log('MySQL error: ' . $e->getMessage());
+    $access_permission_query = ""; // Ensure safe default if query fails
+}
+
+
+// Include the settings vars
 require_once "get_settings.php";
 
 
@@ -73,15 +108,17 @@ if ($iPod || $iPhone || $iPad) {
     $session_map_source = "google";
 }
 
-//Check if mobile device
+
+// Check if mobile device
 $session_mobile = isMobile();
 
-//Get Notification Count for the badge on the top nav
+
+// Get Notification Count for the badge on the top nav
 $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('notification_id') AS num FROM notifications WHERE (notification_user_id = $session_user_id OR notification_user_id = 0) AND notification_dismissed_at IS NULL"));
 $num_notifications = $row['num'];
+
 
 // FORCE MFA Setup
 //if ($session_user_config_force_mfa == 1 && $session_token == NULL) {
 //    header("Location: force_mfa.php");
 //}
-

@@ -20,6 +20,22 @@ if($leads == 1){
     $leads_query = 0;
 }
 
+// Tags Filter
+if (isset($_GET['tags']) && is_array($_GET['tags']) && !empty($_GET['tags'])) {
+    // Sanitize each element of the status array
+    $sanitizedTags = array();
+    foreach ($_GET['tags'] as $tag) {
+        // Escape each status to prevent SQL injection
+        $sanitizedTags[] = "'" . intval($tag) . "'";
+    }
+
+    // Convert the sanitized tags into a comma-separated string
+    $sanitizedTagsString = implode(",", $sanitizedTags);
+    $tag_query = "AND tags.tag_id IN ($sanitizedTagsString)";
+} else{ 
+    $tag_query = '';    
+}
+
 // Industry Filter
 if (isset($_GET['industry']) & !empty($_GET['industry'])) {
     $industry_query = "AND (clients.client_type  = '" . sanitizeInput($_GET['industry']) . "')";
@@ -27,6 +43,7 @@ if (isset($_GET['industry']) & !empty($_GET['industry'])) {
 } else {
     // Default - any
     $industry_query = '';
+    $industry = '';
 }
 
 // Referral Filter
@@ -36,6 +53,7 @@ if (isset($_GET['referral']) & !empty($_GET['referral'])) {
 } else {
     // Default - any
     $referral_query = '';
+    $referral = '';
 }
 
 //Rebuild URL
@@ -44,23 +62,25 @@ $url_query_strings_sort = http_build_query($get_copy);
 $sql = mysqli_query(
     $mysqli,
     "
-    SELECT SQL_CALC_FOUND_ROWS clients.*, contacts.*, locations.*, GROUP_CONCAT(tags.tag_name) AS tag_names
+    SELECT SQL_CALC_FOUND_ROWS clients.*, contacts.*, locations.*, GROUP_CONCAT(tag_name)
     FROM clients
     LEFT JOIN contacts ON clients.client_id = contacts.contact_client_id AND contact_primary = 1
     LEFT JOIN locations ON clients.client_id = locations.location_client_id AND location_primary = 1
-    LEFT JOIN client_tags ON client_tags.client_tag_client_id = clients.client_id
-    LEFT JOIN tags ON tags.tag_id = client_tags.client_tag_tag_id
-    WHERE (clients.client_name LIKE '%$q%' OR clients.client_type LIKE '%$q%' OR clients.client_referral LIKE '%$q%'
-           OR contacts.contact_email LIKE '%$q%' OR contacts.contact_name LIKE '%$q%' OR contacts.contact_phone LIKE '%$phone_query%'
-           OR contacts.contact_mobile LIKE '%$phone_query%' OR locations.location_address LIKE '%$q%'
-           OR locations.location_city LIKE '%$q%' OR locations.location_state LIKE '%$q%' OR locations.location_zip LIKE '%$q%'
-           OR tags.tag_name LIKE '%$q%' OR clients.client_tax_id_number LIKE '%$q%')
-      AND clients.client_$archive_query
-      AND DATE(clients.client_created_at) BETWEEN '$dtf' AND '$dtt'
-      AND clients.client_lead = $leads
+    LEFT JOIN client_tags ON client_tags.client_id = clients.client_id
+    LEFT JOIN tags ON tags.tag_id = client_tags.tag_id
+    WHERE (client_name LIKE '%$q%' OR client_type LIKE '%$q%' OR client_referral LIKE '%$q%'
+           OR contact_email LIKE '%$q%' OR contact_name LIKE '%$q%' OR contact_phone LIKE '%$phone_query%'
+           OR contact_mobile LIKE '%$phone_query%' OR location_address LIKE '%$q%'
+           OR location_city LIKE '%$q%' OR location_state LIKE '%$q%' OR location_zip LIKE '%$q%'
+           OR tag_name LIKE '%$q%' OR client_tax_id_number LIKE '%$q%')
+      AND client_$archive_query
+      AND DATE(client_created_at) BETWEEN '$dtf' AND '$dtt'
+      AND client_lead = $leads
+      $access_permission_query
+      $tag_query
       $industry_query
       $referral_query
-    GROUP BY clients.client_id
+    GROUP BY client_id
     ORDER BY $sort $order
     LIMIT $record_from, $record_to
 ");
@@ -81,6 +101,10 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         </button>
                         <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
                         <div class="dropdown-menu">
+                            <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#importClientModal">
+                                <i class="fa fa-fw fa-upload mr-2"></i>Import
+                            </a>
+                            <div class="dropdown-divider"></div>
                             <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportClientModal">
                                 <i class="fa fa-fw fa-download mr-2"></i>Export
                             </a>
@@ -112,16 +136,30 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             </div>
 
                             <div class="btn-group mr-2">
-                                <?php if($archived == 1) { ?>
-                                    <a href="?<?php echo $url_query_strings_sort ?>&archived=0" class="btn btn-primary"><i class="fa fa-fw fa-archive mr-2"></i>Archived</a>
-                                <?php } else { ?>
-                                    <a href="?<?php echo $url_query_strings_sort ?>&archived=1" class="btn btn-default"><i class="fa fa-fw fa-archive mr-2"></i>Archived</a>
-                                <?php } ?>
+                                <a href="?<?php echo $url_query_strings_sort ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
+                                    class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
+                                    <i class="fa fa-fw fa-archive mr-2"></i>Archived
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="collapse mt-3 <?php if ($_GET['dtf'] || $_GET['industry'] || $_GET['referral'] || $_GET['canned_date'] !== "custom" ) { echo "show"; } ?>" id="advancedFilter">
+                <div 
+                    class="collapse mt-3 
+                        <?php 
+                        if (
+                        isset($_GET['dtf'])
+                        || isset($_GET['industry'])
+                        || isset($_GET['referral'])
+                        || (isset($_GET['tags']) && is_array($_GET['tags']))
+                        || $_GET['canned_date'] !== "custom" ) 
+                        { 
+                            echo "show"; 
+                        } 
+                        ?>
+                    "
+                    id="advancedFilter"
+                >
                     <div class="row">
                         <div class="col-md-2">
                             <div class="form-group">
@@ -149,6 +187,22 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             <div class="form-group">
                                 <label>Date to</label>
                                 <input onchange="this.form.submit()" type="date" class="form-control" name="dtt" max="2999-12-31" value="<?php echo nullable_htmlentities($dtt); ?>">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Tag</label>
+                                <select onchange="this.form.submit()" class="form-control select2" name="tags[]" data-placeholder="- Select Tags -" multiple>
+                                    <?php 
+                                    $sql_tags = mysqli_query($mysqli, "SELECT * FROM tags WHERE tag_type = 1");
+                                    while ($row = mysqli_fetch_array($sql_tags)) {
+                                        $tag_id = intval($row['tag_id']);
+                                        $tag_name = nullable_htmlentities($row['tag_name']); ?>
+
+                                        <option value="<?php echo $tag_id ?>" <?php if (isset($_GET['tags']) && is_array($_GET['tags']) && in_array($tag_id, $_GET['tags'])) { echo 'selected'; } ?>> <?php echo $tag_name ?> </option>
+
+                                    <?php } ?>
+                                </select>
                             </div>
                         </div>
                         <div class="col-sm-2">
@@ -197,7 +251,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <table class="table table-striped table-hover table-borderless">
                     <thead class="<?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
                     <tr>
-                        <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">Name</a></th>
+                        <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">Client Name</a></th>
                         <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=location_city&order=<?php echo $disp; ?>">Primary Location </a></th>
                         <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">Primary Contact</a></th>
                         <?php if (($session_user_role == 3 || $session_user_role == 1) && $config_module_enable_accounting == 1) { ?> <th class="text-right">Billing</th> <?php } ?>
@@ -235,6 +289,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         $client_net_terms = intval($row['client_net_terms']);
                         $client_tax_id_number = nullable_htmlentities($row['client_tax_id_number']);
                         $client_referral = nullable_htmlentities($row['client_referral']);
+                        $client_abbreviation = nullable_htmlentities($row['client_abbreviation']);
                         $client_notes = nullable_htmlentities($row['client_notes']);
                         $client_created_at = date('Y-m-d', strtotime($row['client_created_at']));
                         $client_updated_at = nullable_htmlentities($row['client_updated_at']);
@@ -245,7 +300,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                         $client_tag_name_display_array = array();
                         $client_tag_id_array = array();
-                        $sql_client_tags = mysqli_query($mysqli, "SELECT * FROM client_tags LEFT JOIN tags ON client_tags.client_tag_tag_id = tags.tag_id WHERE client_tags.client_tag_client_id = $client_id ORDER BY tag_name ASC");
+                        $sql_client_tags = mysqli_query($mysqli, "SELECT * FROM client_tags LEFT JOIN tags ON client_tags.tag_id = tags.tag_id WHERE client_id = $client_id ORDER BY tag_name ASC");
                         while ($row = mysqli_fetch_array($sql_client_tags)) {
 
                             $client_tag_id = intval($row['tag_id']);
@@ -300,7 +355,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         ?>
                         <tr>
                             <td>
-                                <a class="font-weight-bold" href="client_overview.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?> <i class="fas fa-fw fa-arrow-circle-right"></i></a>
+                                <a data-toggle="tooltip" data-placement="right" title="Client ID: <?php echo $client_id; ?>" class="font-weight-bold" href="client_overview.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
 
                                 <?php
                                 if (!empty($client_type)) {
@@ -414,6 +469,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
 <?php
 require_once "client_add_modal.php";
+
+require_once "client_import_modal.php";
 
 require_once "client_export_modal.php";
 
