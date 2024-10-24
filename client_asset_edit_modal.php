@@ -8,6 +8,7 @@
                 </button>
             </div>
             <form action="post.php" method="post" enctype="multipart/form-data" autocomplete="off">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="asset_id" value="<?php echo $asset_id; ?>">
                 <input type="hidden" name="client_id" value="<?php echo $client_id; ?>">
 
@@ -29,11 +30,14 @@
                         <li class="nav-item">
                             <a class="nav-link" data-toggle="pill" href="#pills-notes<?php echo $asset_id; ?>">Notes</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-toggle="pill" href="#pills-history<?php echo $asset_id; ?>">History</a>
+                        </li>
                     </ul>
 
                     <hr>
 
-                    <div class="tab-content">
+                    <div class="tab-content" <?php if (lookupUserPermission('module_support') <= 1) { echo 'inert'; } ?>>
 
                         <div class="tab-pane fade show active" id="pills-details<?php echo $asset_id; ?>">
 
@@ -333,6 +337,18 @@
                                 </div>
                             </div>
 
+                            <?php if ($asset_type !== 'Virtual Machine') { ?>
+                                <div class="form-group">
+                                    <label>Purchase Date</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text"><i class="fa fa-fw fa-shopping-cart"></i></span>
+                                        </div>
+                                        <input type="date" class="form-control" name="purchase_date" max="2999-12-31" value="<?php echo $asset_purchase_date; ?>">
+                                    </div>
+                                </div>
+                            <?php } ?>
+
                             <div class="form-group">
                                 <label>Install Date</label>
                                 <div class="input-group">
@@ -344,16 +360,6 @@
                             </div>
 
                             <?php if ($asset_type !== 'Virtual Machine') { ?>
-                                <div class="form-group">
-                                    <label>Purchase Date</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="fa fa-fw fa-shopping-cart"></i></span>
-                                        </div>
-                                        <input type="date" class="form-control" name="purchase_date" max="2999-12-31" value="<?php echo $asset_purchase_date; ?>">
-                                    </div>
-                                </div>
-
                                 <div class="form-group">
                                     <label>Warranty Expire</label>
                                     <div class="input-group">
@@ -383,6 +389,34 @@
                             <div class="form-group">
                                 <textarea class="form-control" rows="8" placeholder="Enter some notes" name="notes"><?php echo $asset_notes; ?></textarea>
                             </div>
+
+                            <p class="text-muted text-right">Asset ID: <?= $asset_id ?></p>
+
+                        </div>
+
+
+                        <div class="tab-pane fade" id="pills-history<?php echo $asset_id; ?>">
+
+                            <?php $sql_history = mysqli_query($mysqli, "SELECT * FROM logs WHERE log_type = 'asset' and log_entity_id = $asset_id and log_client_id = $client_id");  ?>
+
+                            <div class="form-group">
+                                <label>Asset History</label>
+
+                                <ul>
+
+                                    <?php
+                                    while ($row = mysqli_fetch_array($sql_history)) {
+                                        $log_action = nullable_htmlentities(($row['log_action']));
+                                        $log_description = nullable_htmlentities(($row['log_description']));
+                                        $log_created_at = nullable_htmlentities(($row['log_created_at']));
+                                        echo "<li>$log_created_at - $log_action: $log_description</li>";
+                                    }
+                                    ?>
+                                </ul>
+
+                            </div>
+
+
 
                         </div>
 

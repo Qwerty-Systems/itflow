@@ -8,6 +8,7 @@ if (isset($_GET['contact_id'])) {
 
     $sql = mysqli_query($mysqli, "SELECT * FROM contacts 
         LEFT JOIN locations ON location_id = contact_location_id
+        LEFT JOIN users ON user_id = contact_user_id
         WHERE contact_id = $contact_id
     ");
 
@@ -30,7 +31,7 @@ if (isset($_GET['contact_id'])) {
     $contact_created_at = nullable_htmlentities($row['contact_created_at']);
     $contact_location_id = intval($row['contact_location_id']);
     $location_name = nullable_htmlentities($row['location_name']);
-    $auth_method = nullable_htmlentities($row['contact_auth_method']);
+    $auth_method = nullable_htmlentities($row['user_auth_method']);
     $contact_client_id = intval($row['contact_client_id']);
 
     // Check to see if Contact belongs to client
@@ -297,10 +298,10 @@ if (isset($_GET['contact_id'])) {
                                                 </a>
                                                 <?php if ($session_user_role == 3) { ?>
                                                     <div class="dropdown-divider"></div>
-                                                    <a class="dropdown-item text-danger" href="post.php?archive_asset=<?php echo $asset_id; ?>">
+                                                    <a class="dropdown-item text-danger" href="post.php?archive_asset=<?php echo $asset_id; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?>">
                                                         <i class="fas fa-fw fa-archive mr-2"></i>Archive
                                                     </a>
-                                                    <a class="dropdown-item text-danger text-bold" href="post.php?delete_asset=<?php echo $asset_id; ?>">
+                                                    <a class="dropdown-item text-danger text-bold" href="post.php?delete_asset=<?php echo $asset_id; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?>">
                                                         <i class="fas fa-fw fa-trash mr-2"></i>Delete
                                                     </a>
                                                 <?php } ?>
@@ -658,7 +659,6 @@ if (isset($_GET['contact_id'])) {
 <?php
 
 require_once "ticket_add_modal.php";
-require_once "ticket_add_from_template_modal.php";
 
 require_once "footer.php";
 

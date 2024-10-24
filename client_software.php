@@ -6,6 +6,8 @@ $order = "ASC";
 
 require_once "inc_all_client.php";
 
+// Perms
+enforceUserPermission('module_support');
 
 //Rebuild URL
 $url_query_strings_sort = http_build_query($get_copy);
@@ -36,10 +38,12 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#addSoftwareFromTemplateModal">
                             <i class="fas fa-fw fa-puzzle-piece mr-2"></i>Create from Template
                         </a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportSoftwareModal">
-                            <i class="fa fa-fw fa-download mr-2"></i>Export
-                        </a>
+                        <?php if ($num_rows[0] > 0) { ?>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportSoftwareModal">
+                                <i class="fa fa-fw fa-download mr-2"></i>Export
+                            </a>
+                        <?php } ?>
                     </div>
                 </div>
             </div>
@@ -61,7 +65,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                     <div class="col-md-8">
                         <div class="float-right">
-                            <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
+                            <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>"
                                 class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
                                 <i class="fa fa-fw fa-archive mr-2"></i>Archived
                             </a>
@@ -72,13 +76,34 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
             </form>
             <hr>
             <div class="table-responsive-sm">
-                <table class="table table-striped table-borderless table-hover">
+                <table class="table table-borderless table-hover">
                     <thead class="text-dark <?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
                     <tr>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=software_name&order=<?php echo $disp; ?>">Software</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=software_type&order=<?php echo $disp; ?>">Type</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=software_license_type&order=<?php echo $disp; ?>">License Type</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=software_seats&order=<?php echo $disp; ?>">Seats</a></th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=software_name&order=<?php echo $disp; ?>">
+                                Software <?php if ($sort == 'software_name') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=software_type&order=<?php echo $disp; ?>">
+                                Type <?php if ($sort == 'software_type') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=software_license_type&order=<?php echo $disp; ?>">
+                                License Type <?php if ($sort == 'software_license_type') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=software_seats&order=<?php echo $disp; ?>">
+                                Seats <?php if ($sort == 'software_seats') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=software_expire&order=<?php echo $disp; ?>">
+                                Expire <?php if ($sort == 'software_expire') { echo $order_icon; } ?>
+                            </a>
+                        </th>
                         <th class="text-center">Action</th>
                     </tr>
                     </thead>
@@ -96,6 +121,31 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         $software_seats = nullable_htmlentities($row['software_seats']);
                         $software_purchase = nullable_htmlentities($row['software_purchase']);
                         $software_expire = nullable_htmlentities($row['software_expire']);
+                        if ($software_expire) {
+                            $software_expire_ago = timeAgo($software_expire);
+                            $software_expire_display = "<div>$software_expire</div><div><small>$software_expire_ago</small></div>";
+                            
+                            // Convert the expiry date to a timestamp
+                            $software_expire_timestamp = strtotime($row['software_expire']);
+                            $current_timestamp = time(); // Get current timestamp
+
+                            // Calculate the difference in days
+                            $days_until_expiry = ($software_expire_timestamp - $current_timestamp) / (60 * 60 * 24);
+
+                            // Determine the class based on the number of days until expiry
+                            if ($days_until_expiry <= 0) {
+                                $tr_class = "table-secondary";
+                            } elseif ($days_until_expiry <= 14) {
+                                $tr_class = "table-danger";
+                            } elseif ($days_until_expiry <= 90) {
+                                $tr_class = "table-warning";    
+                            }
+                            
+                        } else {
+                            $software_expire_display = "-";
+                            $tr_class = '';
+                        }
+     
                         $software_notes = nullable_htmlentities($row['software_notes']);
                         $software_created_at = nullable_htmlentities($row['software_created_at']);
 
@@ -122,7 +172,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
 
                         ?>
-                        <tr>
+                        <tr class="<?php echo $tr_class; ?>">
                             <td>
                                 <a class="text-dark" href="#" data-toggle="modal" data-target="#editSoftwareModal<?php echo $software_id; ?>">
                                     <div class="media">
@@ -137,6 +187,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             <td><?php echo $software_type; ?></td>
                             <td><?php echo $software_license_type; ?></td>
                             <td><?php echo "$seat_count / $software_seats"; ?></td>
+                            <td><?php echo $software_expire_display; ?></td>
                             <td>
                                 <div class="dropdown dropleft text-center">
                                     <button class="btn btn-secondary btn-sm" data-toggle="dropdown">

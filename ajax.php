@@ -176,7 +176,7 @@ if (isset($_POST['asset_set_notes'])) {
     mysqli_query($mysqli, "UPDATE assets SET asset_notes = '$notes' WHERE asset_id = $asset_id");
 
     // Logging
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Assets', log_action = 'Modify', log_description = '$session_name modified asset notes', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Asset', log_action = 'Modify', log_description = '$session_name modified asset notes', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
 
 }
 
@@ -279,7 +279,7 @@ if (isset($_GET['share_generate_link'])) {
     }
 
     // Insert entry into DB
-    $sql = mysqli_query($mysqli, "INSERT INTO shared_items SET item_active = 1, item_key = '$item_key', item_type = '$item_type', item_related_id = $item_id, item_encrypted_username = '$item_encrypted_username', item_encrypted_credential = '$item_encrypted_credential', item_note = '$item_note', item_views = 0, item_view_limit = $item_view_limit, item_expire_at = NOW() + INTERVAL + $item_expires, item_client_id = $client_id");
+    $sql = mysqli_query($mysqli, "INSERT INTO shared_items SET item_active = 1, item_key = '$item_key', item_type = '$item_type', item_related_id = $item_id, item_encrypted_username = '$item_encrypted_username', item_encrypted_credential = '$item_encrypted_credential', item_note = '$item_note', item_recipient = '$item_email', item_views = 0, item_view_limit = $item_view_limit, item_expire_at = NOW() + INTERVAL + $item_expires, item_client_id = $client_id");
     $share_id = $mysqli->insert_id;
 
     // Return URL
@@ -310,6 +310,9 @@ if (isset($_GET['share_generate_link'])) {
         }
         $body = "Hello,<br><br>$session_name from $company_name sent you a time sensitive secure link regarding \"$item_name\".<br><br>The link will expire in <strong>$item_expires_friendly</strong> and may only be viewed <strong>$item_view_limit</strong> times, before the link is destroyed. <br><br><strong><a href=\'$url\'>Click here to access your secure content</a></strong><br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
 
+        // Add the intended recipient disclosure
+        $body .= "<br><br><em>This email and any attachments are confidential and intended for the specified recipient(s) only. If you are not the intended recipient, please notify the sender and delete this email. Unauthorized use, disclosure, or distribution is prohibited.</em>";
+
         $data = [
             [
                 'from' => $config_mail_from_email,
@@ -321,12 +324,7 @@ if (isset($_GET['share_generate_link'])) {
             ]
         ];
 
-        $mail = addToMailQueue($mysqli, $data);
-
-        if ($mail !== true) {
-            mysqli_query($mysqli,"INSERT INTO notifications SET notification_type = 'Mail', notification = 'Failed to send email to $item_email'");
-            mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Mail', log_action = 'Error', log_description = 'Failed to send email to $item_email regarding $subject. $item_mail', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
-        }
+        addToMailQueue($mysqli, $data);
 
     }
 
@@ -461,17 +459,6 @@ if (isset($_GET['get_client_contacts'])) {
     }
 
     echo json_encode($response);
-}
-
-/*
- * Dynamic TOTP "resolver"
- * When provided with a TOTP secret, returns a 6-digit code
- * // TODO: Check if this can now be removed
- */
-if (isset($_GET['get_totp_token'])) {
-    $otp = TokenAuth6238::getTokenCode(strtoupper($_GET['totp_secret']));
-
-    echo json_encode($otp);
 }
 
 /*

@@ -2084,10 +2084,218 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.4.2'");
     }
 
-    // if (CURRENT_DATABASE_VERSION == '1.4.2') {
-    //     // Insert queries here required to update to DB version 1.4.3
+    if (CURRENT_DATABASE_VERSION == '1.4.2') {
+        mysqli_query($mysqli, "ALTER TABLE `settings` ADD `config_ticket_email_parse_unknown_senders` INT(1) NOT NULL DEFAULT '0' AFTER `config_ticket_email_parse`");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.4.3'");
+    }
+
+     if (CURRENT_DATABASE_VERSION == '1.4.3') {
+
+         // Add ticket URL key column
+         mysqli_query($mysqli, "ALTER TABLE `tickets` ADD `ticket_url_key` VARCHAR(200) DEFAULT NULL AFTER `ticket_feedback`");
+         // Populate pre-existing columns for open tickets
+         $sql_tickets_1 = mysqli_query($mysqli, "SELECT ticket_id FROM tickets WHERE tickets.ticket_closed_at IS NULL");
+         foreach ($sql_tickets_1 as $row) {
+             $ticket_id = intval($row['ticket_id']);
+             $url_key = randomString(156);
+             mysqli_query($mysqli, "UPDATE tickets SET ticket_url_key = '$url_key' WHERE ticket_id = '$ticket_id'");
+         }
+
+         // Add ticket resolved at column
+         mysqli_query($mysqli, "ALTER TABLE `tickets` ADD `ticket_resolved_at` DATETIME DEFAULT NULL AFTER `ticket_updated_at`");
+         // Populate pre-existing columns for closed tickets
+         $sql_tickets_2 = mysqli_query($mysqli, "SELECT ticket_id, ticket_updated_at, ticket_closed_at FROM tickets WHERE tickets.ticket_closed_at IS NOT NULL");
+         foreach ($sql_tickets_2 as $row) {
+             $ticket_id = intval($row['ticket_id']);
+             $ticket_updated_at = sanitizeInput($row['ticket_updated_at']); // To keep old updated_at time
+             $ticket_closed_at = sanitizeInput($row['ticket_closed_at']);
+             mysqli_query($mysqli, "UPDATE tickets SET ticket_resolved_at = '$ticket_closed_at', ticket_updated_at = '$ticket_updated_at' WHERE ticket_id = '$ticket_id'");
+         }
+
+         // Change ticket status 'Auto close' to 'Resolved'
+         mysqli_query($mysqli, "UPDATE `ticket_statuses` SET `ticket_status_name` = 'Resolved' WHERE `ticket_statuses`.`ticket_status_id` = 4");
+
+         // Auto-close is no longer optional
+         mysqli_query($mysqli, "ALTER TABLE `settings` DROP `config_ticket_autoclose`");
+         mysqli_query($mysqli, "UPDATE `settings` SET `config_ticket_autoclose_hours` = '72'");
+
+         // DB Version
+         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.4.4'");
+
+     }
+
+     if (CURRENT_DATABASE_VERSION == '1.4.4') {
+         mysqli_query($mysqli, "ALTER TABLE `api_keys` ADD `api_key_decrypt_hash` VARCHAR(200) NOT NULL AFTER `api_key_secret`");
+
+         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.4.5'");
+     }
+
+     if (CURRENT_DATABASE_VERSION == '1.4.5') {
+         mysqli_query($mysqli, "ALTER TABLE `settings` ADD `config_whitelabel_enabled` INT(11) NOT NULL DEFAULT '0' AFTER `config_phone_mask`");
+         mysqli_query($mysqli, "ALTER TABLE `settings` ADD `config_whitelabel_key` TEXT NULL DEFAULT NULL AFTER `config_whitelabel_enabled`");
+
+         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.4.6'");
+     }
+
+    if (CURRENT_DATABASE_VERSION == '1.4.6') {
+        mysqli_query($mysqli, "CREATE TABLE `custom_links` (
+            `custom_link_id` INT(11) NOT NULL AUTO_INCREMENT,
+            `custom_link_name` VARCHAR(200) NOT NULL,
+            `custom_link_description` TEXT DEFAULT NULL,
+            `custom_link_uri` VARCHAR(500) NOT NULL,
+            `custom_link_icon` VARCHAR(200) DEFAULT NULL,
+            `custom_link_created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `custom_link_updated_at` DATETIME ON UPDATE CURRENT_TIMESTAMP NULL,
+            `custom_link_archived_at` DATETIME NULL,
+            PRIMARY KEY (`custom_link_id`)
+        )");
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.4.7'");
+    }
+
+     if (CURRENT_DATABASE_VERSION == '1.4.7') {
+         mysqli_query($mysqli, "ALTER TABLE `documents` ADD `document_client_visible` INT(11) NOT NULL DEFAULT '1' AFTER `document_parent`");
+
+         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.4.8'");
+     }
+
+     if (CURRENT_DATABASE_VERSION == '1.4.8') {
+         mysqli_query($mysqli, "ALTER TABLE `settings` DROP `config_stripe_client_pays_fees`");
+
+         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.4.9'");
+     }
+
+     if (CURRENT_DATABASE_VERSION == '1.4.9') {
+
+         // Add new "is admin" identifier on user roles
+         mysqli_query($mysqli, "ALTER TABLE `user_roles` ADD `user_role_is_admin` INT(11) NOT NULL DEFAULT '0' AFTER `user_role_description`");
+         mysqli_query($mysqli, "UPDATE `user_roles` SET `user_role_is_admin` = '1' WHERE `user_role_id` = 3");
+
+         // Add modules
+         mysqli_query($mysqli, "CREATE TABLE `modules` (
+            `module_id` INT(11) NOT NULL AUTO_INCREMENT,
+            `module_name` VARCHAR(200) NOT NULL,
+            `module_description` VARCHAR(200) NULL,
+            PRIMARY KEY (`module_id`)
+         )");
+
+         mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_client', module_description = 'General client & contact management'");
+         mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_support', module_description = 'Access to ticketing, assets and documentation'");
+         mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_credential', module_description = 'Access to client credentials - usernames, passwords and 2FA codes'");
+         mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_sales', module_description = 'Access to quotes, invoices and products'");
+         mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_financial', module_description = 'Access to payments, accounts, expenses and budgets'");
+         mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_reporting', module_description = 'Access to all reports'");
+
+         // Add table for storing role<->module permissions
+         mysqli_query($mysqli, "CREATE TABLE `user_role_permissions` (
+            `user_role_id` INT(11) NOT NULL,
+            `module_id` INT(11) NOT NULL,
+            `user_role_permission_level` INT(11) NOT NULL
+         )");
+
+         // Add default permissions for accountant role
+         mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 1, user_role_permission_level = 1"); // Read clients
+         mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 2, user_role_permission_level = 1"); // Read support
+         mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 4, user_role_permission_level = 1"); // Read sales
+         mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 5, user_role_permission_level = 2"); // Modify financial
+         mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 6, user_role_permission_level = 1"); // Read reports
+
+         // Add default permissions for tech role
+         mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 2, module_id = 1, user_role_permission_level = 2"); // Modify clients
+         mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 2, module_id = 2, user_role_permission_level = 2"); // Modify support
+         mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 2, module_id = 3, user_role_permission_level = 2"); // Modify credentials
+         mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 2, module_id = 4, user_role_permission_level = 2"); // Modify sales
+
+         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.0'");
+     }
+
+    if (CURRENT_DATABASE_VERSION == '1.5.0') {
+        
+        mysqli_query($mysqli, "DROP TABLE `account_types`");
+
+        mysqli_query($mysqli, "ALTER TABLE `accounts` ADD `account_description` VARCHAR(250) DEFAULT NULL AFTER `account_name`");
+
+        mysqli_query($mysqli, "ALTER TABLE `user_roles` MODIFY `user_role_is_admin` TINYINT(1) NOT NULL DEFAULT '0'");
+
+        mysqli_query($mysqli, "ALTER TABLE `shared_items` ADD `item_recipient` VARCHAR(250) DEFAULT NULL AFTER `item_note`");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.1'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '1.5.1') {
+        
+        mysqli_query($mysqli, "ALTER TABLE `custom_links` ADD `custom_link_location` INT(11) NOT NULL DEFAULT 1 AFTER `custom_link_icon`");
+        mysqli_query($mysqli, "ALTER TABLE `custom_links` ADD `custom_link_new_tab` TINYINT(1) NOT NULL DEFAULT 0 AFTER `custom_link_uri`");
+        mysqli_query($mysqli, "ALTER TABLE `custom_links` ADD `custom_link_order` INT(11) NOT NULL DEFAULT 0 AFTER `custom_link_location`");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.2'");
+    }
+
+     if (CURRENT_DATABASE_VERSION == '1.5.2') {
+         mysqli_query($mysqli, "ALTER TABLE `settings` ADD `config_invoice_paid_notification_email` VARCHAR(200) DEFAULT NULL AFTER `config_invoice_late_fee_percent`");
+
+         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.3'");
+     }
+
+    if (CURRENT_DATABASE_VERSION == '1.5.3') {
+        mysqli_query($mysqli, "ALTER TABLE `users` ADD `user_type` TINYINT(1) NOT NULL DEFAULT 1 AFTER `user_password`");
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.4'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '1.5.4') {
+        mysqli_query($mysqli, "ALTER TABLE `user_roles` ADD `user_role_type` TINYINT(1) NOT NULL DEFAULT 1 AFTER `user_role_description`");
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.5'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '1.5.5') {
+        mysqli_query($mysqli, "ALTER TABLE `contacts` ADD `contact_user_id` INT(11) NOT NULL DEFAULT 0 AFTER `contact_vendor_id`");
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.6'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '1.5.6') {
+        mysqli_query($mysqli, "ALTER TABLE `users` ADD `user_auth_method` VARCHAR(200) NOT NULL DEFAULT 'local' AFTER `user_password`");
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.7'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '1.5.7') {
+        // Create Users for contacts that have logins enabled and that are not archived
+        $contacts_sql = mysqli_query($mysqli, "SELECT * FROM `contacts` WHERE contact_archived_at IS NULL AND (contact_auth_method = 'local' OR contact_auth_method = 'azure')");
+        while($row = mysqli_fetch_array($contacts_sql)) {
+            $contact_id = intval($row['contact_id']);
+            $contact_name = mysqli_real_escape_string($mysqli, $row['contact_name']);
+            $contact_email = mysqli_real_escape_string($mysqli, $row['contact_email']);
+            $contact_password_hash = mysqli_real_escape_string($mysqli, $row['contact_password_hash']);
+            $contact_auth_method = mysqli_real_escape_string($mysqli, $row['contact_auth_method']);
+
+            mysqli_query($mysqli, "INSERT INTO users SET user_name = '$contact_name', user_email = '$contact_email', user_password = '$contact_password_hash', user_auth_method = '$contact_auth_method', user_type = 2");
+
+            $user_id = mysqli_insert_id($mysqli);
+
+            mysqli_query($mysqli, "UPDATE `contacts` SET `contact_user_id` = $user_id WHERE contact_id = $contact_id");
+        }
+
+        // Drop Login Related fields from contacts tables as everyone who has a login has been moved over
+        mysqli_query($mysqli, "ALTER TABLE `contacts` DROP `contact_auth_method`, DROP `contact_password_hash`, DROP `contact_password_reset_token`, DROP `contact_token_expire`");
+
+        // Add Password Reset Tokens to users tables
+        mysqli_query($mysqli, "ALTER TABLE `users` ADD `user_password_reset_token` VARCHAR(200) NULL DEFAULT NULL AFTER `user_token`");
+        mysqli_query($mysqli, "ALTER TABLE `users` ADD `user_password_reset_token_expire` DATETIME NULL DEFAULT NULL AFTER `user_password_reset_token`");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.8'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '1.5.8') {
+        // Add task completetion estimate time to tasks and task templates
+        mysqli_query($mysqli, "ALTER TABLE `tasks` ADD `task_completion_estimate` INT(11) NOT NULL DEFAULT 0 AFTER `task_order`");
+        mysqli_query($mysqli, "ALTER TABLE `task_templates` ADD `task_template_completion_estimate` INT(11) NOT NULL DEFAULT 0 AFTER `task_template_order`");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.5.9'");
+    }
+
+    // if (CURRENT_DATABASE_VERSION == '1.5.9') {
+    //     // Insert queries here required to update to DB version 1.6.0
     //     // Then, update the database to the next sequential version
-    //     mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.4.3'");
+    //     mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '1.6.0'");
     // }
 
 } else {

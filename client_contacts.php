@@ -35,8 +35,9 @@ if (isset($_GET['location']) & !empty($_GET['location'])) {
 //Rebuild URL
 $url_query_strings_sort = http_build_query($get_copy);
 
-$sql = mysqli_query($mysqli, "SELECT SQL_CALC_FOUND_ROWS contacts.*, locations.*, GROUP_CONCAT(tags.tag_name) FROM contacts
+$sql = mysqli_query($mysqli, "SELECT SQL_CALC_FOUND_ROWS contacts.*, locations.*, users.*, GROUP_CONCAT(tags.tag_name) FROM contacts
     LEFT JOIN locations ON location_id = contact_location_id
+    LEFT JOIN users ON user_id = contact_user_id
     LEFT JOIN contact_tags ON contact_tags.contact_id = contacts.contact_id
     LEFT JOIN tags ON tags.tag_id = contact_tags.tag_id
     WHERE contact_$archive_query
@@ -54,7 +55,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
     <div class="card card-dark">
         <div class="card-header py-2">
-            <h3 class="card-title mt-2"><i class="fa fa-fw fa-users mr-2"></i>Contacts</h3>
+            <h3 class="card-title mt-2"><i class="fa fa-fw fa-address-book mr-2"></i>Contacts</h3>
             <div class="card-tools">
                 <div class="btn-group">
                     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addContactModal">
@@ -90,7 +91,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         </div>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <select onchange="this.form.submit()" class="form-control select2" name="tags[]" data-placeholder="- Select Tags -" multiple>
 
@@ -126,7 +127,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         </div>
                     </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="btn-group float-right">
                             <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
                                 class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
@@ -156,6 +157,10 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkAssignTagsModal">
                                         <i class="fas fa-fw fa-tags mr-2"></i>Assign Tags
                                     </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkSendEmailModal">
+                                        <i class="fas fa-fw fa-paper-plane mr-2"></i>Send Email
+                                    </a>
                                     <?php if ($archived) { ?>
                                     <div class="dropdown-divider"></div>
                                     <button class="dropdown-item text-info"
@@ -184,6 +189,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
             <hr>
             <form id="bulkActions" action="post.php" method="post">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+
                 <div class="table-responsive-sm">
                     <table class="table border">
                         <thead class="thead-light <?php if (!$num_rows[0]) { echo "d-none"; } ?>">
@@ -193,10 +199,22 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                 </div>
                             </td>
-                            <th><a class="text-secondary ml-3" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">Name</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_department&order=<?php echo $disp; ?>">Department</a></th>
+                            <th>
+                                <a class="text-secondary ml-3" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">
+                                    Name <?php if ($sort == 'contact_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_department&order=<?php echo $disp; ?>">
+                                    Department <?php if ($sort == 'contact_department') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <th>Contact</th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_name&order=<?php echo $disp; ?>">Location</a></th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_name&order=<?php echo $disp; ?>">
+                                    Location <?php if ($sort == 'location_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <th class="text-center">Action</th>
                         </tr>
                         </thead>
@@ -273,7 +291,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             } else {
                                 $location_name_display = $location_name;
                             }
-                            $auth_method = nullable_htmlentities($row['contact_auth_method']);
+                            $auth_method = nullable_htmlentities($row['user_auth_method']);
+                            $contact_user_id = intval($row['contact_user_id']);
 
                             // Related Assets Query
                             $sql_related_assets = mysqli_query($mysqli, "SELECT * FROM assets WHERE asset_contact_id = $contact_id ORDER BY asset_id DESC");
@@ -340,16 +359,16 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                                 <div class="<?php if(!empty($contact_important)) { echo "text-bold"; } ?>"><?php echo $contact_name; ?></div>
                                                 <?php echo $contact_title_display; ?>
                                                 <div><?php echo $contact_primary_display; ?></div>
-                                                    
+                                                <?php
+                                                if (!empty($contact_tags_display)) { ?>
+                                                    <div class="mt-1">
+                                                        <?php echo $contact_tags_display; ?>
+                                                    </div>
+                                                <?php } ?>   
                                             </div>
                                         </div>
                                     </a>
-                                    <?php
-                                    if (!empty($contact_tags_display)) { ?>
-                                        <div class="mt-1">
-                                            <?php echo $contact_tags_display; ?>
-                                        </div>
-                                    <?php } ?>
+                                    
                                 </td>
                                 <td><?php echo $contact_department_display; ?></td>
                                 <td><?php echo $contact_info_display; ?></td>
@@ -411,6 +430,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <?php require_once "client_contact_bulk_edit_department_modal.php"; ?>
                 <?php require_once "client_contact_bulk_edit_role_modal.php"; ?>
                 <?php require_once "client_contact_bulk_assign_tags_modal.php"; ?>
+                <?php require_once "client_contact_bulk_email_modal.php"; ?>
             </form>
             <?php require_once "pagination.php";
 ?>

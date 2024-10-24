@@ -70,10 +70,19 @@ $item_type = nullable_htmlentities($row['item_type']);
 $item_related_id = intval($row['item_related_id']);
 $item_encrypted_credential = nullable_htmlentities($row['item_encrypted_credential']);
 $item_note = nullable_htmlentities($row['item_note']);
+$item_recipient = nullable_htmlentities($row['item_recipient']);
 $item_views = intval($row['item_views']);
+$item_view_limit = intval($row['item_view_limit']);
 $item_created = nullable_htmlentities($row['item_created_at']);
-$item_expire = nullable_htmlentities($row['item_expire_at']);
+$item_expire = date('Y-m-d h:i A', strtotime($row['item_expire_at']));
 $client_id = intval($row['item_client_id']);
+
+// Create in-app notification
+$item_type_sql_escaped = sanitizeInput($row['item_type']);
+$item_recipient_sql_escaped = sanitizeInput($row['item_recipient']);
+
+mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Share Viewed', notification = '$item_type_sql_escaped has been viewed by $item_recipient_sql_escaped', notification_action = 'client_overview.php?client_id=$client_id', notification_client_id = $client_id, notification_entity_id = $item_id");
+
 ?>
 
 <?php
@@ -86,7 +95,23 @@ $client_id = intval($row['item_client_id']);
 ?>
 
 <div class="card mt-2">
+    <div class="card-header bg-dark">
+        <div class="card-title">
+            <h5><small>Secure Message intended for:</small><br><strong><?php echo $item_recipient ?></strong></h5>
+        </div>
+
+        <div class="card-tools">
+            <div>
+                <?php echo "Views: $item_views / <strong>$item_view_limit</strong>"; ?>
+            </div>
+            <div>
+                <?php echo "Expires: <strong>$item_expire</strong>"; ?>
+            </div>
+        </div>
+    </div>
+
     <div class="card-body">
+
 
 <?php
 if ($item_type == "Document") {
@@ -105,7 +130,7 @@ if ($item_type == "Document") {
     $doc_title_escaped = sanitizeInput($doc_row['document_name']);
     $doc_content = $purifier->purify($doc_row['document_content']);
 
-    echo "<h2>$doc_title</h2>";
+    echo "<h3>$doc_title</h3>";
     echo $doc_content;
 
     // Update document view count
@@ -176,7 +201,7 @@ if ($item_type == "Document") {
 
     ?>
 
-    <h4><?php echo $login_name; ?></h4>
+    <h5><?php echo $login_name; ?></h5>
     <table class="table col-md-3">
         <tr>
             <th>URL</th>
@@ -234,6 +259,11 @@ if ($item_type == "Document") {
 }
 
 ?>
+
+    <hr>
+    <em>
+        This message and any attachments are confidential and intended for the specified recipient(s) only. If you are not the intended recipient, please notify us immediately with the contact info below. Unauthorized use, disclosure, or distribution is prohibited.
+    </em>
 
 </div>
 <div class="card-footer">

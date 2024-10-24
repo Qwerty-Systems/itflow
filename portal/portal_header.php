@@ -18,11 +18,8 @@ header("X-Frame-Options: DENY"); // Legacy
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
 
-    <!-- 
-    Favicon
-    If Fav Icon exists else use the default one 
-    -->
-    <?php if(file_exists('../uploads/favicon.ico')) { ?>
+    <!-- Favicon: If Fav Icon exists, else use the default one -->
+    <?php if (file_exists('../uploads/favicon.ico')) { ?>
         <link rel="icon" type="image/x-icon" href="../uploads/favicon.ico">
     <?php } ?>
 
@@ -50,10 +47,10 @@ header("X-Frame-Options: DENY"); // Legacy
                 <li class="nav-item <?php if (basename($_SERVER['PHP_SELF']) == "index.php") {echo "active";} ?>">
                     <a class="nav-link" href="index.php">Home</a>
                 </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == "tickets.php" || basename($_SERVER['PHP_SELF']) == "ticket_add.php" || basename($_SERVER['PHP_SELF']) == "ticket.php") {echo "active";} ?>" href="tickets.php">Tickets</a>
-                    </li>
-                
+                <li class="nav-item">
+                    <a class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == "tickets.php" || basename($_SERVER['PHP_SELF']) == "ticket_add.php" || basename($_SERVER['PHP_SELF']) == "ticket.php") {echo "active";} ?>" href="tickets.php">Tickets</a>
+                </li>
+
                 <?php if (($session_contact_primary == 1 || $session_contact_is_billing_contact) && $config_module_enable_accounting == 1) { ?>
                     <li class="nav-item">
                         <a class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == "invoices.php") {echo "active";} ?>" href="invoices.php">Invoices</a>
@@ -62,9 +59,18 @@ header("X-Frame-Options: DENY"); // Legacy
                         <a class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == "quotes.php") {echo "active";} ?>" href="quotes.php">Quotes</a>
                     </li>
                 <?php } ?>
-                <?php if ($session_contact_primary == 1 || $session_contact_is_technical_contact) { ?>
+                <?php if ($config_module_enable_itdoc && ($session_contact_primary == 1 || $session_contact_is_technical_contact)) { ?>
                     <li class="nav-item">
                         <a class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == "documents.php") {echo "active";} ?>" href="documents.php">Documents</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == "contacts.php") {echo "active";} ?>" href="contacts.php">Contacts</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == "domains.php") {echo "active";} ?>" href="domains.php">Domains</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == "certificates.php") {echo "active";} ?>" href="certificates.php">Certificates</a>
                     </li>
                 <?php } ?>
             </ul>
@@ -109,3 +115,22 @@ header("X-Frame-Options: DENY"); // Legacy
             <hr>
         </div>
     </div>
+
+    <?php
+    //Alert Feedback
+    if (!empty($_SESSION['alert_message'])) {
+        if (!isset($_SESSION['alert_type'])) {
+            $_SESSION['alert_type'] = "info";
+        }
+        ?>
+        <div class="alert alert-<?php echo $_SESSION['alert_type']; ?>" id="alert">
+            <?php echo nullable_htmlentities($_SESSION['alert_message']); ?>
+            <button class='close' data-dismiss='alert'>&times;</button>
+        </div>
+        <?php
+
+        unset($_SESSION['alert_type']);
+        unset($_SESSION['alert_message']);
+
+    }
+    ?>

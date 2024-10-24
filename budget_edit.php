@@ -2,6 +2,8 @@
 
 require_once "inc_all.php";
 
+enforceUserPermission('module_financial', 2);
+
 // Fetch categories
 $query = "SELECT category_id, category_name FROM categories WHERE category_type ='Expense' AND category_archived_at IS NULL";
 $result = mysqli_query($mysqli, $query);
@@ -52,6 +54,8 @@ $grandTotal = 0;
     </form>
     <form id="budgetForm" method="POST" action="post.php">
         <input type="hidden" name="year" value="<?php echo $currentYear; ?>">
+        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+
         <table class="table table-bordered table-striped">
             <thead>
             <tr>
@@ -66,9 +70,9 @@ $grandTotal = 0;
             <?php foreach ($categories as $category): ?>
                 <tr>
                     <td><?php echo nullable_htmlentities($category['category_name']); ?></td>
-                    <?php 
+                    <?php
                     $rowTotal = 0;
-                    foreach ($months as $index => $month): 
+                    foreach ($months as $index => $month):
                         $amount = getBudgetAmount($budgets, $category['category_id'], $index + 1);
                         $rowTotal += $amount;
                         $columnTotals[$index] += $amount;
@@ -77,7 +81,7 @@ $grandTotal = 0;
                     <?php endforeach; ?>
                     <td><?php echo $rowTotal; ?></td>
                 </tr>
-            <?php 
+            <?php
             $grandTotal += $rowTotal;
             endforeach; ?>
             </tbody>

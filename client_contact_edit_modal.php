@@ -2,7 +2,7 @@
     <div class="modal-dialog">
         <div class="modal-content bg-dark">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fa fa-fw fa-user-edit mr-2"></i>Editing: <strong><?php echo $contact_name; ?></strong></h5>
+                <h5 class="modal-title"><i class="fa fa-fw fa-user-edit mr-2"></i>Editing contact: <strong><?php echo $contact_name; ?></strong></h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
                     <span>&times;</span>
                 </button>
@@ -21,7 +21,7 @@
 
                     <ul class="nav nav-pills nav-justified mb-3">
                         <li class="nav-item">
-                            <a class="nav-link active" data-toggle="pill" href="#pills-details<?php echo $contact_id; ?>"><i class="fa fa-fw fa-user mr-2"></i>Details</a>
+                            <a class="nav-link active" data-toggle="pill" href="#pills-details<?php echo $contact_id; ?>"><i class="fa fa-fw fa-id-badge mr-2"></i>Details</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" data-toggle="pill" href="#pills-photo<?php echo $contact_id; ?>"><i class="fa fa-fw fa-image mr-2"></i>Photo</a>
@@ -275,6 +275,8 @@
                                     </select>
                                 </div>
                             </div>
+
+                            <p class="text-muted text-right">Contact ID: <?= $contact_id ?></p>
 
                         </div>
 

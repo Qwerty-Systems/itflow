@@ -258,55 +258,63 @@ if (isset($_POST['add_company_settings'])) {
         unlink('uploads/tmp/cronkey.php');
     }
 
-
-
-    // Create Main Account Types
-    mysqli_query($mysqli,"INSERT INTO account_types SET account_type_name = 'Asset', account_type_parent = 1, account_type_description = 'Assets are economic resources which are expected to benefit the business in the future.'");
-
-    $account_type_id = mysqli_insert_id($mysqli);
-
     // Create Default Cash Account
-    mysqli_query($mysqli,"INSERT INTO accounts SET account_name = 'Cash', account_type = $account_type_id, account_currency_code = '$currency_code'");
+    mysqli_query($mysqli,"INSERT INTO accounts SET account_name = 'Cash', account_currency_code = '$currency_code'");
 
-    mysqli_query($mysqli,"INSERT INTO account_types SET account_type_name = 'Liability', account_type_parent = 2, account_type_description = 'Liabilities are obligations of the business entity. They are usually classified as current liabilities (due within one year or less) and long-term liabilities (due after one year).'");
-    mysqli_query($mysqli,"INSERT INTO account_types SET account_type_name = 'Equity', account_type_parent = 3, account_type_description = 'Equity represents the owners stake in the business after liabilities have been deducted.'");
-    //Create Secondary Account Types
-    mysqli_query($mysqli,"INSERT INTO account_types SET account_type_name = 'Current Asset', account_type_parent = 1, account_type_description = 'Current assets are expected to be consumed within one year or less.'");
-    mysqli_query($mysqli,"INSERT INTO account_types SET account_type_name = 'Fixed Asset', account_type_parent = 1, account_type_description = 'Fixed assets are expected to benefit the business for more than one year.'");
-    mysqli_query($mysqli,"INSERT INTO account_types SET account_type_name = 'Other Asset', account_type_parent = 1, account_type_description = 'Other assets are assets that do not fit into any of the other asset categories.'");
-
-    mysqli_query($mysqli,"INSERT INTO account_types SET account_type_name = 'Current Liability', account_type_parent = 2, account_type_description = 'Current liabilities are expected to be paid within one year or less.'");
-    mysqli_query($mysqli,"INSERT INTO account_types SET account_type_name = 'Long Term Liability', account_type_parent = 2, account_type_description = 'Long term liabilities are expected to be paid after one year.'");
-    mysqli_query($mysqli,"INSERT INTO account_types SET account_type_name = 'Other Liability', account_type_parent = 2, account_type_description = 'Other liabilities are liabilities that do not fit into any of the other liability categories.'");
-
-    //Create Categories
+    // Create Categories
+    // Expense Categories Examples
     mysqli_query($mysqli,"INSERT INTO categories SET category_name = 'Office Supplies', category_type = 'Expense', category_color = 'blue'");
     mysqli_query($mysqli,"INSERT INTO categories SET category_name = 'Travel', category_type = 'Expense', category_color = 'red'");
     mysqli_query($mysqli,"INSERT INTO categories SET category_name = 'Advertising', category_type = 'Expense', category_color = 'green'");
 
+    // Income Categories Examples
     mysqli_query($mysqli,"INSERT INTO categories SET category_name = 'Service', category_type = 'Income', category_color = 'blue'");
 
+    // Referral Examples
     mysqli_query($mysqli,"INSERT INTO categories SET category_name = 'Friend', category_type = 'Referral', category_color = 'blue'");
     mysqli_query($mysqli,"INSERT INTO categories SET category_name = 'Search Engine', category_type = 'Referral', category_color = 'red'");
 
+    // Payment Methods
     mysqli_query($mysqli,"INSERT INTO categories SET category_name = 'Cash', category_type = 'Payment Method', category_color = 'blue'");
     mysqli_query($mysqli,"INSERT INTO categories SET category_name = 'Check', category_type = 'Payment Method', category_color = 'red'");
     mysqli_query($mysqli,"INSERT INTO categories SET category_name = 'Bank Transfer', category_type = 'Payment Method', category_color = 'green'");
 
-    //Create Calendar
+    // Default Calendar
     mysqli_query($mysqli,"INSERT INTO calendars SET calendar_name = 'Default', calendar_color = 'blue'");
 
     // Add default ticket statuses
     mysqli_query($mysqli, "INSERT INTO ticket_statuses SET ticket_status_name = 'New', ticket_status_color = '#dc3545'"); // Default ID for new tickets is 1
     mysqli_query($mysqli, "INSERT INTO ticket_statuses SET ticket_status_name = 'Open', ticket_status_color = '#007bff'"); // 2
     mysqli_query($mysqli, "INSERT INTO ticket_statuses SET ticket_status_name = 'On Hold', ticket_status_color = '#28a745'"); // 3
-    mysqli_query($mysqli, "INSERT INTO ticket_statuses SET ticket_status_name = 'Auto Close', ticket_status_color = '#343a40'"); // 4
+    mysqli_query($mysqli, "INSERT INTO ticket_statuses SET ticket_status_name = 'Resolved', ticket_status_color = '#343a40'"); // 4 (was auto-close)
     mysqli_query($mysqli, "INSERT INTO ticket_statuses SET ticket_status_name = 'Closed', ticket_status_color = '#343a40'"); // 5
 
+    // Add default modules
+    mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_client', module_description = 'General client & contact management'");
+    mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_support', module_description = 'Access to ticketing, assets and documentation'");
+    mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_credential', module_description = 'Access to client credentials - usernames, passwords and 2FA codes'");
+    mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_sales', module_description = 'Access to quotes, invoices and products'");
+    mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_financial', module_description = 'Access to payments, accounts, expenses and budgets'");
+    mysqli_query($mysqli, "INSERT INTO modules SET module_name = 'module_reporting', module_description = 'Access to all reports'");
+
     // Add default roles
-    mysqli_query($mysqli, "INSERT INTO `user_roles` SET user_role_id = 1, user_role_name = 'Accountant', user_role_description = 'Built-in - Limited access to financial-focused modules'");
-    mysqli_query($mysqli, "INSERT INTO `user_roles` SET user_role_id = 2, user_role_name = 'Technician', user_role_description = 'Built-in - Limited access to technical-focused modules'");
-    mysqli_query($mysqli, "INSERT INTO `user_roles` SET user_role_id = 3, user_role_name = 'Administrator', user_role_description = 'Built-in - Full administrative access to all modules (including user management)'");
+    mysqli_query($mysqli, "INSERT INTO user_roles SET user_role_id = 1, user_role_name = 'Accountant', user_role_description = 'Built-in - Limited access to financial-focused modules'");
+    mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 1, user_role_permission_level = 1"); // Read clients
+    mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 2, user_role_permission_level = 1"); // Read support
+    mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 4, user_role_permission_level = 1"); // Read sales
+    mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 5, user_role_permission_level = 2"); // Modify financial
+    mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 1, module_id = 6, user_role_permission_level = 1"); // Read reports
+
+    mysqli_query($mysqli, "INSERT INTO user_roles SET user_role_id = 2, user_role_name = 'Technician', user_role_description = 'Built-in - Limited access to technical-focused modules'");
+    mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 2, module_id = 1, user_role_permission_level = 2"); // Modify clients
+    mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 2, module_id = 2, user_role_permission_level = 2"); // Modify support
+    mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 2, module_id = 3, user_role_permission_level = 2"); // Modify credentials
+    mysqli_query($mysqli, "INSERT INTO user_role_permissions SET user_role_id = 2, module_id = 4, user_role_permission_level = 2"); // Modify sales
+
+    mysqli_query($mysqli, "INSERT INTO user_roles SET user_role_id = 3, user_role_name = 'Administrator', user_role_description = 'Built-in - Full administrative access to all modules (including user management)', user_role_is_admin = 1");
+
+    // Custom Links
+    mysqli_query($mysqli,"INSERT INTO custom_links SET custom_link_name = 'Docs', custom_link_uri = 'https://docs.itflow.org', custom_link_new_tab = 1, custom_link_icon = 'question-circle'");
 
 
     $_SESSION['alert_message'] = "Company <strong>$name</strong> created!";
@@ -521,7 +529,7 @@ if (isset($_POST['add_telemetry'])) {
                                             <div class="input-group-prepend">
                                                 <span class="input-group-text"><i class="fa fa-fw fa-database"></i></span>
                                             </div>
-                                            <input type="text" class="form-control" name="database" placeholder="Database name" required>
+                                            <input type="text" class="form-control" name="database" placeholder="Database name" autofocus required>
                                         </div>
                                     </div>
 
@@ -544,7 +552,7 @@ if (isset($_POST['add_telemetry'])) {
                                             <div class="input-group-prepend">
                                                 <span class="input-group-text"><i class="fa fa-fw fa-user"></i></span>
                                             </div>
-                                            <input type="text" class="form-control" name="username" placeholder="Database user account" autofocus required>
+                                            <input type="text" class="form-control" name="username" placeholder="Database user account" required>
                                         </div>
                                     </div>
 
@@ -821,7 +829,7 @@ if (isset($_POST['add_telemetry'])) {
                                 <p>A few <a href="https://docs.itflow.org/installation#post-installation_essential_housekeeping">housekeeping steps</a> are required to ensure everything runs smoothly, namely:</p>
                                 <ul>
                                     <li><a href="https://docs.itflow.org/backups">Setup backups</a></li>
-                                    <li><a href="https://docs.itflow.org/cron">Setup cron</a></li>
+                                    <li><a href="https://docs.itflow.org/cron">Setup cron</a> *If Installing via script cron jobs will be automatically setup for you.</li>
                                     <li>Star ITFlow on <a href="https://github.com/itflow-org/itflow">Github</a> :)</li>
                                 </ul>
 

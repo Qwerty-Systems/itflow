@@ -29,7 +29,7 @@
                         </li>
                     </ul>
 
-                    <div class="tab-content">
+                    <div class="tab-content" <?php if (lookupUserPermission('module_support') <= 1) { echo 'inert'; } ?>>
 
                         <div class="tab-pane fade show active" id="pills-edit-details">
 
@@ -74,14 +74,14 @@
                                 </div>
                             </div>
 
-                            <?php if ($config_module_enable_accounting) { ?>
-                            <div class="form-group">
+                            <?php //if ($config_module_enable_accounting) { ?>
+                            <div class="form-group" <?php if (!$config_module_enable_accounting) { echo 'style="display:none"'; } ?>>
                                 <div class="custom-control custom-switch">
                                     <input type="checkbox" class="custom-control-input" name="billable" id="editTicketBillable" value="1">
                                     <label class="custom-control-label" for="editTicketBillable">Mark Billable</label>
                                 </div>
                             </div>
-                            <?php } ?>
+                            <?php //} ?>
 
                         </div>
 

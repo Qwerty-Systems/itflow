@@ -7,8 +7,8 @@
  */
 
 // Includes
-require_once(__DIR__ . '../../../functions.php');
-require_once(__DIR__ . "../../../config.php");
+require_once __DIR__ . '../../../functions.php';
+require_once __DIR__ . "../../../config.php";
 
 // JSON header
 header('Content-Type: application/json');
@@ -88,6 +88,7 @@ if (isset($api_key)) {
         // Set client ID, company ID & key name
         $row = mysqli_fetch_array($sql);
         $api_key_name = htmlentities($row['api_key_name']);
+        $api_key_decrypt_hash = $row['api_key_decrypt_hash']; // No sanitization
         $client_id = intval($row['api_key_client_id']);
 
         // Set limit & offset for queries

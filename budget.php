@@ -2,6 +2,9 @@
 
 require_once "inc_all.php";
 
+// Perms
+enforceUserPermission('module_financial');
+
 // Fetch categories
 $query = "SELECT category_id, category_name FROM categories WHERE category_type ='Expense' AND category_archived_at IS NULL";
 $result = mysqli_query($mysqli, $query);
@@ -50,7 +53,7 @@ $grandTotal = 0;
         <div class="form-group">
             <select class="form-control" name="year" id="yearSelect" onchange="submit();">
                 <?php foreach ($years as $year): ?>
-                    <option value="<?php echo $year; ?>" <?php if ($year == $currentYear) echo 'selected'; ?>><?php echo $year; ?></option>
+                    <option value="<?php echo $year; ?>" <?php if ($year == $currentYear) { echo 'selected'; } ?>><?php echo $year; ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -69,9 +72,9 @@ $grandTotal = 0;
         <?php foreach ($categories as $category): ?>
             <tr>
                 <td><?php echo nullable_htmlentities($category['category_name']); ?></td>
-                <?php 
+                <?php
                 $rowTotal = 0;
-                foreach ($months as $index => $month): 
+                foreach ($months as $index => $month):
                     $amount = getBudgetAmount($budgets, $category['category_id'], $index + 1);
                     $rowTotal += $amount;
                     $columnTotals[$index] += $amount;
@@ -80,7 +83,7 @@ $grandTotal = 0;
                 <?php endforeach; ?>
                 <td><?php echo $rowTotal; ?></td>
             </tr>
-        <?php 
+        <?php
         $grandTotal += $rowTotal;
         endforeach; ?>
         </tbody>

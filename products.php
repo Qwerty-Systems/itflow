@@ -6,6 +6,9 @@ $order = "ASC";
 
 require_once "inc_all.php";
 
+// Perms
+enforceUserPermission('module_sales');
+
 // Category Filter
 if (isset($_GET['category']) & !empty($_GET['category'])) {
     $category_query = 'AND (category_id = ' . intval($_GET['category']) . ')';
@@ -124,6 +127,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
             <hr>
             <form id="bulkActions" action="post.php" method="post">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+
                 <div class="table-responsive-sm">
                     <table class="table table-striped table-borderless table-hover">
                         <thead class="text-dark <?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
@@ -133,13 +137,36 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                 </div>
                             </td>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=product_name&order=<?php echo $disp; ?>">Name</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=category_name&order=<?php echo $disp; ?>">Category</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=product_description&order=<?php echo $disp; ?>">Description</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=tax_name&order=<?php echo $disp; ?>">Tax Name</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=tax_percent&order=<?php echo $disp; ?>">Tax Rate</a></th>
-                            <th class="text-right"><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=product_price&order=<?php echo $disp; ?>">Price</a></th>
-                            
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=product_name&order=<?php echo $disp; ?>">
+                                    Name <?php if ($sort == 'product_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=category_name&order=<?php echo $disp; ?>">
+                                    Category <?php if ($sort == 'category_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=product_description&order=<?php echo $disp; ?>">
+                                    Description <?php if ($sort == 'product_description') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=tax_name&order=<?php echo $disp; ?>">
+                                    Tax Name <?php if ($sort == 'tax_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=tax_percent&order=<?php echo $disp; ?>">
+                                    Tax Rate <?php if ($sort == 'tax_percent') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th class="text-right">
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=product_price&order=<?php echo $disp; ?>">
+                                    Price <?php if ($sort == 'product_price') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <th class="text-center">Action</th>
                         </tr>
                         </thead>

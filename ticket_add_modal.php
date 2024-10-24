@@ -20,19 +20,7 @@
                                 <a class="nav-link" data-toggle="pill" href="#pills-contacts"><i class="fa fa-fw fa-users mr-2"></i>Contact</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" data-toggle="pill" href="#pills-assets"><i class="fa fa-fw fa-desktop mr-2"></i>Asset</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-toggle="pill" href="#pills-locations"><i class="fa fa-fw fa-map-marker-alt mr-2"></i>Location</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-toggle="pill" href="#pills-vendors"><i class="fa fa-fw fa-building mr-2"></i>Vendor</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-toggle="pill" href="#pills-tasks"><i class="fa fa-fw fa-tasks mr-2"></i>Tasks</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-toggle="pill" href="#pills-project"><i class="fa fa-fw fa-project-diagram mr-2"></i>Project</a>
+                                <a class="nav-link" data-toggle="pill" href="#pills-assignment"><i class="fa fa-fw fa-desktop mr-2"></i>Assignment</a>
                             </li>
                         </ul>
 
@@ -44,35 +32,10 @@
 
                         <div class="tab-pane fade show active" id="pills-details">
 
-                            <div class="form-group">
-                                <label>Subject <strong class="text-danger">*</strong></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text"><i class="fa fa-fw fa-tag"></i></span>
-                                    </div>
-                                    <input type="text" class="form-control" name="subject" placeholder="Subject" required>
-                                </div>
-                            </div>
-
-                            <?php if($config_ai_enable) { ?>
-                            <div class="form-group">
-                                <textarea class="form-control tinymceai" id="textInput" name="details"></textarea>
-                            </div>
-
-                            <div class="mb-3">
-                                <button id="rewordButton" class="btn btn-primary" type="button"><i class="fas fa-fw fa-robot mr-2"></i>Reword</button>
-                                <button id="undoButton" class="btn btn-secondary" type="button" style="display:none;"><i class="fas fa-fw fa-redo-alt mr-2"></i>Undo</button>
-                            </div>
-                            <?php } else { ?>
-                            <div class="form-group">
-                                <textarea class="form-control tinymce" rows="5" name="details"></textarea>
-                            </div>
-                            <?php } ?>
-
                             <?php if (empty($_GET['client_id'])) { ?>
 
                                 <div class="form-group">
-                                    <label>Client <strong class="text-danger">*</strong></label>
+                                    <label>Client <strong class="text-danger">*</strong> / <span class="text-secondary">Use Primary Contact</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend">
                                             <span class="input-group-text"><i class="fa fa-fw fa-user"></i></span>
@@ -81,7 +44,7 @@
                                             <option value="">- Client -</option>
                                             <?php
 
-                                            $sql = mysqli_query($mysqli, "SELECT * FROM clients WHERE client_archived_at IS NULL ORDER BY client_name ASC");
+                                            $sql = mysqli_query($mysqli, "SELECT * FROM clients WHERE client_archived_at IS NULL $access_permission_query ORDER BY client_name ASC");
                                             while ($row = mysqli_fetch_array($sql)) {
                                                 $client_id = intval($row['client_id']);
                                                 $client_name = nullable_htmlentities($row['client_name']); ?>
@@ -89,30 +52,121 @@
 
                                             <?php } ?>
                                         </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <div class="custom-control custom-checkbox">
-                                        <input class="custom-control-input" type="checkbox" id="primaryContactCheckbox" name="use_primary_contact" value="1">
-                                        <label for="primaryContactCheckbox" class="custom-control-label">Use Primary Contact</label>
+                                        <div class="input-group-append">
+                                            <div class="input-group-text">
+                                                <input type="checkbox" name="use_primary_contact" value="1">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
                             <?php } ?>
 
                             <div class="form-group">
-                                <label>Priority <strong class="text-danger">*</strong></label>
+                                <label>Template</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text"><i class="fa fa-fw fa-thermometer-half"></i></span>
+                                        <span class="input-group-text"><i class="fa fa-fw fa-cube"></i></span>
                                     </div>
-                                    <select class="form-control select2" name="priority" required>
-                                        <option>Low</option>
-                                        <option>Medium</option>
-                                        <option>High</option>
+                                    <select class="form-control select2" id="ticket_template_select" name="ticket_template_id" required>
+                                        <option value="0">- Choose a Template -</option>
+                                        <?php
+                                            $sql_ticket_templates = mysqli_query($mysqli, "
+                                                SELECT tt.ticket_template_id, 
+                                                       tt.ticket_template_name, 
+                                                       tt.ticket_template_details,
+                                                       COUNT(ttt.task_template_id) as task_count
+                                                FROM ticket_templates tt
+                                                LEFT JOIN task_templates ttt 
+                                                    ON tt.ticket_template_id = ttt.task_template_ticket_template_id
+                                                WHERE tt.ticket_template_archived_at IS NULL
+                                                GROUP BY tt.ticket_template_id
+                                                ORDER BY tt.ticket_template_name ASC
+                                            ");
+
+                                            while ($row = mysqli_fetch_array($sql_ticket_templates)) {
+                                                $ticket_template_id_select = intval($row['ticket_template_id']);
+                                                $ticket_template_name_select = nullable_htmlentities($row['ticket_template_name']);
+                                                $ticket_template_details_select = nullable_htmlentities($row['ticket_template_details']);
+                                                $task_count = intval($row['task_count']);
+                                            ?>
+                                                <option value="<?php echo $ticket_template_id_select; ?>"
+                                                        data-subject="<?php echo $ticket_template_name_select; ?>"
+                                                        data-details="<?php echo $ticket_template_details_select; ?>">
+                                                    <?php echo $ticket_template_name_select; ?> (<?php echo $task_count; ?> tasks)
+                                                </option>
+                                            <?php } ?>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Subject <strong class="text-danger">*</strong></label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i class="fa fa-fw fa-tag"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control" id="subjectInput" name="subject" placeholder="Subject" required>
+                                </div>
+                            </div>
+
+                            <?php if($config_ai_enable) { ?>
+                            <div class="form-group">
+                                <textarea class="form-control tinymceai" id="detailsInput" name="details"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <button id="rewordButton" class="btn btn-primary" type="button"><i class="fas fa-fw fa-robot mr-2"></i>Reword</button>
+                                <button id="undoButton" class="btn btn-secondary" type="button" style="display:none;"><i class="fas fa-fw fa-redo-alt mr-2"></i>Undo</button>
+                            </div>
+                            <?php } else { ?>
+                            <div class="form-group">
+                                <textarea class="form-control tinymce" id="detailsInput" rows="5" name="details"></textarea>
+                            </div>
+                            <?php } ?>
+
+                            <div class="row">
+                                
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label>Priority <strong class="text-danger">*</strong></label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text"><i class="fa fa-fw fa-thermometer-half"></i></span>
+                                            </div>
+                                            <select class="form-control select2" name="priority" required>
+                                                <option>Low</option>
+                                                <option>Medium</option>
+                                                <option>High</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label>Category</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text"><i class="fa fa-fw fa-layer-group"></i></span>
+                                            </div>
+                                            <select class="form-control select2" name="category">
+                                                <option value="0">- Not Categorized -</option>
+                                                <?php
+                                                $sql_categories = mysqli_query($mysqli, "SELECT category_id, category_name FROM categories WHERE category_type = 'Ticket' AND category_archived_at IS NULL");
+                                                while ($row = mysqli_fetch_array($sql_categories)) {
+                                                    $category_id = intval($row['category_id']);
+                                                    $category_name = nullable_htmlentities($row['category_name']);
+
+                                                    ?>
+                                                    <option value="<?php echo $category_id; ?>"><?php echo $category_name; ?></option>
+                                                <?php } ?>
+
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
 
                             <div class="form-group">
@@ -219,7 +273,7 @@
 
                             </div>
 
-                            <div class="tab-pane fade" id="pills-assets">
+                            <div class="tab-pane fade" id="pills-assignment">
 
                                 <div class="form-group">
                                     <label>Asset</label>
@@ -244,10 +298,6 @@
                                     </div>
                                 </div>
 
-                            </div>
-
-                            <div class="tab-pane fade" id="pills-locations">
-
                                 <div class="form-group">
                                     <label>Location</label>
                                     <div class="input-group">
@@ -270,60 +320,48 @@
                                     </div>
                                 </div>
 
-                            </div>
+                                <div class="row">
+                                
+                                    <div class="col">
 
-                            <div class="tab-pane fade" id="pills-vendors">
+                                        <div class="form-group">
+                                            <label>Vendor</label>
+                                            <div class="input-group">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text"><i class="fa fa-fw fa-building"></i></span>
+                                                </div>
+                                                <select class="form-control select2" name="vendor">
+                                                    <option value="0">- None -</option>
+                                                    <?php
 
-                                <div class="form-group">
-                                    <label>Vendor</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="fa fa-fw fa-building"></i></span>
+                                                    $sql_vendors = mysqli_query($mysqli, "SELECT * FROM vendors WHERE vendor_client_id = $client_id AND vendor_template = 0 AND vendor_archived_at IS NULL ORDER BY vendor_name ASC");
+                                                    while ($row = mysqli_fetch_array($sql_vendors)) {
+                                                        $vendor_id_select = intval($row['vendor_id']);
+                                                        $vendor_name_select = nullable_htmlentities($row['vendor_name']); ?>
+                                                        <option value="<?php echo $vendor_id_select; ?>"><?php echo $vendor_name_select; ?></option>
+
+                                                    <?php } ?>
+                                                </select>
+                                            </div>
                                         </div>
-                                        <select class="form-control select2" name="vendor">
-                                            <option value="0">- None -</option>
-                                            <?php
 
-                                            $sql_vendors = mysqli_query($mysqli, "SELECT * FROM vendors WHERE vendor_client_id = $client_id AND vendor_template = 0 AND vendor_archived_at IS NULL ORDER BY vendor_name ASC");
-                                            while ($row = mysqli_fetch_array($sql_vendors)) {
-                                                $vendor_id_select = intval($row['vendor_id']);
-                                                $vendor_name_select = nullable_htmlentities($row['vendor_name']); ?>
-                                                <option value="<?php echo $vendor_id_select; ?>"><?php echo $vendor_name_select; ?></option>
-
-                                            <?php } ?>
-                                        </select>
                                     </div>
-                                </div>
 
-                                <div class="form-group">
-                                    <label>Vendor Ticket Number</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="fa fa-fw fa-tag"></i></span>
+                                    <div class="col">
+
+                                        <div class="form-group">
+                                            <label>Vendor Ticket Number</label>
+                                            <div class="input-group">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text"><i class="fa fa-fw fa-tag"></i></span>
+                                                </div>
+                                                <input type="text" class="form-control" name="vendor_ticket_number" placeholder="Vendor ticket number">
+                                            </div>
                                         </div>
-                                        <input type="text" class="form-control" name="vendor_ticket_number" placeholder="Vendor ticket number">
+                                    
                                     </div>
+
                                 </div>
-
-                            </div>
-
-                            <div class="tab-pane fade" id="pills-tasks">
-
-                                <div class="form-group">
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="fa fa-fw fa-tasks"></i></span>
-                                        </div>
-                                        <input type="text" class="form-control" name="tasks[]" placeholder="Enter Task Name">
-                                        <div class="input-group-append">
-                                            <button type="button" class="btn btn-primary"><i class="fas fa-fw fa-check mr-2"></i>Add</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <div class="tab-pane fade" id="pills-project">
 
                                 <div class="form-group">
                                     <label>Project</label>
@@ -361,3 +399,32 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var templateSelect = $('#ticket_template_select');
+    var subjectInput = document.getElementById('subjectInput');
+    var detailsInput = document.getElementById('detailsInput');
+
+    templateSelect.on('select2:select', function(e) {
+        var selectedOption = e.params.data.element;
+        var templateSubject = selectedOption.getAttribute('data-subject');
+        var templateDetails = selectedOption.getAttribute('data-details');
+
+        // Update Subject
+        subjectInput.value = templateSubject || '';
+
+        // Update Details
+        if (typeof tinymce !== 'undefined') {
+            var editor = tinymce.get('detailsInput');
+            if (editor) {
+                editor.setContent(templateDetails || '');
+            } else {
+                detailsInput.value = templateDetails || '';
+            }
+        } else {
+            detailsInput.value = templateDetails || '';
+        }
+    });
+});
+</script>

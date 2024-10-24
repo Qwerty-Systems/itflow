@@ -55,10 +55,12 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#importLocationModal">
                         <i class="fa fa-fw fa-upload mr-2"></i>Import
                     </a>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportLocationModal">
-                        <i class="fa fa-fw fa-download mr-2"></i>Export
-                    </a>
+                    <?php if ($num_rows[0] > 0) { ?>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportLocationModal">
+                            <i class="fa fa-fw fa-download mr-2"></i>Export
+                        </a>
+                    <?php } ?>
                 </div>
             </div>
         </div>
@@ -78,7 +80,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     </div>
                 </div>
 
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <select onchange="this.form.submit()" class="form-control select2" name="tags[]" data-placeholder="- Select Tags -" multiple>
                             <?php $sql_tags = mysqli_query($mysqli, "SELECT * FROM tags WHERE tag_type = 2");
@@ -93,9 +95,9 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     </div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <div class="btn-group float-right">
-                        <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
+                        <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>"
                             class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
                             <i class="fa fa-fw fa-archive mr-2"></i>Archived
                         </a>
@@ -135,6 +137,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
         <hr>
         <form id="bulkActions" action="post.php" method="post">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+
             <div class="table-responsive-sm">
                 <table class="table table-striped table-borderless table-hover">
                     <thead class="<?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
@@ -144,10 +147,26 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                             </div>
                         </td>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_name&order=<?php echo $disp; ?>">Name</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_address&order=<?php echo $disp; ?>">Address</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_phone&order=<?php echo $disp; ?>">Phone</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_hours&order=<?php echo $disp; ?>">Hours</a></th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_name&order=<?php echo $disp; ?>">
+                                Name <?php if ($sort == 'location_name') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_address&order=<?php echo $disp; ?>">
+                                Address <?php if ($sort == 'location_address') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_phone&order=<?php echo $disp; ?>">
+                                Phone <?php if ($sort == 'location_phone') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_hours&order=<?php echo $disp; ?>">
+                                Hours <?php if ($sort == 'location_hours') { echo $order_icon; } ?>
+                            </a>
+                        </th>
                         <th class="text-center">Action</th>
                     </tr>
                     </thead>
@@ -265,7 +284,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                                 <i class="fas fa-fw fa-archive mr-2"></i>Archive
                                             </a>
                                             <?php } ?>
-                                            
+
                                         <?php } ?>
                                     </div>
                                 </div>

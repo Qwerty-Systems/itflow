@@ -6,6 +6,8 @@ $order = "ASC";
 
 require_once "inc_all_client.php";
 
+// Perms
+enforceUserPermission('module_support');
 
 // Folder
 if (!empty($_GET['folder_id'])) {
@@ -198,6 +200,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     <hr>
     
                     <form id="bulkActions" action="post.php" method="post">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
 
                         <div class="table-responsive-sm">
                             <table class="table table-border">
@@ -209,17 +212,22 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                         </div>
                                     </td>
                                     <th>
-                                        <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=document_name&order=<?php echo $disp; ?>">Name</a>
+                                        <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=document_name&order=<?php echo $disp; ?>">
+                                            Name <?php if ($sort == 'document_name') { echo $order_icon; } ?>
+                                        </a>
                                     </th>
                                     <th>
-                                        <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=document_created_at&order=<?php echo $disp; ?>">Created</a>
+                                        <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=document_created_at&order=<?php echo $disp; ?>">
+                                            Created <?php if ($sort == 'document_created_at') { echo $order_icon; } ?>
+                                        </a>
                                     </th>
                                     <th>
-                                        <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=document_updated_at&order=<?php echo $disp; ?>">Last Update</a>
+                                        <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=document_updated_at&order=<?php echo $disp; ?>">
+                                            Last Update <?php if ($sort == 'document_updated_at') { echo $order_icon; } ?>
+                                        </a>
                                     </th>
-                                    <th class="text-center">
-                                        Action
-                                    </th>
+                                    <th></th>
+                                    <th class="text-center">Action</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -234,6 +242,32 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     $document_created_at = date("m/d/Y",strtotime($row['document_created_at']));
                                     $document_updated_at = date("m/d/Y",strtotime($row['document_updated_at']));
                                     $document_folder_id = intval($row['document_folder_id']);
+
+                                    // Check if shared
+                                    $sql_shared = mysqli_query(
+                                        $mysqli,
+                                        "SELECT * FROM shared_items
+                                        WHERE item_client_id = $client_id
+                                        AND item_active = 1
+                                        AND item_views != item_view_limit
+                                        AND item_expire_at > NOW()
+                                        AND item_type = 'Document'
+                                        AND item_related_id = $document_id
+                                        LIMIT 1"
+                                    );
+                                    $row = mysqli_fetch_array($sql_shared);
+                                    $item_id = intval($row['item_id']);
+                                    $item_active = nullable_htmlentities($row['item_active']);
+                                    $item_key = nullable_htmlentities($row['item_key']);
+                                    $item_type = nullable_htmlentities($row['item_type']);
+                                    $item_related_id = intval($row['item_related_id']);
+                                    $item_note = nullable_htmlentities($row['item_note']);
+                                    $item_recipient = nullable_htmlentities($row['item_recipient']);
+                                    $item_views = nullable_htmlentities($row['item_views']);
+                                    $item_view_limit = nullable_htmlentities($row['item_view_limit']);
+                                    $item_created_at = nullable_htmlentities($row['item_created_at']);
+                                    $item_expire_at = nullable_htmlentities($row['item_expire_at']);
+                                    $item_expire_at_human = timeAgo($row['item_expire_at']);
 
                                     ?>
 
@@ -252,6 +286,17 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                             <div class="text-secondary mt-1"><?php echo $document_created_by_name; ?>
                                         </td>
                                         <td><?php echo $document_updated_at; ?></td>
+                                        <td>
+                                            <?php if (mysqli_num_rows($sql_shared) > 0) { ?>
+                                                <div class="media" title="Expires <?php echo $item_expire_at_human; ?>">
+                                                    <i class="fas fa-link mr-2 mt-1"></i>
+                                                    <div class="media-body">Shared
+                                                        <br>
+                                                        <small class="text-secondary"><?php echo $item_recipient; ?></small>
+                                                    </div>
+                                                </div>
+                                            <?php } ?>
+                                        </td>
                                         <td>
                                             <div class="dropdown dropleft text-center">
                                                 <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown">

@@ -109,8 +109,9 @@ function getWebBrowser($user_browser)
         '/firefox/i'    =>  "<i class='fab fa-fw fa-firefox text-secondary'></i> Firefox",
         '/safari/i'     =>  "<i class='fab fa-fw fa-safari text-secondary'></i> Safari",
         '/chrome/i'     =>  "<i class='fab fa-fw fa-chrome text-secondary'></i> Chrome",
-        '/edge/i'       =>  "<i class='fab fa-fw fa-edge text-secondary'></i> Edge",
-        '/opera/i'      =>  "<i class='fab fa-fw fa-opera text-secondary'></i> Opera"
+        '/edg/i'        =>  "<i class='fab fa-fw fa-edge text-secondary'></i> Edge",
+        '/opr/i'        =>  "<i class='fab fa-fw fa-opera text-secondary'></i> Opera",
+        '/ddg/i'        =>  "<i class='fas fa-fw fa-globe text-secondary'></i> DuckDuckGo"
     );
     foreach ($browser_array as $regex => $value) {
         if (preg_match($regex, $user_browser)) {
@@ -124,19 +125,12 @@ function getOS($user_os)
 {
     $os_platform    =   "Unknown OS";
     $os_array       =   array(
-        '/windows nt 10/i'      =>  "<i class='fab fa-fw fa-windows text-secondary'></i> Windows 10",
-        '/windows nt 6.3/i'     =>  "<i class='fab fa-fw fa-windows text-secondary'></i> Windows 8.1",
-        '/windows nt 6.2/i'     =>  "<i class='fab fa-fw fa-windows text-secondary'></i> Windows 8",
-        '/windows nt 6.1/i'     =>  "<i class='fab fa-fw fa-windows text-secondary'></i> Windows 7",
-        '/windows nt 6.0/i'     =>  "<i class='fab fa-fw fa-windows text-secondary'></i> Windows Vista",
-        '/windows nt 5.2/i'     =>  "<i class='fab fa-fw fa-windows text-secondary'></i> Windows Server 2003/XP x64",
-        '/windows nt 5.1/i'     =>  "<i class='fab fa-fw fa-windows text-secondary'></i> Windows XP",
-        '/windows xp/i'         =>  "<i class='fab fa-fw fa-windows text-secondary'></i> Windows XP",
+        '/windows/i'            =>  "<i class='fab fa-fw fa-windows text-secondary'></i> Windows",
         '/macintosh|mac os x/i' =>  "<i class='fab fa-fw fa-apple text-secondary'></i> MacOS",
         '/linux/i'              =>  "<i class='fab fa-fw fa-linux text-secondary'></i> Linux",
         '/ubuntu/i'             =>  "<i class='fab fa-fw fa-ubuntu text-secondary'></i> Ubuntu",
+        '/fedora/i'             =>  "<i class='fab fa-fw fa-fedora text-secondary'></i> Fedora",
         '/iphone/i'             =>  "<i class='fab fa-fw fa-apple text-secondary'></i> iPhone",
-        '/ipod/i'               =>  "<i class='fab fa-fw fa-apple text-secondary'></i> iPod",
         '/ipad/i'               =>  "<i class='fab fa-fw fa-apple text-secondary'></i> iPad",
         '/android/i'            =>  "<i class='fab fa-fw fa-android text-secondary'></i> Android"
     );
@@ -221,7 +215,7 @@ function formatPhoneNumber($phoneNumber)
         return $phoneNumber;
     }
 
-    
+
     $phoneNumber = $phoneNumber ? preg_replace('/[^0-9]/', '', $phoneNumber) : "";
 
     if (strlen($phoneNumber) > 10) {
@@ -271,7 +265,7 @@ function setupFirstUserSpecificKey($user_password, $site_encryption_master_key)
 }
 
 /*
- * For additional users / password changes
+ * For additional users / password changes (and now the API)
  * New Users: Requires the admin setting up their account have a Specific/Session key configured
  * Password Changes: Will use the current info in the session.
 */
@@ -282,7 +276,7 @@ function encryptUserSpecificKey($user_password)
 
     // Get the session info.
     $user_encryption_session_ciphertext = $_SESSION['user_encryption_session_ciphertext'];
-    $user_encryption_session_iv =  $_SESSION['user_encryption_session_iv'];
+    $user_encryption_session_iv = $_SESSION['user_encryption_session_iv'];
     $user_encryption_session_key = $_COOKIE['user_encryption_session_key'];
 
     // Decrypt the session key to get the master key
@@ -297,7 +291,7 @@ function encryptUserSpecificKey($user_password)
     return $salt . $iv . $ciphertext;
 }
 
-// Given a ciphertext (incl. IV) and the user's password, returns the site master key
+// Given a ciphertext (incl. IV) and the user's (or API key) password, returns the site master key
 // Ran at login, to facilitate generateUserSessionKey
 function decryptUserSpecificKey($user_encryption_ciphertext, $user_password)
 {
@@ -380,6 +374,32 @@ function encryptLoginEntry($login_password_cleartext)
     return $iv . $ciphertext;
 }
 
+function apiDecryptLoginEntry($login_ciphertext, $api_key_decrypt_hash, #[\SensitiveParameter]$api_key_decrypt_password)
+{
+    // Split the login entry (username/password) into IV and Ciphertext
+    $login_iv =  substr($login_ciphertext, 0, 16);
+    $login_ciphertext = $salt = substr($login_ciphertext, 16);
+
+    // Decrypt the api hash to get the master key
+    $site_encryption_master_key = decryptUserSpecificKey($api_key_decrypt_hash, $api_key_decrypt_password);
+
+    // Decrypt the login password using the master key
+    return openssl_decrypt($login_ciphertext, 'aes-128-cbc', $site_encryption_master_key, 0, $login_iv);
+}
+
+function apiEncryptLoginEntry(#[\SensitiveParameter]$credential_cleartext, $api_key_decrypt_hash, #[\SensitiveParameter]$api_key_decrypt_password)
+{
+    $iv = randomString();
+
+    // Decrypt the api hash to get the master key
+    $site_encryption_master_key = decryptUserSpecificKey($api_key_decrypt_hash, $api_key_decrypt_password);
+
+    // Encrypt the credential using the master key
+    $ciphertext = openssl_encrypt($credential_cleartext, 'aes-128-cbc', $site_encryption_master_key, 0, $iv);
+
+    return $iv . $ciphertext;
+}
+
 // Get domain general info (whois + NS/A/MX records)
 function getDomainRecords($name)
 {
@@ -454,7 +474,6 @@ function getSSL($full_name)
 
 function strtoAZaz09($string)
 {
-
     // Gets rid of non-alphanumerics
     return preg_replace('/[^A-Za-z0-9_-]/', '', $string);
 }
@@ -521,7 +540,6 @@ function sendSingleEmail($config_smtp_host, $config_smtp_username, $config_smtp_
     if (empty($config_smtp_username)) {
         $smtp_auth = false;
     } else {
-
         $smtp_auth = true;
     }
 
@@ -609,7 +627,7 @@ function sendSingleEmail($config_smtp_host, $config_smtp_username, $config_smtp_
     } catch (Exception $e) {
         // If we couldn't send the message return the error, so we can log it in the database (truncated)
         error_log("ITFlow - Failed to send email: " . $mail->ErrorInfo);
-        return substr("Mailer Error: $mail->ErrorInfo", 0, 150) . "...";
+        return substr("Mailer Error: $mail->ErrorInfo", 0, 100) . "...";
     }
 }
 
@@ -715,6 +733,16 @@ function sanitizeInput($input)
 {
     global $mysqli;
 
+    if (!empty($input)) {
+        // Detect encoding
+        $encoding = mb_detect_encoding($input, ['UTF-8', 'ISO-8859-1', 'Windows-1252', 'ISO-8859-15'], true);
+
+        // If not UTF-8, convert to UTF8 (primarily Windows-1252 is problematic)
+        if ($encoding !== 'UTF-8') {
+            $input = mb_convert_encoding($input, 'UTF-8', $encoding);
+        }
+    }
+
     // Remove HTML and PHP tags
     $input = strip_tags((string) $input);
 
@@ -738,6 +766,10 @@ function sanitizeForEmail($data)
 
 function timeAgo($datetime)
 {
+    if (is_null($datetime)) {
+        return "-";
+    }
+
     $time = strtotime($datetime);
     $difference = $time - time(); // Changed to handle future dates
 
@@ -845,23 +877,6 @@ function roundToNearest15($time)
     return number_format($decimalHours, 2);
 }
 
-// Get the value of a setting from the database
-function getSettingValue($mysqli, $setting_name)
-{
-    //if starts with config_ then get from config table
-    if (substr($setting_name, 0, 7) == "config_") {
-        $sql = mysqli_query($mysqli, "SELECT $setting_name FROM settings");
-        $row = mysqli_fetch_array($sql);
-        return $row[$setting_name];
-    } elseif (substr($setting_name, 0, 7) == "company") {
-        $sql = mysqli_query($mysqli, "SELECT $setting_name FROM companies");
-        $row = mysqli_fetch_array($sql);
-        return $row[$setting_name];
-    } else {
-        return "Cannot Find Setting Name";
-    }
-}
-
 function getMonthlyTax($tax_name, $month, $year, $mysqli)
 {
     // SQL to calculate monthly tax
@@ -904,44 +919,6 @@ function getTotalTax($tax_name, $year, $mysqli)
     $row = mysqli_fetch_assoc($result);
     return $row['total_tax'] ?? 0;
 }
-
-//Get account currency code
-function getAccountCurrencyCode($mysqli, $account_id)
-{
-    $sql = mysqli_query($mysqli, "SELECT account_currency_code FROM accounts WHERE account_id = $account_id");
-    $row = mysqli_fetch_array($sql);
-    $account_currency_code = nullable_htmlentities($row['account_currency_code']);
-    return $account_currency_code;
-}
-
-function calculateAccountBalance($mysqli, $account_id)
-{
-    $sql_account = mysqli_query($mysqli, "SELECT * FROM accounts LEFT JOIN account_types ON accounts.account_type = account_types.account_type_id WHERE account_archived_at  IS NULL AND account_id = $account_id ORDER BY account_name ASC; ");
-    $row = mysqli_fetch_array($sql_account);
-    $opening_balance = floatval($row['opening_balance']);
-    $account_id = intval($row['account_id']);
-
-    $sql_payments = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS total_payments FROM payments WHERE payment_account_id = $account_id");
-    $row = mysqli_fetch_array($sql_payments);
-    $total_payments = floatval($row['total_payments']);
-
-    $sql_revenues = mysqli_query($mysqli, "SELECT SUM(revenue_amount) AS total_revenues FROM revenues WHERE revenue_account_id = $account_id");
-    $row = mysqli_fetch_array($sql_revenues);
-    $total_revenues = floatval($row['total_revenues']);
-
-    $sql_expenses = mysqli_query($mysqli, "SELECT SUM(expense_amount) AS total_expenses FROM expenses WHERE expense_account_id = $account_id");
-    $row = mysqli_fetch_array($sql_expenses);
-    $total_expenses = floatval($row['total_expenses']);
-
-    $balance = $opening_balance + $total_payments + $total_revenues - $total_expenses;
-
-    if ($balance == '') {
-        $balance = '0.00';
-    }
-
-    return $balance;
-}
-
 
 function generateReadablePassword($security_level)
 {
@@ -1020,7 +997,7 @@ function addToMailQueue($mysqli, $data) {
 
         $cal_str = '';
         if (isset($email['cal_str'])) {
-            $cal_str = mysqli_escape_string($mysqli,$email['cal_str']);
+            $cal_str = mysqli_escape_string($mysqli, $email['cal_str']);
         }
 
         // Check if 'email_queued_at' is set and not empty
@@ -1035,32 +1012,6 @@ function addToMailQueue($mysqli, $data) {
     }
 
     return true;
-}
-
-function calculateInvoiceBalance($mysqli, $invoice_id)
-{
-    $invoice_id_int = intval($invoice_id);
-    $sql_invoice = mysqli_query($mysqli, "SELECT * FROM invoices WHERE invoice_id = $invoice_id_int");
-    $row = mysqli_fetch_array($sql_invoice);
-    $invoice_amount = floatval($row['invoice_amount']);
-
-    $sql_payments = mysqli_query(
-        $mysqli,
-        "SELECT SUM(payment_amount) AS total_payments FROM payments
-        WHERE payment_invoice_id = $invoice_id
-        "
-    );
-
-    $row = mysqli_fetch_array($sql_payments);
-    $total_payments = floatval($row['total_payments']);
-
-    $balance = $invoice_amount - $total_payments;
-
-    if ($balance == '') {
-        $balance = '0.00';
-    }
-
-    return $balance;
 }
 
 function createiCalStr($datetime, $title, $description, $location)
@@ -1126,21 +1077,6 @@ function createiCalStrCancel($originaliCalStr) {
     return $cal_event->export();
 }
 
-function getTicketStatusColor($ticket_status) {
-
-    global $mysqli;
-
-    $status_id = intval($ticket_status);
-    $row = mysqli_fetch_array(mysqli_query($mysqli, "SELECT ticket_status_color FROM ticket_statuses WHERE ticket_status_id = $status_id LIMIT 1"));
-
-    if ($row) {
-        return nullable_htmlentities($row['ticket_status_color']);
-    }
-
-    // Default return
-    return "Unknown";
-}
-
 function getTicketStatusName($ticket_status) {
 
     global $mysqli;
@@ -1173,7 +1109,6 @@ function fetchUpdates() {
         $update_message = "New Updates are Available [$latest_version]";
     }
 
-    
 
     $updates = new stdClass();
     $updates->output = $output;
@@ -1181,41 +1116,10 @@ function fetchUpdates() {
     $updates->current_version = $current_version;
     $updates->latest_version = $latest_version;
     $updates->update_message = $update_message;
-    
-    
-    
+
+
     return $updates;
 
-}
-
-// Get domain expiration date -- Remove in the future Replace with PHP function
-function getDomainExpirationDateOLD($name)
-{
-
-    // Only run if we think the domain is valid
-    if (!filter_var($name, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
-        return "NULL";
-    }
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, "http://lookup.itflow.org:8080/$name");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    $response = json_decode(curl_exec($ch), 1);
-
-    if ($response) {
-        if (is_array($response['expiration_date'])) {
-            $expiry = new DateTime($response['expiration_date'][1]);
-        } elseif (isset($response['expiration_date'])) {
-            $expiry = new DateTime($response['expiration_date']);
-        } else {
-            return "NULL";
-        }
-
-        return $expiry->format('Y-m-d');
-    }
-
-    // Default return
-    return "NULL";
 }
 
 function getDomainExpirationDate($domain) {
@@ -1326,4 +1230,92 @@ function getDomainExpirationDate($domain) {
     }
 
     return null; // Return null if expiration date is not found
+}
+
+function validateWhitelabelKey($key)
+{
+    $public_key = "-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr0k+4ZJudkdGMCFLx5b9
+H/sOozvWphFJsjVIF0vPVx9J0bTdml65UdS+32JagIHfPtEUTohaMnI3IAxxCDzl
+655qmtjL7RHHdx9UMIKCmtAZOtd2u6rEyZH7vB7cKA49ysKGIaQSGwTQc8DCgsrK
+uxRuX04xq9T7T+zuzROw3Y9WjFy9RwrONqLuG8LqO0j7bk5LKYeLAV7u3E/QiqNx
+lEljN2UVJ3FZ/LkXeg8ORkV+IHs/toRIfPs/4VQnjEwk5BU6DX2STOvbeZnTqwP3
+zgjRYR/zGN5l+az6RB3+0mJRdZdv/y2aRkBlwTxx2gOrPbQAco4a/IOmkE3EbHe7
+6wIDAQAP
+-----END PUBLIC KEY-----";
+
+    if (openssl_public_decrypt(base64_decode($key), $decrypted, $public_key)) {
+        $key_info = json_decode($decrypted, true);
+        if ($key_info['expires'] > date('Y-m-d H:i:s', strtotime('-7 day'))) {
+            return $key_info;
+        }
+    }
+
+    return false;
+}
+
+// When provided a module name (e.g. module_support), returns the associated permission level (false=none, 1=read, 2=write, 3=full)
+function lookupUserPermission($module) {
+    global $mysqli, $session_is_admin, $session_user_role;
+
+    if (isset($session_is_admin) && $session_is_admin === true) {
+        return 3;
+    }
+
+    $module = sanitizeInput($module);
+
+    $sql = mysqli_query(
+        $mysqli,
+        "SELECT
+			urp.user_role_permission_level
+		FROM
+			modules AS m
+		JOIN
+			user_role_permissions AS urp
+		ON
+			m.module_id = urp.module_id
+		WHERE
+			m.module_name = '$module' AND urp.user_role_id = $session_user_role"
+    );
+
+    $row = mysqli_fetch_array($sql);
+
+    if (isset($row['user_role_permission_level'])) {
+        return intval($row['user_role_permission_level']);
+    }
+
+    // Default return for no module permission
+    return false;
+}
+
+// Ensures a user has access to a module (e.g. module_support) with at least the required permission level provided (defaults to read)
+function enforceUserPermission($module, $check_access_level = 1) {
+    $permitted_access_level = lookupUserPermission($module);
+
+    if (!$permitted_access_level || $permitted_access_level < $check_access_level) {
+        $_SESSION['alert_type'] = "danger";
+        $_SESSION['alert_message'] = WORDING_ROLECHECK_FAILED;
+        $map = [
+            "1" => "read",
+            "2" => "write",
+            "3" => "full"
+        ];
+        exit(WORDING_ROLECHECK_FAILED . "<br>Tell your admin: $map[$check_access_level] access to $module is not permitted for your role.");
+    }
+}
+
+// TODO: Probably remove this
+function enforceAdminPermission() {
+    global $session_is_admin;
+    if (!isset($session_is_admin) || !$session_is_admin) {
+        exit(WORDING_ROLECHECK_FAILED . "<br>Tell your admin: Your role does not have admin access.");
+    }
+    return true;
+}
+
+function customAction($trigger, $entity) {
+    chdir(dirname(__FILE__));
+    if (file_exists(__DIR__ . "/xcustom/xcustom_action_handler.php")) {
+        include_once __DIR__ . "/xcustom/xcustom_action_handler.php";
+    }
 }

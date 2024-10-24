@@ -92,6 +92,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
             <hr>
             <form id="bulkActions" action="post.php" method="post">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+
                 <div class="table-responsive-sm">
                     <table class="table table-sm table-striped table-borderless table-hover">
                         <thead class="text-dark <?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
@@ -101,13 +102,41 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                 </div>
                             </td>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_id&order=<?php echo $disp; ?>">ID</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_queued_at&order=<?php echo $disp; ?>">Queued</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_from&order=<?php echo $disp; ?>">From</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_recipient&order=<?php echo $disp; ?>">To</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_subject&order=<?php echo $disp; ?>">Subject</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_status&order=<?php echo $disp; ?>">Status</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_attempts&order=<?php echo $disp; ?>">Attempts</a></th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_id&order=<?php echo $disp; ?>">
+                                    ID <?php if ($sort == 'email_id') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_queued_at&order=<?php echo $disp; ?>">
+                                    Queued <?php if ($sort == 'email_queued_at') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_from&order=<?php echo $disp; ?>">
+                                    From <?php if ($sort == 'email_from') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_recipient&order=<?php echo $disp; ?>">
+                                    To <?php if ($sort == 'email_recipient') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_subject&order=<?php echo $disp; ?>">
+                                    Subject <?php if ($sort == 'email_subject') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_status&order=<?php echo $disp; ?>">
+                                    Status <?php if ($sort == 'email_status') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_attempts&order=<?php echo $disp; ?>">
+                                    Attempts <?php if ($sort == 'email_attempts') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <th>Action</th>
                         </tr>
                         </thead>

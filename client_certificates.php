@@ -6,6 +6,8 @@ $order = "ASC";
 
 require_once "inc_all_client.php";
 
+// Perms
+enforceUserPermission('module_support');
 
 //Rebuild URL
 $url_query_strings_sort = http_build_query($get_copy);
@@ -26,12 +28,14 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
         <div class="card-tools">
             <div class="btn-group">
                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addCertificateModal"><i class="fas fa-plus mr-2"></i>New Certificate</button>
-                <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
-                <div class="dropdown-menu">
-                    <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportCertificateModal">
-                        <i class="fa fa-fw fa-download mr-2"></i>Export
-                    </a>
-                </div>
+                <?php if ($num_rows[0] > 0) { ?>
+                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportCertificateModal">
+                            <i class="fa fa-fw fa-download mr-2"></i>Export
+                        </a>
+                    </div>
+                <?php } ?>
             </div>
         </div>
     </div>
@@ -81,10 +85,26 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                             </div>
                         </td>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=certificate_name&order=<?php echo $disp; ?>">Name</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=certificate_domain&order=<?php echo $disp; ?>">Domain</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=certificate_issued_by&order=<?php echo $disp; ?>">Issued By</a></th>
-                        <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=certificate_expire&order=<?php echo $disp; ?>">Expire</a></th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=certificate_name&order=<?php echo $disp; ?>">
+                                Name <?php if ($sort == 'certificate_name') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=certificate_domain&order=<?php echo $disp; ?>">
+                                Domain <?php if ($sort == 'certificate_domain') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=certificate_issued_by&order=<?php echo $disp; ?>">
+                                Issued By <?php if ($sort == 'certificate_issued_by') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=certificate_expire&order=<?php echo $disp; ?>">
+                                Expire <?php if ($sort == 'certificate_expire') { echo $order_icon; } ?>
+                            </a>
+                        </th>
                         <th class="text-center">Action</th>
                     </tr>
                     </thead>
@@ -100,8 +120,27 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         $certificate_expire = nullable_htmlentities($row['certificate_expire']);
                         $certificate_created_at = nullable_htmlentities($row['certificate_created_at']);
 
+                        $certificate_expire_ago = timeAgo($certificate_expire);
+                        // Convert the expiry date to a timestamp
+                        $certificate_expire_timestamp = strtotime($row['certificate_expire']);
+                        $current_timestamp = time(); // Get current timestamp
+
+                        // Calculate the difference in days
+                        $days_until_expiry = ($certificate_expire_timestamp - $current_timestamp) / (60 * 60 * 24);
+
+                        // Determine the class based on the number of days until expiry
+                        if ($days_until_expiry <= 0) {
+                            $tr_class = "table-secondary";
+                        } elseif ($days_until_expiry <= 14) {
+                            $tr_class = "table-danger";
+                        } elseif ($days_until_expiry <= 90) {
+                            $tr_class = "table-warning";
+                        } else {
+                            $tr_class = '';
+                        }
+
                         ?>
-                        <tr>
+                        <tr class="<?php echo $tr_class; ?>">
                             <td class="pr-0">
                                 <div class="form-check">
                                     <input class="form-check-input bulk-select" type="checkbox" name="certificate_ids[]" value="<?php echo $certificate_id ?>">
@@ -123,7 +162,10 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                             <td><?php echo $certificate_issued_by; ?></td>
 
-                            <td><?php echo $certificate_expire; ?></td>
+                            <td>
+                                <div><?php echo $certificate_expire; ?></div>
+                                <div><small><?php echo $certificate_expire_ago; ?></small></div>
+                            </td>
 
                             <td>
                                 <div class="dropdown dropleft text-center">

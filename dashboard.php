@@ -128,7 +128,7 @@ if ($user_config_dashboard_financial_enable == 1) {
         ORDER BY expense_id DESC LIMIT 5
     ");
 
-    // Get recurring totals
+    // Get recurring invoice totals
     $sql_recurring_yearly_total = mysqli_query($mysqli, "SELECT SUM(recurring_amount) AS recurring_yearly_total FROM recurring WHERE recurring_status = 1 AND recurring_frequency = 'year' AND YEAR(recurring_created_at) <= $year");
     $row = mysqli_fetch_array($sql_recurring_yearly_total);
     $recurring_yearly_total = floatval($row['recurring_yearly_total']);
@@ -137,14 +137,16 @@ if ($user_config_dashboard_financial_enable == 1) {
     $row = mysqli_fetch_array($sql_recurring_monthly_total);
     $recurring_monthly_total = floatval($row['recurring_monthly_total']) + ($recurring_yearly_total / 12);
 
-    $sql_recurring_expense_yearly_total = mysqli_query($mysqli, "SELECT SUM(recurring_expense_amount) AS recurring_expense_yearly_total FROM recurring_expenses WHERE recurring_expense_status = 1 AND recurring_expense_frequency = 'year' AND YEAR(recurring_expense_created_at) <= $year");
+    // Recurring expenses totals
+    $sql_recurring_expense_yearly_total = mysqli_query($mysqli, "SELECT SUM(recurring_expense_amount) AS recurring_expense_yearly_total FROM recurring_expenses WHERE recurring_expense_status = 1 AND recurring_expense_frequency = 2 AND YEAR(recurring_expense_created_at) <= $year");
     $row = mysqli_fetch_array($sql_recurring_expense_yearly_total);
     $recurring_expense_yearly_total = floatval($row['recurring_expense_yearly_total']);
 
-    $sql_recurring_expense_monthly_total = mysqli_query($mysqli, "SELECT SUM(recurring_expense_amount) AS recurring_expense_monthly_total FROM recurring_expenses WHERE recurring_expense_status = 1 AND recurring_expense_frequency = 'month' AND YEAR(recurring_expense_created_at) <= $year");
+    $sql_recurring_expense_monthly_total = mysqli_query($mysqli, "SELECT SUM(recurring_expense_amount) AS recurring_expense_monthly_total FROM recurring_expenses WHERE recurring_expense_status = 1 AND recurring_expense_frequency = 1 AND YEAR(recurring_expense_created_at) <= $year");
     $row = mysqli_fetch_array($sql_recurring_expense_monthly_total);
     $recurring_expense_monthly_total = floatval($row['recurring_expense_monthly_total']) + ($recurring_expense_yearly_total / 12);
 
+    // Get miles driven
     $sql_miles_driven = mysqli_query($mysqli, "SELECT SUM(trip_miles) AS total_miles FROM trips WHERE YEAR(trip_date) = $year");
     $row = mysqli_fetch_array($sql_miles_driven);
     $total_miles = floatval($row['total_miles']);
@@ -227,7 +229,7 @@ if ($user_config_dashboard_financial_enable == 1) {
 
         <div class="col-lg-4 col-md-6 col-sm-12">
             <!-- small box -->
-            <a class="small-box bg-pink" href="report_expense_by_vendor.php">
+            <a class="small-box bg-pink" href="recurring_expenses.php">
                 <div class="inner">
                     <h3><?php echo numfmt_format_currency($currency_format, $recurring_expense_monthly_total, "$session_company_currency"); ?></h3>
                     <p>Monthly Recurring Expense</p>
@@ -571,7 +573,7 @@ if ($user_config_dashboard_technical_enable == 1) {
     <div class="row">
         <div class="col-lg-4 col-6">
             <!-- small box -->
-            <a class="small-box bg-secondary" href="clients.php?date_from=<?php echo $year; ?>-01-01&date_to=<?php echo $year; ?>-12-31">
+            <a class="small-box bg-secondary" href="clients.php?dtf=<?php echo $year; ?>-01-01&dtt=<?php echo $year; ?>-12-31">
                 <div class="inner">
                     <h3><?php echo $clients_added; ?></h3>
                     <p>New Clients</p>
@@ -597,7 +599,7 @@ if ($user_config_dashboard_technical_enable == 1) {
         <!-- ./col -->
 
         <div class="col-lg-4 col-6">
-            <a class="small-box bg-info" href="/report_all_assets_by_client.php">
+            <a class="small-box bg-info" href="report_assets.php">
                 <div class="inner">
                     <h3><?php echo $assets_added; ?></h3>
                     <p>New Assets</p>
@@ -623,7 +625,7 @@ if ($user_config_dashboard_technical_enable == 1) {
         <!-- ./col -->
 
         <div class="col-lg-4 col-6">
-            <a class="small-box bg-warning">
+            <a class="small-box bg-warning" href="report_domains.php">
                 <div class="inner">
                     <h3><?php echo $expiring_domains; ?></h3>
                     <p>Expiring Domains</p>

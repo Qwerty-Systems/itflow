@@ -113,8 +113,6 @@ function fetchDatabaseStructureFromServer() {
         }
     }
 
-    //$mysqli->close();
-
     return $tables;
 }
 
@@ -186,7 +184,7 @@ $loadedModules = get_loaded_extensions();
 
 //Get Server Info / Service versions
 $phpVersion = phpversion();
-$mysqlVersion = $mysqli->server_version;
+$databaseInfo = mysqli_get_server_info($mysqli) . " / " .  $mysqli->server_version;
 $operatingSystem = php_uname();
 $webServer = $_SERVER['SERVER_SOFTWARE'];
 $errorLog = ini_get('error_log') ?: "Debian/Ubuntu default is usually /var/log/apache2/error.log";
@@ -200,11 +198,20 @@ $updates = fetchUpdates();
         </div>
         <div class="card-body">
 
+            <h2>Debugging</h2>
+            <ul>
+                <li>If you are experiencing a problem with ITFlow you may be directed to this page to gather server/app info.</li>
+                <li>When creating forum posts / support requests ensure you share the information under <i>Server Info</i>, <i>ITFlow app</i> and <i>Database stats</i>.</li>
+                <li><a class="text-danger text-bold">Caution:</a> Be careful when sharing the full debug output - it contains your PHP session variables/cookies ("PHPSESSID") which could allow anyone to login to your ITFlow instance</li>
+                <li>Note: Sometimes you might need to gather <a href="https://docs.itflow.org/gathering_logs#error_logs">PHP error logs</a> as well</li>
+            </ul>
+            <br>
+
             <h3>Server Info</h3>
 
             <?php
             echo "PHP version: " . $phpVersion . "<br>";
-            echo "MySQL Version: " . $mysqlVersion . "<br>";
+            echo "Database Version: " . $databaseInfo . "<br>";
             echo "Operating System: " . $operatingSystem . "<br>";
             echo "Web Server: " . $webServer  . "<br>";
             echo "Apache/PHP Error Log: " . $errorLog

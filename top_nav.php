@@ -4,8 +4,7 @@
     <!-- Left navbar links -->
     <ul class="navbar-nav">
         <li class="nav-item">
-            <a class="nav-link" data-widget="pushmenu" data-enable-remember="TRUE" href="#"><i
-                    class="fas fa-bars"></i></a>
+            <a class="nav-link" data-widget="pushmenu" data-enable-remember="TRUE" href="#"><i class="fas fa-bars"></i></a>
         </li>
     </ul>
 
@@ -29,6 +28,34 @@
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
 
+        <!--Custom Nav Link -->
+        <?php
+        $sql_custom_links = mysqli_query($mysqli, "SELECT * FROM custom_links WHERE custom_link_location = 2 AND custom_link_archived_at IS NULL
+            ORDER BY custom_link_order ASC, custom_link_name ASC"
+        );
+
+        while ($row = mysqli_fetch_array($sql_custom_links)) {
+            $custom_link_name = nullable_htmlentities($row['custom_link_name']);
+            $custom_link_uri = nullable_htmlentities($row['custom_link_uri']);
+            $custom_link_icon = nullable_htmlentities($row['custom_link_icon']);
+            $custom_link_new_tab = intval($row['custom_link_new_tab']);
+            if ($custom_link_new_tab == 1) {
+                $target = "target='_blank' rel='noopener noreferrer'";
+            } else {
+                $target = "";
+            }
+
+            ?>
+
+        <li class="nav-item" title="<?php echo $custom_link_name; ?>">
+            <a href="<?php echo $custom_link_uri; ?>" <?php echo $target; ?> class="nav-link">
+                <i class="fas fa-<?php echo $custom_link_icon; ?> nav-icon"></i>
+            </a>
+        </li>
+
+        <?php } ?>
+        <!-- End Custom Nav Links -->
+
         <!-- New Notifications Dropdown -->
         <?php
         $sql_notifications = mysqli_query($mysqli, "SELECT * FROM notifications 
@@ -40,14 +67,14 @@
         ?>
 
         <?php if ($num_notifications > 0) { ?>
-        <li class="nav-item dropdown">
+        <li class="nav-item dropdown" title="Notifications">
             <a class="nav-link" data-toggle="dropdown" href="#">
-                <i class="far fa-bell mr-3"></i>
-                <span class="badge badge-danger navbar-badge"><?php echo $num_notifications; ?></span>
+                <i class="fas fa-bell"></i>
+                <span class="badge badge-light badge-pill navbar-badge position-absolute" style="top: 1px; right: 3px;"><?php echo $num_notifications; ?></span>
             </a>
             <div class="dropdown-menu dropdown-menu-xlg dropdown-menu-right">
                 <a href="notifications.php" class="dropdown-item dropdown-header">
-                    <i class="fas fa-fw fa-bell mr-2"></i>
+                    <i class="fas fa-bell mr-2"></i>
                     <strong><?php echo $num_notifications; ?></strong>
                     Notifications
                 </a>
@@ -78,20 +105,20 @@
                 <div class="dropdown-divider"></div>
                 <a href="post.php?dismiss_all_notifications"
                     class="dropdown-item dropdown-footer text-secondary text-bold"><i
-                        class="fa fa-fw fa-check mr-2"></i>Dismiss Notifications</a>
+                        class="fas fa-check-double mr-2"></i>Dismiss all Notifications</a>
             </div>
         </li>
         <?php } else { ?>
 
         <li class="nav-item dropdown">
             <a class="nav-link" data-toggle="dropdown" href="#" aria-expanded="false">
-                <i class="far fa-bell"></i>
+                <i class="fas fa-bell"></i>
             </a>
             <div class="dropdown-menu dropdown-menu dropdown-menu-right" style="left: inherit; right: 0px;">
                 <span class="dropdown-item dropdown-header">No Notifications</span>
                 <div class="dropdown-divider"></div>
                 <div class="text-center text-secondary p-3">
-                    <i class='far fa-fw fa-4x fa-bell'></i>
+                    <i class='far fa-4x fa-bell-slash'></i>
                 </div>
                 <div class="dropdown-divider"></div>
                 <a href="notifications_dismissed.php" class="dropdown-item dropdown-footer">See Dismissed
@@ -106,7 +133,7 @@
         <li class="nav-item dropdown user-menu">
             <a href="#" class="nav-link" data-toggle="dropdown">
                 <?php if (empty($session_avatar)) { ?>
-                <i class="fa fa-fw fa-user"></i>
+                <i class="fas fa-user"></i>
                 <?php }else{ ?>
                 <img src="<?php echo "uploads/users/$session_user_id/$session_avatar"; ?>"
                     class="user-image img-circle">
@@ -130,7 +157,10 @@
                 </li>
                 <!-- Menu Footer-->
                 <li class="user-footer">
-                    <a href="user_details.php" class="btn btn-default btn-flat"><i class="fas fa-cog mr-2"></i>Account</a>
+                    <?php if ($session_user_role == 3) { ?>
+                    <a href="admin_user.php" class="btn btn-default btn-block btn-flat mb-2"><i class="fas fa-user-shield mr-2"></i>Administration</a>
+                    <?php } ?>
+                    <a href="user_details.php" class="btn btn-default btn-flat"><i class="fas fa-user-cog mr-2"></i>Account</a>
                     <a href="post.php?logout" class="btn btn-default btn-flat float-right"><i class="fas fa-sign-out-alt mr-2"></i>Logout</a>
                 </li>
             </ul>

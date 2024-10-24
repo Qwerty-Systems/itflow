@@ -35,6 +35,7 @@ $document_updated_at = nullable_htmlentities($row['document_updated_at']);
 $document_archived_at = nullable_htmlentities($row['document_archived_at']);
 $document_folder_id = intval($row['document_folder_id']);
 $document_parent = intval($row['document_parent']);
+$document_client_visible = intval($row['document_client_visible']);
 
 ?>
 
@@ -83,7 +84,7 @@ $document_parent = intval($row['document_parent']);
                     <tbody>
                         <?php
                         $sql_document_revisions = mysqli_query($mysqli, "SELECT * FROM documents
-                            LEFT JOIN users ON document_created_by = user_id
+                            LEFT JOIN users ON document_updated_by = user_id
                             WHERE document_parent = $document_parent
                             ORDER BY document_created_at ASC"
                         );
@@ -100,6 +101,9 @@ $document_parent = intval($row['document_parent']);
                                 $revision_document_description_display = "-";
                             }
                             $revision_document_author = nullable_htmlentities($row['user_name']);
+                            if (empty($revision_document_author)) {
+                                $revision_document_author = $document_created_by_name;
+                            }
                             $revision_document_created_date = date('Y-m-d', strtotime($row['document_created_at']));
 
                         ?>
@@ -173,7 +177,7 @@ $document_parent = intval($row['document_parent']);
                 </button>
             </h6>
             <?php
-            $sql_contacts = mysqli_query($mysqli, "SELECT * FROM contacts, contact_documents
+            $sql_contacts = mysqli_query($mysqli, "SELECT contacts.contact_id, contact_name FROM contacts, contact_documents
                 WHERE contacts.contact_id = contact_documents.contact_id 
                 AND contact_documents.document_id = $document_id
                 ORDER BY contact_name ASC"
@@ -204,7 +208,7 @@ $document_parent = intval($row['document_parent']);
                 </button>
             </h6>
             <?php
-            $sql_assets = mysqli_query($mysqli, "SELECT * FROM assets, asset_documents
+            $sql_assets = mysqli_query($mysqli, "SELECT assets.asset_id, asset_name FROM assets, asset_documents
                 WHERE assets.asset_id = asset_documents.asset_id
                 AND asset_documents.document_id = $document_id
                 ORDER BY asset_name ASC"
@@ -235,7 +239,7 @@ $document_parent = intval($row['document_parent']);
                 </button>
             </h6>
             <?php
-            $sql_software = mysqli_query($mysqli, "SELECT * FROM software, software_documents
+            $sql_software = mysqli_query($mysqli, "SELECT software.software_id, software_name FROM software, software_documents
                 WHERE software.software_id = software_documents.software_id 
                 AND software_documents.document_id = $document_id
                 ORDER BY software_name ASC"
@@ -266,7 +270,7 @@ $document_parent = intval($row['document_parent']);
                 </button>
             </h6>
             <?php
-            $sql_vendors = mysqli_query($mysqli, "SELECT * FROM vendors, vendor_documents
+            $sql_vendors = mysqli_query($mysqli, "SELECT vendors.vendor_id, vendor_name FROM vendors, vendor_documents
                 WHERE vendors.vendor_id = vendor_documents.vendor_id 
                 AND vendor_documents.document_id = $document_id
                 ORDER BY vendor_name ASC"
@@ -291,6 +295,24 @@ $document_parent = intval($row['document_parent']);
             }
             ?>
         </div>
+
+        <?php if ($config_client_portal_enable) { ?>
+            <div class="card card-body bg-light">
+                <h6><i class="fas fa-handshake mr-2"></i>Portal Collaboration</h6>
+                <div class="mt-1">
+                    <i class="fa fa-fw fa-eye<?php if (!$document_client_visible) { echo '-slash'; } ?> text-secondary mr-2"></i>Document is
+                    <a href="#" data-toggle="modal" data-target="#editDocumentClientVisibileModal">
+                        <?php
+                        if ($document_client_visible) {
+                            echo "<span class='text-bold text-dark'>visible</span>";
+                        } else {
+                            echo "<span class='text-muted'>not visible</span>";
+                        }
+                        ?>
+                    </a>
+                </div>
+            </div>
+        <?php } ?>
 
         <div class="card card-body bg-light">
             <h6><i class="fas fa-history mr-2"></i>Revisions</h6>
@@ -344,6 +366,8 @@ require_once "client_document_link_asset_modal.php";
 require_once "client_document_link_software_modal.php";
 
 require_once "client_document_link_vendor_modal.php";
+
+require_once "document_edit_visibility_modal.php";
 
 require_once "share_modal.php";
 

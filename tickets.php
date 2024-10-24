@@ -7,6 +7,8 @@ $order = "DESC";
 
 require_once "inc_all.php";
 
+// Perms
+enforceUserPermission('module_support');
 
 // Ticket status from GET
 if (isset($_GET['status']) && is_array($_GET['status']) && !empty($_GET['status'])) {
@@ -23,13 +25,14 @@ if (isset($_GET['status']) && is_array($_GET['status']) && !empty($_GET['status'
 
 } else {
 
+    // TODO: Convert this to use the status IDs
     if (isset($_GET['status']) && ($_GET['status']) == 'Closed') {
         $status = 'Closed';
-        $ticket_status_snippet = "ticket_closed_at IS NOT NULL";
+        $ticket_status_snippet = "ticket_resolved_at IS NOT NULL";
     } else {
         // Default - Show open tickets
         $status = 'Open';
-        $ticket_status_snippet = "ticket_closed_at IS NULL";
+        $ticket_status_snippet = "ticket_resolved_at IS NULL";
     }
 }
 
@@ -50,6 +53,12 @@ if (isset($_GET['assigned']) & !empty($_GET['assigned'])) {
 //Rebuild URL
 $url_query_strings_sort = http_build_query(array_merge($_GET, array('sort' => $sort, 'order' => $order, 'status' => $status, 'assigned' => $ticket_assigned_filter_id)));
 
+// Ticket client access snippet
+$ticket_permission_snippet = '';
+if (!empty($client_access_string)) {
+    $ticket_permission_snippet = "AND ticket_client_id IN ($client_access_string)";
+}
+
 // Main ticket query:
 $sql = mysqli_query(
     $mysqli,
@@ -64,28 +73,29 @@ $sql = mysqli_query(
     WHERE $ticket_status_snippet " . $ticket_assigned_query . "
     AND DATE(ticket_created_at) BETWEEN '$dtf' AND '$dtt'
     AND (CONCAT(ticket_prefix,ticket_number) LIKE '%$q%' OR client_name LIKE '%$q%' OR ticket_subject LIKE '%$q%' OR ticket_status_name LIKE '%$q%' OR ticket_priority LIKE '%$q%' OR user_name LIKE '%$q%' OR contact_name LIKE '%$q%' OR asset_name LIKE '%$q%' OR vendor_name LIKE '%$q%' OR ticket_vendor_ticket_number LIKE '%q%')
+    $ticket_permission_snippet
     ORDER BY $sort $order LIMIT $record_from, $record_to"
 );
 
 $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
 //Get Total tickets open
-$sql_total_tickets_open = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_open FROM tickets WHERE ticket_closed_at IS NULL");
+$sql_total_tickets_open = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_open FROM tickets WHERE ticket_resolved_at IS NULL $ticket_permission_snippet");
 $row = mysqli_fetch_array($sql_total_tickets_open);
 $total_tickets_open = intval($row['total_tickets_open']);
 
 //Get Total tickets closed
-$sql_total_tickets_closed = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_closed FROM tickets WHERE ticket_closed_at IS NOT NULL");
+$sql_total_tickets_closed = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_closed FROM tickets WHERE ticket_resolved_at IS NOT NULL $ticket_permission_snippet");
 $row = mysqli_fetch_array($sql_total_tickets_closed);
 $total_tickets_closed = intval($row['total_tickets_closed']);
 
 //Get Unassigned tickets
-$sql_total_tickets_unassigned = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_unassigned FROM tickets WHERE ticket_assigned_to = '0' AND ticket_closed_at IS NULL");
+$sql_total_tickets_unassigned = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_unassigned FROM tickets WHERE ticket_assigned_to = '0' AND ticket_resolved_at IS NULL $ticket_permission_snippet");
 $row = mysqli_fetch_array($sql_total_tickets_unassigned);
 $total_tickets_unassigned = intval($row['total_tickets_unassigned']);
 
 //Get Total tickets assigned to me
-$sql_total_tickets_assigned = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_assigned FROM tickets WHERE ticket_assigned_to = $session_user_id AND ticket_closed_at IS NULL");
+$sql_total_tickets_assigned = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_assigned FROM tickets WHERE ticket_assigned_to = $session_user_id AND ticket_resolved_at IS NULL $ticket_permission_snippet");
 $row = mysqli_fetch_array($sql_total_tickets_assigned);
 $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
 
@@ -108,18 +118,11 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addTicketModal">
                         <i class="fas fa-plus mr-2"></i>New Ticket
                     </button>
-                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#addTicketFromTemplateModal">
-                            <i class="fa fa-fw fa-plus mr-2"></i>From Template
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>
         <div class="card-body">
             <form autocomplete="off">
-                <input type="hidden" name="status" value="<?php echo $status; ?>">
                 <div class="row">
                     <div class="col-sm-4">
                         <div class="input-group">
@@ -145,7 +148,8 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                                 <i class="fa fa-fw fa-exclamation-triangle mr-2"></i>Unassigned Tickets | <strong> <?php echo $total_tickets_unassigned; ?></strong>
                             </a>
 
-                            <div class="dropdown ml-2" id="bulkActionButton" hidden>
+                            <?php if (lookupUserPermission("module_support") >= 2) { ?>
+                                <div class="dropdown ml-2" id="bulkActionButton" hidden>
                                 <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown">
                                     <i class="fas fa-fw fa-layer-group mr-2"></i>Bulk Action (<span id="selectedCount">0</span>)
                                 </button>
@@ -158,15 +162,24 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                                         <i class="fas fa-fw fa-thermometer-half mr-2"></i>Update Priority
                                     </a>
                                     <div class="dropdown-divider"></div>
-                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkCloseTicketsModal">
-                                        <i class="fas fa-fw fa-gavel mr-2"></i>Close
-                                    </a>
-                                    <div class="dropdown-divider"></div>
                                     <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkReplyTicketModal">
                                         <i class="fas fa-fw fa-paper-plane mr-2"></i>Bulk Update/Reply
                                     </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkAssignTicketToProjectModal">
+                                        <i class="fas fa-fw fa-project-diagram mr-2"></i>Add to Project
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkMergeTicketModal">
+                                        <i class="fas fa-fw fa-clone mr-2"></i>Merge
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkCloseTicketsModal">
+                                        <i class="fas fa-fw fa-check mr-2"></i>Resolve
+                                    </a>
                                 </div>
                             </div>
+                            <?php } ?>
 
                         </div>
 
@@ -285,6 +298,7 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
             <hr>
             <form id="bulkActions" action="post.php" method="post">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+
                 <div class="table-responsive-sm">
                     <table class="table table-striped table-borderless table-hover">
                         <thead class="text-dark <?php if (!$num_rows[0]) { echo "d-none"; } ?>">
@@ -294,27 +308,55 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                                     <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                 </div>
                             </td>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_number&order=<?php echo $disp; ?>">Number</a>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_number&order=<?php echo $disp; ?>">
+                                    Ticket <?php if ($sort == 'ticket_number') { echo $order_icon; } ?>
+                                </a>
                             </th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_subject&order=<?php echo $disp; ?>">Subject / Tasks</a>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_subject&order=<?php echo $disp; ?>">
+                                    Subject / Tasks <?php if ($sort == 'ticket_subject') { echo $order_icon; } ?>
+                                </a>
                             </th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">Client / Contact</a>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">
+                                    Client / Contact <?php if ($sort == 'client_name') { echo $order_icon; } ?>
+                                </a>
                             </th>
-                            <?php if ($config_module_enable_accounting) { ?>
-                                <th class="text-center"><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_billable&order=<?php echo $disp; ?>">Billable</a>
-                                </th>
+                            
+                            <?php if ($config_module_enable_accounting && lookupUserPermission("module_sales") >= 2) { ?>
+                            <th class="text-center">
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_billable&order=<?php echo $disp; ?>">
+                                    Billable <?php if ($sort == 'ticket_billable') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <?php } ?>
 
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_priority&order=<?php echo $disp; ?>">Priority</a>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_priority&order=<?php echo $disp; ?>">
+                                    Priority <?php if ($sort == 'ticket_priority') { echo $order_icon; } ?>
+                                </a>
                             </th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_status&order=<?php echo $disp; ?>">Status</a>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=user_name&order=<?php echo $disp; ?>">Assigned</a>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_status&order=<?php echo $disp; ?>">
+                                    Status <?php if ($sort == 'ticket_status') { echo $order_icon; } ?>
+                                </a>
                             </th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_updated_at&order=<?php echo $disp; ?>">Last Response</a>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=user_name&order=<?php echo $disp; ?>">
+                                    Assigned <?php if ($sort == 'user_name') { echo $order_icon; } ?>
+                                </a>
                             </th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_created_at&order=<?php echo $disp; ?>">Created</a>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_updated_at&order=<?php echo $disp; ?>">
+                                    Last Response <?php if ($sort == 'ticket_updated_at') { echo $order_icon; } ?>
+                                </a>
                             </th>
-
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_created_at&order=<?php echo $disp; ?>">
+                                    Created <?php if ($sort == 'ticket_created_at') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                         </tr>
                         </thead>
                         <tbody>
@@ -382,7 +424,7 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
 
                             // Defaults to prevent undefined errors
                             $ticket_reply_created_at = "";
-                            $ticket_reply_created_at_time_ago = "";
+                            $ticket_reply_created_at_time_ago = "Never";
                             $ticket_reply_by_display = "";
                             $ticket_reply_type = "Client"; // Default to client for un-replied tickets
 
@@ -468,7 +510,7 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                                 </td>
 
                                 <!-- Ticket Billable (if accounting enabled -->
-                                <?php if ($config_module_enable_accounting) { ?>
+                                <?php if ($config_module_enable_accounting && lookupUserPermission("module_sales") >= 2) { ?>
                                     <td class="text-center">
                                         <a href="#" data-toggle="modal" data-target="#editTicketBillableModal<?php echo $ticket_id; ?>">
                                             <?php
@@ -499,15 +541,15 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
 
                                 <!-- Ticket Last Response -->
                                 <td>
-                                    <div title="<?php echo $ticket_reply_created_at; ?>"><?php echo $ticket_reply_created_at_time_ago; ?></div>
+                                    <div title="<?php echo $ticket_reply_created_at; ?>">
+                                        <?php echo $ticket_reply_created_at_time_ago; ?>
+                                    </div>
                                     <div><?php echo $ticket_reply_by_display; ?></div>
                                 </td>
 
                                 <!-- Ticket Created At -->
-                                <td>
-                                    <?php echo $ticket_created_at; ?>
-                                    <br>
-                                    <small class="text-secondary"><?php echo $ticket_created_at; ?></small>
+                                <td title="<?php echo $ticket_created_at; ?>">
+                                    <?php echo $ticket_created_at_time_ago; ?>
                                 </td>
 
                             </tr>
@@ -533,8 +575,10 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                 </div>
                 <?php require_once "ticket_bulk_assign_modal.php"; ?>
                 <?php require_once "ticket_bulk_edit_priority_modal.php"; ?>
-                <?php require_once "ticket_bulk_close_modal.php"; ?>
+                <?php require_once "ticket_bulk_add_project_modal.php"; ?>
                 <?php require_once "ticket_bulk_reply_modal.php"; ?>
+                <?php require_once "ticket_bulk_merge_modal.php"; ?>
+                <?php require_once "ticket_bulk_resolve_modal.php"; ?>
             </form>
             <?php require_once "pagination.php"; ?>
         </div>
@@ -544,7 +588,5 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
 
 <?php
 require_once "ticket_add_modal.php";
-
-require_once "ticket_add_from_template_modal.php";
 
 require_once "footer.php";

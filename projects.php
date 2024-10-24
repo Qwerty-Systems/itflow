@@ -6,6 +6,9 @@ $order = "ASC";
 
 require_once "inc_all.php";
 
+// Perms
+enforceUserPermission('module_support');
+
 // Status Query
 
 $status = 0;
@@ -20,6 +23,11 @@ if($status == 1) {
     $status_query = "IS NULL";
 }
 
+// Ticket client access snippet
+$project_permission_snippet = '';
+if (!empty($client_access_string)) {
+    $project_permission_snippet = "AND project_client_id IN ($client_access_string) OR project_client_id = 0";
+}
 
 //Rebuild URL
 $url_query_strings_sort = http_build_query($get_copy);
@@ -31,8 +39,9 @@ $sql_projects = mysqli_query(
     LEFT JOIN users ON user_id = project_manager
     WHERE DATE(project_created_at) BETWEEN '$dtf' AND '$dtt'
     AND (project_name LIKE '%$q%' OR project_description LIKE '%$q%' OR user_name LIKE '%$q%')
-    AND project_archived_at IS NULL
     AND project_completed_at $status_query
+    $project_permission_snippet
+    AND project_$archive_query
     ORDER BY $sort $order LIMIT $record_from, $record_to"
 );
 
@@ -50,6 +59,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
         <div class="card-body">
             <form class="mb-4" autocomplete="off">
+                <input type="hidden" name="archived" value="<?php echo $archived; ?>">
                 <div class="row">
                     <div class="col-sm-4">
                         <div class="input-group">
@@ -63,8 +73,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     <div class="col-sm-8">
                         <div class="btn-toolbar float-right">
                             <div class="btn-group mr-2">
-                                <a href="?status=0" class="btn btn-<?php if($status == 0){ echo "primary"; } else { echo "default"; } ?>"><i class="fa fa-fw fa-door-open mr-2"></i>Open</a>
-                                <a href="?status=1" class="btn btn-<?php if($status == 1){ echo "primary"; } else { echo "default"; } ?>"><i class="fa fa-fw fa-door-closed mr-2"></i>Closed</a>
+                                <a href="?status=0" class="btn btn-<?php if ($status == 0){ echo "primary"; } else { echo "default"; } ?>"><i class="fa fa-fw fa-door-open mr-2"></i>Open</a>
+                                <a href="?status=1" class="btn btn-<?php if ($status == 1){ echo "primary"; } else { echo "default"; } ?>"><i class="fa fa-fw fa-door-closed mr-2"></i>Closed</a>
+                            </div>
+
+                            <div class="btn-group mr-2">
+                                <a href="?<?php echo $url_query_strings_sort ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>"
+                                   class="btn btn-<?php if ($archived == 1) { echo "primary"; } else { echo "default"; } ?>">
+                                    <i class="fa fa-fw fa-archive mr-2"></i>Archived
+                                </a>
                             </div>
                            
                         </div>
@@ -108,11 +125,22 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <table class="table table-striped table-hover table-borderless">
                     <thead class="<?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
                     <tr>
-                        <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_number&order=<?php echo $disp; ?>">Number</a></th>
-                        <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_name&order=<?php echo $disp; ?>">Project</a></th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_number&order=<?php echo $disp; ?>">
+                                Number <?php if ($sort == 'project_number') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_name&order=<?php echo $disp; ?>">
+                                Project <?php if ($sort == 'project_name') { echo $order_icon; } ?>
+                            </a>
+                        </th>
                         <th>Tickets / Tasks</th>
-                        <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_due&order=<?php echo $disp; ?>">Due</a></th>
-                        
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_due&order=<?php echo $disp; ?>">
+                                Due <?php if ($sort == 'project_due') { echo $order_icon; } ?>
+                            </a>
+                        </th>
                         <?php if ($status == 1) { ?>
                         <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=project_completed_at&order=<?php echo $disp; ?>">Completed</a></th>
                         <?php } ?>
@@ -132,14 +160,20 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         $project_name = nullable_htmlentities($row['project_name']);
                         $project_description = nullable_htmlentities($row['project_description']);
                         $project_due = nullable_htmlentities($row['project_due']);
-                        $project_completed_at = nullable_htmlentities($row['project_completed_at']);
-                        $project_completed_at_display = date("Y-m-d", strtotime($project_completed_at));
                         $project_created_at = nullable_htmlentities($row['project_created_at']);
                         $project_created_at_display = date("Y-m-d", strtotime($project_created_at));
                         $project_updated_at = nullable_htmlentities($row['project_updated_at']);
+                        $project_completed_at = nullable_htmlentities($row['project_completed_at']);
+                        $project_completed_at_display = date("Y-m-d", strtotime($project_completed_at));
+                        $project_archived_at = nullable_htmlentities($row['project_archived_at']);
 
                         $client_id = intval($row['client_id']);
                         $client_name = nullable_htmlentities($row['client_name']);
+                        if ($client_name) {
+                            $client_name_display = "<a href='client_tickets.php?client_id=$client_id'>$client_name</a>";
+                        } else {
+                            $client_name_display = "-";
+                        }
 
                         $project_manager = intval($row['user_id']);
                         if ($project_manager) {
@@ -223,11 +257,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             <td><?php echo $project_completed_at_display; ?></td>
                             <?php } ?>
                             <td><?php echo $project_manager_display; ?></td>
-                            <td>
-                                <a href="client_tickets.php?client_id=<?php echo $client_id; ?>">
-                                    <?php echo $client_name; ?>
-                                </a>
-                            </td>
+                            <td><?php echo $client_name_display; ?></td>
                             <td><?php echo $project_created_at_display; ?></td>
                             <td>
                                 <div class="dropdown dropleft text-center">
@@ -235,15 +265,29 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                         <i class="fas fa-ellipsis-h"></i>
                                     </button>
                                     <div class="dropdown-menu">
-                                        <?php if(empty($project_completed_at)) { ?>
-                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editProjectModal<?php echo $project_id; ?>">
-                                            <i class="fas fa-fw fa-edit mr-2"></i>Edit
-                                        </a>
-                                        <div class="dropdown-divider"></div>
+                                        <?php if (empty($project_completed_at)) { ?>
+                                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editProjectModal<?php echo $project_id; ?>">
+                                                <i class="fas fa-fw fa-edit mr-2"></i>Edit
+                                            </a>
                                         <?php } ?>
-                                        <a class="dropdown-item text-danger confirm-link" href="post.php?delete_project=<?php echo $project_id; ?>">
-                                            <i class="fas fa-fw fa-archive mr-2"></i>Delete
-                                        </a>
+                                        <?php if (!empty($project_completed_at) && lookupUserPermission("module_support" >= 2)) { ?>
+                                            <div class="dropdown-divider"></div>
+                                            <?php if (empty($project_archived_at)) { ?>
+                                                <a class="dropdown-item text-danger confirm-link" href="post.php?archive_project=<?php echo $project_id; ?>">
+                                                    <i class="fas fa-fw fa-archive mr-2"></i>Archive
+                                                </a>
+                                            <?php } else { ?>
+                                                <a class="dropdown-item text-info confirm-link" href="post.php?unarchive_project=<?php echo $project_id; ?>">
+                                                    <i class="fas fa-fw fa-redo mr-2"></i>Unarchive
+                                                </a>
+                                                <?php if (lookupUserPermission("module_support" >= 3)) { ?>
+                                                    <div class="dropdown-divider"></div>
+                                                    <a class="dropdown-item text-danger confirm-link" href="post.php?delete_project=<?php echo $project_id; ?>">
+                                                        <i class="fas fa-fw fa-archive mr-2"></i>Delete
+                                                    </a>
+                                                <?php } ?>
+                                            <?php } ?>
+                                        <?php } ?>
                                     </div>
                                 </div>
                             </td>

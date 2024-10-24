@@ -2,7 +2,7 @@
     <div class="modal-dialog">
         <div class="modal-content bg-dark">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fa fa-fw fa-server mr-2"></i>Editing Rack: <strong><?php echo $rack_name; ?></strong></h5>
+                <h5 class="modal-title"><i class="fa fa-fw fa-server mr-2"></i>Editing rack: <strong><?php echo $rack_name; ?></strong></h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
                     <span>&times;</span>
                 </button>
@@ -26,7 +26,7 @@
 
                     <hr>
 
-                    <div class="tab-content">
+                    <div class="tab-content" <?php if (lookupUserPermission('module_support') <= 1) { echo 'inert'; } ?>>
 
                         <div class="tab-pane fade show active" id="pills-rack-details<?php echo $rack_id; ?>">
 
@@ -91,7 +91,7 @@
                                     <div class="input-group-prepend">
                                         <span class="input-group-text"><i class="fa fa-fw fa-sort-numeric-up-alt"></i></span>
                                     </div>
-                                    <input type="number" class="form-control" name="units" placeholder="Number of Units" min="1" max="44" value="<?php echo $rack_units; ?>" required>
+                                    <input type="number" class="form-control" name="units" placeholder="Number of Units" min="1" max="70" value="<?php echo $rack_units; ?>" required>
                                 </div>
                             </div>
 

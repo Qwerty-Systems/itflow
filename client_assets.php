@@ -6,6 +6,9 @@ $order = "ASC";
 
 require_once "inc_all_client.php";
 
+// Perms
+enforceUserPermission('module_support');
+
 //Asset Type from GET
 if (isset($_GET['type']) && ($_GET['type']) == 'workstation') {
     $type_query = "asset_type = 'desktop' OR asset_type = 'laptop'";
@@ -96,7 +99,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
         <div class="card-header py-2">
             <h3 class="card-title mt-2"><i class="fa fa-fw fa-desktop mr-2"></i>Assets</h3>
             <div class="card-tools">
-                <div class="btn-group">
+                <?php if (lookupUserPermission("module_support") >= 2) { ?>
+                    <div class="btn-group">
                     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addAssetModal">
                         <i class="fas fa-plus mr-2"></i>New <?php if (!empty($_GET['type'])) { echo ucwords(strip_tags(nullable_htmlentities($_GET['type']))); } else { echo "Asset"; } ?>
                     </button>
@@ -105,12 +109,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#importAssetModal">
                             <i class="fa fa-fw fa-upload mr-2"></i>Import
                         </a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportAssetModal">
-                            <i class="fa fa-fw fa-download mr-2"></i>Export
-                        </a>
+                        <?php if ($num_rows[0] > 0) { ?>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportAssetModal">
+                                <i class="fa fa-fw fa-download mr-2"></i>Export
+                            </a>
+                        <?php } ?>
                     </div>
                 </div>
+                <?php } ?>
             </div>
         </div>
         <div class="card-body">
@@ -147,11 +154,35 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             </select>
                         </div>
                     </div>
-                    <div class="col-sm-6">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <select onchange="this.form.submit()" class="form-control select2" name="show_column[]" data-placeholder="- Show Additional Columns -" multiple>
+                                <option
+                                    <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('OS', $_GET['show_column'])) { echo 'selected'; } ?>>OS
+                                </option>
+                                <option
+                                    <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('IP', $_GET['show_column'])) { echo 'selected'; } ?>>IP
+                                </option>
+                                <option
+                                    <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Purchase_Date', $_GET['show_column'])) { echo 'selected'; } ?>>Purchase_Date
+                                </option>
+                                <option
+                                    <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Install_Date', $_GET['show_column'])) { echo 'selected'; } ?>>Install_Date
+                                </option>
+                                <option
+                                    <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Warranty_Expire', $_GET['show_column'])) { echo 'selected'; } ?>>Warranty_Expire
+                                </option>
+                                <option
+                                    <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Physical_Location', $_GET['show_column'])) { echo 'selected'; } ?>>Physical_Location
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-12">
                         <div class="btn-toolbar float-right">
                             <div class="btn-group mr-5">
-                                <?php if($all_count) { ?>
-                                <a href="?<?php echo $url_query_strings_sort; ?>&type=" class="btn <?php if ($_GET['type'] == 'all' || empty($_GET['type'])) { echo 'btn-primary'; } else { echo 'btn-default'; } ?>">All Assets<span class="right badge badge-light ml-2"><?php echo $all_count; ?></span></a>
+                                <?php if ($all_count) { ?>
+                                    <a href="?<?php echo $url_query_strings_sort; ?>&type=" class="btn <?php if ($_GET['type'] == 'all' || empty($_GET['type'])) { echo 'btn-primary'; } else { echo 'btn-default'; } ?>">All Assets<span class="right badge badge-light ml-2"><?php echo $all_count; ?></span></a>
                                 <?php } ?>
                                 <?php
                                 if ($workstation_count > 0) { ?>
@@ -176,13 +207,13 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 } ?>
                             </div>
                             <div class="btn-group mr-2">
-                                <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
+                                <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>"
                                     class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
                                     <i class="fa fa-fw fa-archive mr-2"></i>Archived
                                 </a>
                                 <div class="dropdown ml-2" id="bulkActionButton" hidden>
                                     <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown">
-                                        <i class="fas fa-fw fa-layer-group mr-2"></i>Bulk Action (<span id="selectedCount">0</span>)
+                                        <i class="fas fa-fw fa-layer-group mr-2"></i>Bulk Action (<span id="selectedCount"></span>)
                                     </button>
                                     <div class="dropdown-menu">
                                         <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkAssignContactModal">
@@ -195,6 +226,10 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                         <div class="dropdown-divider"></div>
                                         <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkEditStatusModal">
                                             <i class="fas fa-fw fa-info mr-2"></i>Set Status
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkAddTicketModal">
+                                            <i class="fas fa-fw fa-life-ring mr-2"></i>Create Tickets
                                         </a>
                                         <?php if ($archived) { ?>
                                         <div class="dropdown-divider"></div>
@@ -218,6 +253,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
             </form>
             <hr>
             <form id="bulkActions" action="post.php" method="post">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+
                 <div class="table-responsive">
                     <table class="table border table-hover">
                         <thead class="thead-light <?php if (!$num_rows[0]) { echo "d-none"; } ?>">
@@ -227,28 +264,94 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                 </div>
                             </td>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_name&order=<?php echo $disp; ?>">Name</a></th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_name&order=<?php echo $disp; ?>">
+                                    Name <?php if ($sort == 'asset_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <?php if ($_GET['type'] !== 'virtual' && $_GET['type'] !== 'servers') { ?>
-                                <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_type&order=<?php echo $disp; ?>">Type</a></th>
-                            <?php }
-                            if ($_GET['type'] !== 'virtual') { ?>
-                                <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_make&order=<?php echo $disp; ?>">Model</a></th>
-                            <?php }
-                            if ($_GET['type'] !== 'virtual') { ?>
-                                <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_serial&order=<?php echo $disp; ?>">Serial</a></th>
-                            <?php }
-                            if ($_GET['type'] !== 'network' && $_GET['type'] !== 'other') { ?>
-                                <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_os&order=<?php echo $disp; ?>">OS</a></th>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_type&order=<?php echo $disp; ?>">
+                                        Type <?php if ($sort == 'asset_type') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
                             <?php } ?>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=interface_ip&order=<?php echo $disp; ?>">IP</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_install_date&order=<?php echo $disp; ?>">Install Date</a></th>
+                            <?php if ($_GET['type'] !== 'virtual') { ?>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_make&order=<?php echo $disp; ?>">
+                                        Model <?php if ($sort == 'asset_make') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_serial&order=<?php echo $disp; ?>">
+                                        Serial <?php if ($sort == 'asset_serial') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
+                            <?php } ?>
+                            <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('OS', $_GET['show_column'])) { ?>
+                                <?php if ($_GET['type'] !== 'network' && $_GET['type'] !== 'other') { ?>
+                                    <th>
+                                        <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_os&order=<?php echo $disp; ?>">
+                                            OS <?php if ($sort == 'asset_os') { echo $order_icon; } ?>
+                                        </a>
+                                    </th>
+                                <?php } ?>
+                            <?php } ?>
+                            <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('IP', $_GET['show_column'])) { ?>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=interface_ip&order=<?php echo $disp; ?>">
+                                        IP <?php if ($sort == 'interface_ip') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
+                            <?php } ?>
+                            <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Purchase_Date', $_GET['show_column'])) { ?>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_purchase_date&order=<?php echo $disp; ?>">
+                                        Purchase Date <?php if ($sort == 'asset_purchase_date') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
+                            <?php } ?>
+                            <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Install_Date', $_GET['show_column'])) { ?>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_install_date&order=<?php echo $disp; ?>">
+                                        Install Date <?php if ($sort == 'asset_install_date') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
+                            <?php } ?>
+                            <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Warranty_Expire', $_GET['show_column'])) { ?>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_warranty_expire&order=<?php echo $disp; ?>">
+                                        Warranty Expire <?php if ($sort == 'asset_warranty_expire') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
+                            <?php } ?>
                             <?php if ($_GET['type'] !== 'network' && $_GET['type'] !== 'servers' && $_GET['type'] !== 'other') { ?>
-                                <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">Assigned To</a></th>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">
+                                        Assigned To <?php if ($sort == 'contact_name') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
                             <?php } ?>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_name&order=<?php echo $disp; ?>">Location</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_status&order=<?php echo $disp; ?>">Status</a></th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=location_name&order=<?php echo $disp; ?>">
+                                    Location <?php if ($sort == 'location_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Physical_Location', $_GET['show_column'])) { ?>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_physical_location&order=<?php echo $disp; ?>">
+                                        Physical Location <?php if ($sort == 'asset_physical_location') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
+                            <?php } ?>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=asset_status&order=<?php echo $disp; ?>">
+                                    Status <?php if ($sort == 'asset_status') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <th class="text-center">Action</th>
                         </tr>
+
                         </thead>
                         <tbody>
                         <?php
@@ -258,7 +361,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             $asset_type = nullable_htmlentities($row['asset_type']);
                             $asset_name = nullable_htmlentities($row['asset_name']);
                             $asset_description = nullable_htmlentities($row['asset_description']);
-                            if (empty($asset_description)) {
+                            if ($asset_description) {
                                 $asset_description_display = "-";
                             } else {
                                 $asset_description_display = $asset_description;
@@ -266,22 +369,22 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             $asset_make = nullable_htmlentities($row['asset_make']);
                             $asset_model = nullable_htmlentities($row['asset_model']);
                             $asset_serial = nullable_htmlentities($row['asset_serial']);
-                            if (empty($asset_serial)) {
-                                $asset_serial_display = "-";
-                            } else {
+                            if ($asset_serial) {
                                 $asset_serial_display = $asset_serial;
+                            } else {
+                                $asset_serial_display = "-";
                             }
                             $asset_os = nullable_htmlentities($row['asset_os']);
-                            if (empty($asset_os)) {
-                                $asset_os_display = "-";
-                            } else {
+                            if ($asset_os) {
                                 $asset_os_display = $asset_os;
+                            } else {
+                                $asset_os_display = "-";
                             }
                             $asset_ip = nullable_htmlentities($row['interface_ip']);
-                            if (empty($asset_ip)) {
-                                $asset_ip_display = "-";
-                            } else {
+                            if ($asset_ip) {
                                 $asset_ip_display = $asset_ip;
+                            } else {
+                                $asset_ip_display = "-";
                             }
                             $asset_ipv6 = nullable_htmlentities($row['interface_ipv6']);
                             $asset_nat_ip = nullable_htmlentities($row['interface_nat_ip']);
@@ -290,15 +393,30 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             $asset_uri_2 = nullable_htmlentities($row['asset_uri_2']);
                             $asset_status = nullable_htmlentities($row['asset_status']);
                             $asset_purchase_date = nullable_htmlentities($row['asset_purchase_date']);
-                            $asset_warranty_expire = nullable_htmlentities($row['asset_warranty_expire']);
-                            $asset_install_date = nullable_htmlentities($row['asset_install_date']);
-                            if (empty($asset_install_date)) {
-                                $asset_install_date_display = "-";
+                            if ($asset_purchase_date) {
+                                $asset_purchase_date_display = $asset_purchase_date;
                             } else {
+                                $asset_purchase_date_display = "-";
+                            }
+                            $asset_warranty_expire = nullable_htmlentities($row['asset_warranty_expire']);
+                            if ($asset_warranty_expire) {
+                                $asset_warranty_expire_display = $asset_warranty_expire;
+                            } else {
+                                $asset_warranty_expire_display = "-";
+                            }
+                            $asset_install_date = nullable_htmlentities($row['asset_install_date']);
+                            if ($asset_install_date) {
                                 $asset_install_date_display = $asset_install_date;
+                            } else {
+                                $asset_install_date_display = "-";
                             }
                             $asset_photo = nullable_htmlentities($row['asset_photo']);
                             $asset_physical_location = nullable_htmlentities($row['asset_physical_location']);
+                            if ($asset_physical_location) {
+                                $asset_physical_location_display = $asset_physical_location;
+                            } else {
+                                $asset_physical_location_display = "-";
+                            }
                             $asset_notes = nullable_htmlentities($row['asset_notes']);
                             $asset_created_at = nullable_htmlentities($row['asset_created_at']);
                             $asset_archived_at = nullable_htmlentities($row['asset_archived_at']);
@@ -367,15 +485,30 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 <?php if ($_GET['type'] !== 'virtual') { ?>
                                     <td><?php echo $asset_serial_display; ?></td>
                                 <?php } ?>
+                                <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('OS', $_GET['show_column'])) { ?>
                                 <?php if ($_GET['type'] !== 'network' && $_GET['type'] !== 'other') { ?>
                                     <td><?php echo $asset_os_display; ?></td>
                                 <?php } ?>
-                                <td><?php echo $asset_ip_display; ?></td>
-                                <td><?php echo $asset_install_date_display; ?></td>
+                                <?php } ?>
+                                <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('IP', $_GET['show_column'])) { ?>
+                                    <td><?php echo $asset_ip_display; ?></td>
+                                <?php } ?>
+                                <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Purchase_Date', $_GET['show_column'])) { ?>
+                                    <td><?php echo $asset_purchase_date_display; ?></td>
+                                <?php } ?>
+                                <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Install_Date', $_GET['show_column'])) { ?>
+                                    <td><?php echo $asset_install_date_display; ?></td>
+                                <?php } ?>
+                                <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Warranty_Expire', $_GET['show_column'])) { ?>
+                                    <td><?php echo $asset_warranty_expire_display; ?></td>
+                                <?php } ?>
                                 <?php if ($_GET['type'] !== 'network' && $_GET['type'] !== 'other' && $_GET['type'] !== 'servers') { ?>
                                     <td><?php echo $contact_name_display; ?></td>
                                 <?php } ?>
                                 <td><?php echo $location_name_display; ?></td>
+                                <?php if (isset($_GET['show_column']) && is_array($_GET['show_column']) && in_array('Physical_Location', $_GET['show_column'])) { ?>
+                                    <td><?php echo $asset_physical_location_display; ?></td>
+                                <?php } ?>
                                 <td><?php echo $asset_status; ?></td>
                                 <td class="text-center">
                                     <div class="btn-group">
@@ -462,17 +595,18 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                                 </a>
                                                 <?php if ($session_user_role > 2) { ?>
                                                     <?php if ($asset_archived_at) { ?>
-                                                    <a class="dropdown-item text-info" href="post.php?unarchive_asset=<?php echo $asset_id; ?>">
+                                                    <a class="dropdown-item text-info" href="post.php?unarchive_asset=<?php echo $asset_id; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?>">
                                                         <i class="fas fa-fw fa-redo mr-2"></i>Unarchive
                                                     </a>
-                                                    <?php } else { ?>
-                                                    <a class="dropdown-item text-danger confirm-link" href="post.php?archive_asset=<?php echo $asset_id; ?>">
-                                                        <i class="fas fa-fw fa-archive mr-2"></i>Archive
+                                                    <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?delete_asset=<?php echo $asset_id; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?>">
+                                                        <i class="fas fa-fw fa-trash mr-2"></i>Delete
                                                     </a>
-                                                    <?php } ?>
-                                                    <?php if ($config_destructive_deletes_enable) { ?>
-                                                    <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?delete_asset=<?php echo $asset_id; ?>">
-                                                        <i class="fas fa-fw fa-archive mr-2"></i>Delete
+                                                    <?php } else { ?>
+                                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#transferAssetModal<?php echo $asset_id; ?>">
+                                                        <i class="fas fa-fw fa-arrow-right mr-2"></i>Transfer
+                                                    </a>
+                                                    <a class="dropdown-item text-danger confirm-link" href="post.php?archive_asset=<?php echo $asset_id; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?>">
+                                                        <i class="fas fa-fw fa-archive mr-2"></i>Archive
                                                     </a>
                                                     <?php } ?>
 
@@ -489,6 +623,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                             require "client_asset_copy_modal.php";
 
+                            require "client_asset_transfer_modal.php";
 
                         }
 
@@ -500,6 +635,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <?php require_once "client_asset_bulk_assign_location_modal.php"; ?>
                 <?php require_once "client_asset_bulk_assign_contact_modal.php"; ?>
                 <?php require_once "client_asset_bulk_edit_status_modal.php"; ?>
+                <?php require_once "client_asset_bulk_add_ticket_modal.php"; ?>
             </form>
             <?php require_once "pagination.php"; ?>
         </div>

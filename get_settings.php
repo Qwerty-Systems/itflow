@@ -46,6 +46,7 @@ $config_invoice_from_name = $row['config_invoice_from_name'];
 $config_invoice_from_email = $row['config_invoice_from_email'];
 $config_invoice_late_fee_enable = intval($row['config_invoice_late_fee_enable']);
 $config_invoice_late_fee_percent = floatval($row['config_invoice_late_fee_percent']);
+$config_invoice_paid_notification_email = $row['config_invoice_paid_notification_email'];
 
 // Recurring Invoices
 $config_recurring_prefix = $row['config_recurring_prefix'];
@@ -68,11 +69,12 @@ $config_ticket_next_number = intval($row['config_ticket_next_number']);
 $config_ticket_from_name = $row['config_ticket_from_name'];
 $config_ticket_from_email = $row['config_ticket_from_email'];
 $config_ticket_email_parse = intval($row['config_ticket_email_parse']);
+$config_ticket_email_parse_unknown_senders = intval($row['config_ticket_email_parse_unknown_senders']);
 $config_ticket_client_general_notifications = intval($row['config_ticket_client_general_notifications']);
-$config_ticket_autoclose = intval($row['config_ticket_autoclose']);
 $config_ticket_autoclose_hours = intval($row['config_ticket_autoclose_hours']);
 $config_ticket_new_ticket_notification_email = $row['config_ticket_new_ticket_notification_email'];
 $config_ticket_default_billable = intval($row['config_ticket_default_billable']);
+
 
 // Cron
 $config_enable_cron = intval($row['config_enable_cron']);
@@ -93,7 +95,6 @@ $config_stripe_expense_vendor = intval($row['config_stripe_expense_vendor']);
 $config_stripe_expense_category = intval($row['config_stripe_expense_category']);
 $config_stripe_percentage_fee = floatval($row['config_stripe_percentage_fee']);
 $config_stripe_flat_fee = floatval($row['config_stripe_flat_fee']);
-$config_stripe_client_pays_fees = intval($row['config_stripe_client_pays_fees']);
 
 // AI Provider Details
 $config_ai_enable = intval($row['config_ai_enable']);
@@ -128,6 +129,10 @@ $config_telemetry = intval($row['config_telemetry']);
 
 // Destructive Deletes
 $config_destructive_deletes_enable = intval($row['config_destructive_deletes_enable']);
+
+// White label
+$config_whitelabel_enabled = intval($row['config_whitelabel_enabled']);
+$config_whitelabel_key = $row['config_whitelabel_key'];
 
 
 // Select Arrays

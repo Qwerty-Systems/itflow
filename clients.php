@@ -6,6 +6,9 @@ $order = "DESC";
 
 require_once "inc_all.php";
 
+// Perms
+enforceUserPermission('module_client');
+
 // Leads Query
 
 $leads = 0;
@@ -14,7 +17,7 @@ if (isset($_GET['leads'])) {
     $leads = intval($_GET['leads']);
 }
 
-if($leads == 1){
+if ($leads == 1){
     $leads_query = 1;
 } else {
     $leads_query = 0;
@@ -32,7 +35,7 @@ if (isset($_GET['tags']) && is_array($_GET['tags']) && !empty($_GET['tags'])) {
     // Convert the sanitized tags into a comma-separated string
     $sanitizedTagsString = implode(",", $sanitizedTags);
     $tag_query = "AND tags.tag_id IN ($sanitizedTagsString)";
-} else{ 
+} else {
     $tag_query = '';    
 }
 
@@ -93,11 +96,11 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
         <div class="card-header py-2">
             <h3 class="card-title mt-2"><i class="fa fa-fw fa-user-friends mr-2"></i><?php if($leads == 0){ echo "Client"; } else { echo "Lead"; } ?> Management</h3>
             <div class="card-tools">
-                <?php if ($session_user_role == 3) { ?>
+                <?php if (lookupUserPermission("module_client") >= 2) { ?>
                     <div class="btn-group">
                         <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addClientModal">
                             <i class="fas fa-plus mr-2"></i>New
-                            <?php if($leads == 0){ echo "Client"; } else { echo "Lead"; } ?>
+                            <?php if ($leads == 0) { echo "Client"; } else { echo "Lead"; } ?>
                         </button>
                         <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
                         <div class="dropdown-menu">
@@ -131,13 +134,13 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     <div class="col-md-8">
                         <div class="btn-toolbar float-right">
                             <div class="btn-group mr-2">
-                                <a href="?leads=0" class="btn btn-<?php if($leads == 0){ echo "primary"; } else { echo "default"; } ?>"><i class="fa fa-fw fa-user-friends mr-2"></i>Clients</a>
-                                <a href="?leads=1" class="btn btn-<?php if($leads == 1){ echo "primary"; } else { echo "default"; } ?>"><i class="fa fa-fw fa-bullhorn mr-2"></i>Leads</a>
+                                <a href="?leads=0" class="btn btn-<?php if ($leads == 0){ echo "primary"; } else { echo "default"; } ?>"><i class="fa fa-fw fa-user-friends mr-2"></i>Clients</a>
+                                <a href="?leads=1" class="btn btn-<?php if ($leads == 1){ echo "primary"; } else { echo "default"; } ?>"><i class="fa fa-fw fa-bullhorn mr-2"></i>Leads</a>
                             </div>
 
                             <div class="btn-group mr-2">
                                 <a href="?<?php echo $url_query_strings_sort ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
-                                    class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
+                                    class="btn btn-<?php if ($archived == 1) { echo "primary"; } else { echo "default"; } ?>">
                                     <i class="fa fa-fw fa-archive mr-2"></i>Archived
                                 </a>
                             </div>
@@ -251,11 +254,24 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <table class="table table-striped table-hover table-borderless">
                     <thead class="<?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
                     <tr>
-                        <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">Client Name</a></th>
-                        <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=location_city&order=<?php echo $disp; ?>">Primary Location </a></th>
-                        <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">Primary Contact</a></th>
-                        <?php if (($session_user_role == 3 || $session_user_role == 1) && $config_module_enable_accounting == 1) { ?> <th class="text-right">Billing</th> <?php } ?>
-                        <?php if ($session_user_role == 3) { ?> <th class="text-center">Action</th> <?php } ?>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">
+                                Client Name <?php if ($sort == 'client_name') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=location_city&order=<?php echo $disp; ?>">
+                                Primary Location <?php if ($sort == 'location_city') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">
+                                Primary Contact
+                                <?php if ($sort == 'contact_name') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <?php if ((lookupUserPermission("module_financial") >= 1) && $config_module_enable_accounting == 1) { ?> <th class="text-right">Billing</th> <?php } ?>
+                        <?php if (lookupUserPermission("module_client") >= 2) { ?> <th class="text-center">Action</th> <?php } ?>
                     </tr>
                     </thead>
                     <tbody>
@@ -371,7 +387,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     </div>
                                 <?php } ?>
                                 <div class="mt-1 text-secondary">
-                                    <small><strong>Created:</strong> <?php echo $client_created_at; ?></small>
+                                    <small><strong>Created: </strong> <?php echo $client_created_at; ?></small>
                                 </div>
 
                             </td>
@@ -409,8 +425,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 <?php } ?>
                             </td>
 
-                            <!-- Show Billing for Admin/Accountant roles only and if accounting module is enabled -->
-                            <?php if (($session_user_role == 3 || $session_user_role == 1) && $config_module_enable_accounting == 1) { ?>
+                            <!-- Show Billing if perms & if accounting module is enabled -->
+                            <?php if ((lookupUserPermission("module_financial") >= 1) && $config_module_enable_accounting == 1) { ?>
                                 <td class="text-right">
                                     <div class="mt-1">
                                         <span class="text-secondary">Balance</span> <span class="<?php echo $balance_text_color; ?>"><?php echo numfmt_format_currency($currency_format, $balance, $session_company_currency); ?></span>
@@ -427,8 +443,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 </td>
                             <?php } ?>
 
-                            <!-- Show actions for Admin role only -->
-                            <?php if ($session_user_role == 3) { ?>
+                            <!-- Actions -->
+                            <?php if (lookupUserPermission("module_client") >= 2) { ?>
                                 <td>
                                     <div class="dropdown dropleft text-center">
                                         <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown">
@@ -441,7 +457,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                                             <?php if (empty($client_archived_at)) { ?>
                                                 <div class="dropdown-divider"></div>
-                                                <a class="dropdown-item text-danger confirm-link" href="post.php?archive_client=<?php echo $client_id; ?>">
+                                                <a class="dropdown-item text-danger confirm-link" href="post.php?archive_client=<?php echo $client_id; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?>">
                                                     <i class="fas fa-fw fa-archive mr-2"></i>Archive
                                                 </a>
                                             <?php } ?>

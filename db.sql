@@ -16,25 +16,6 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `account_types`
---
-
-DROP TABLE IF EXISTS `account_types`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `account_types` (
-  `account_type_id` int(11) NOT NULL AUTO_INCREMENT,
-  `account_type_parent` int(11) NOT NULL DEFAULT 1,
-  `account_type_name` varchar(255) NOT NULL,
-  `account_type_description` text DEFAULT NULL,
-  `account_type_created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  `account_type_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
-  `account_type_archived_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`account_type_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Table structure for table `accounts`
 --
 
@@ -44,6 +25,7 @@ DROP TABLE IF EXISTS `accounts`;
 CREATE TABLE `accounts` (
   `account_id` int(11) NOT NULL AUTO_INCREMENT,
   `account_name` varchar(200) NOT NULL,
+  `account_description` varchar(250) DEFAULT NULL,
   `opening_balance` decimal(15,2) NOT NULL DEFAULT 0.00,
   `account_currency_code` varchar(200) NOT NULL,
   `account_notes` text DEFAULT NULL,
@@ -66,6 +48,7 @@ CREATE TABLE `api_keys` (
   `api_key_id` int(11) NOT NULL AUTO_INCREMENT,
   `api_key_name` varchar(255) NOT NULL,
   `api_key_secret` varchar(255) NOT NULL,
+  `api_key_decrypt_hash` varchar(200) NOT NULL,
   `api_key_created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `api_key_expire` date NOT NULL,
   `api_key_client_id` int(11) NOT NULL DEFAULT 0,
@@ -423,10 +406,6 @@ CREATE TABLE `contacts` (
   `contact_photo` varchar(200) DEFAULT NULL,
   `contact_pin` varchar(255) DEFAULT NULL,
   `contact_notes` text DEFAULT NULL,
-  `contact_auth_method` varchar(200) DEFAULT NULL,
-  `contact_password_hash` varchar(200) DEFAULT NULL,
-  `contact_password_reset_token` varchar(200) DEFAULT NULL,
-  `contact_token_expire` datetime DEFAULT NULL,
   `contact_primary` tinyint(1) NOT NULL DEFAULT 0,
   `contact_important` tinyint(1) NOT NULL DEFAULT 0,
   `contact_billing` tinyint(1) DEFAULT 0,
@@ -437,6 +416,7 @@ CREATE TABLE `contacts` (
   `contact_accessed_at` datetime DEFAULT NULL,
   `contact_location_id` int(11) NOT NULL DEFAULT 0,
   `contact_vendor_id` int(11) NOT NULL DEFAULT 0,
+  `contact_user_id` int(11) NOT NULL DEFAULT 0,
   `contact_department` varchar(200) DEFAULT NULL,
   `contact_client_id` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`contact_id`)
@@ -459,6 +439,29 @@ CREATE TABLE `custom_fields` (
   `custom_field_order` int(11) NOT NULL DEFAULT 999,
   PRIMARY KEY (`custom_field_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `custom_links`
+--
+
+DROP TABLE IF EXISTS `custom_links`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `custom_links` (
+  `custom_link_id` int(11) NOT NULL AUTO_INCREMENT,
+  `custom_link_name` varchar(200) NOT NULL,
+  `custom_link_description` text DEFAULT NULL,
+  `custom_link_uri` varchar(500) NOT NULL,
+  `custom_link_new_tab` tinyint(1) NOT NULL DEFAULT 0,
+  `custom_link_icon` varchar(200) DEFAULT NULL,
+  `custom_link_location` int(11) NOT NULL DEFAULT 1,
+  `custom_link_order` int(11) NOT NULL DEFAULT 0,
+  `custom_link_created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `custom_link_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  `custom_link_archived_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`custom_link_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -505,6 +508,7 @@ CREATE TABLE `documents` (
   `document_content_raw` longtext NOT NULL,
   `document_important` tinyint(1) NOT NULL DEFAULT 0,
   `document_parent` int(11) NOT NULL DEFAULT 0,
+  `document_client_visible` int(11) NOT NULL DEFAULT 1,
   `document_created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `document_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
   `document_archived_at` datetime DEFAULT NULL,
@@ -864,6 +868,21 @@ CREATE TABLE `logs` (
   `log_user_id` int(11) NOT NULL DEFAULT 0,
   `log_entity_id` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`log_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `modules`
+--
+
+DROP TABLE IF EXISTS `modules`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `modules` (
+  `module_id` int(11) NOT NULL AUTO_INCREMENT,
+  `module_name` varchar(200) NOT NULL,
+  `module_description` varchar(200) DEFAULT NULL,
+  PRIMARY KEY (`module_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1455,6 +1474,7 @@ CREATE TABLE `settings` (
   `config_invoice_from_email` varchar(200) DEFAULT NULL,
   `config_invoice_late_fee_enable` tinyint(1) NOT NULL DEFAULT 0,
   `config_invoice_late_fee_percent` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `config_invoice_paid_notification_email` varchar(200) DEFAULT NULL,
   `config_recurring_prefix` varchar(200) DEFAULT NULL,
   `config_recurring_next_number` int(11) NOT NULL,
   `config_quote_prefix` varchar(200) DEFAULT NULL,
@@ -1467,8 +1487,8 @@ CREATE TABLE `settings` (
   `config_ticket_from_name` varchar(200) DEFAULT NULL,
   `config_ticket_from_email` varchar(200) DEFAULT NULL,
   `config_ticket_email_parse` tinyint(1) NOT NULL DEFAULT 0,
+  `config_ticket_email_parse_unknown_senders` int(1) NOT NULL DEFAULT 0,
   `config_ticket_client_general_notifications` tinyint(1) NOT NULL DEFAULT 1,
-  `config_ticket_autoclose` tinyint(1) NOT NULL DEFAULT 0,
   `config_ticket_autoclose_hours` int(5) NOT NULL DEFAULT 72,
   `config_ticket_new_ticket_notification_email` varchar(200) DEFAULT NULL,
   `config_ticket_default_billable` tinyint(1) NOT NULL DEFAULT 0,
@@ -1491,7 +1511,6 @@ CREATE TABLE `settings` (
   `config_ai_url` varchar(250) DEFAULT NULL,
   `config_ai_api_key` varchar(250) DEFAULT NULL,
   `config_stripe_flat_fee` decimal(15,2) NOT NULL DEFAULT 0.30,
-  `config_stripe_client_pays_fees` tinyint(1) NOT NULL DEFAULT 0,
   `config_azure_client_id` varchar(200) DEFAULT NULL,
   `config_azure_client_secret` varchar(200) DEFAULT NULL,
   `config_module_enable_itdoc` tinyint(1) NOT NULL DEFAULT 1,
@@ -1508,6 +1527,8 @@ CREATE TABLE `settings` (
   `config_timezone` varchar(200) NOT NULL DEFAULT 'America/New_York',
   `config_destructive_deletes_enable` tinyint(1) NOT NULL DEFAULT 0,
   `config_phone_mask` tinyint(1) NOT NULL DEFAULT 1,
+  `config_whitelabel_enabled` int(11) NOT NULL DEFAULT 0,
+  `config_whitelabel_key` text DEFAULT NULL,
   PRIMARY KEY (`company_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1528,6 +1549,7 @@ CREATE TABLE `shared_items` (
   `item_encrypted_username` varchar(255) DEFAULT NULL,
   `item_encrypted_credential` varchar(255) DEFAULT NULL,
   `item_note` varchar(255) DEFAULT NULL,
+  `item_recipient` varchar(250) DEFAULT NULL,
   `item_views` int(11) NOT NULL,
   `item_view_limit` int(11) DEFAULT NULL,
   `item_created_at` datetime NOT NULL DEFAULT current_timestamp(),
@@ -1669,6 +1691,7 @@ CREATE TABLE `task_templates` (
   `task_template_id` int(11) NOT NULL AUTO_INCREMENT,
   `task_template_name` varchar(200) NOT NULL,
   `task_template_order` int(11) NOT NULL DEFAULT 0,
+  `task_template_completion_estimate` int(11) NOT NULL DEFAULT 0,
   `task_template_created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `task_template_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
   `task_template_archived_at` datetime DEFAULT NULL,
@@ -1689,6 +1712,7 @@ CREATE TABLE `tasks` (
   `task_name` varchar(255) NOT NULL,
   `task_status` varchar(255) DEFAULT NULL,
   `task_order` int(11) NOT NULL DEFAULT 0,
+  `task_completion_estimate` int(11) NOT NULL DEFAULT 0,
   `task_completed_at` datetime DEFAULT NULL,
   `task_completed_by` int(11) DEFAULT NULL,
   `task_created_at` datetime NOT NULL DEFAULT current_timestamp(),
@@ -1845,8 +1869,10 @@ CREATE TABLE `tickets` (
   `ticket_onsite` tinyint(1) NOT NULL DEFAULT 0,
   `ticket_vendor_ticket_number` varchar(255) DEFAULT NULL,
   `ticket_feedback` varchar(200) DEFAULT NULL,
+  `ticket_url_key` varchar(200) DEFAULT NULL,
   `ticket_created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `ticket_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  `ticket_resolved_at` datetime DEFAULT NULL,
   `ticket_archived_at` datetime DEFAULT NULL,
   `ticket_closed_at` datetime DEFAULT NULL,
   `ticket_created_by` int(11) NOT NULL,
@@ -1924,6 +1950,20 @@ CREATE TABLE `user_permissions` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `user_role_permissions`
+--
+
+DROP TABLE IF EXISTS `user_role_permissions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `user_role_permissions` (
+  `user_role_id` int(11) NOT NULL,
+  `module_id` int(11) NOT NULL,
+  `user_role_permission_level` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `user_roles`
 --
 
@@ -1934,6 +1974,8 @@ CREATE TABLE `user_roles` (
   `user_role_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_role_name` varchar(200) NOT NULL,
   `user_role_description` varchar(200) DEFAULT NULL,
+  `user_role_type` tinyint(1) NOT NULL DEFAULT 1,
+  `user_role_is_admin` tinyint(1) NOT NULL DEFAULT 0,
   `user_role_created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `user_role_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
   `user_role_archived_at` datetime DEFAULT NULL,
@@ -1972,8 +2014,12 @@ CREATE TABLE `users` (
   `user_name` varchar(200) NOT NULL,
   `user_email` varchar(200) NOT NULL,
   `user_password` varchar(200) NOT NULL,
+  `user_auth_method` varchar(200) NOT NULL DEFAULT 'local',
+  `user_type` tinyint(1) NOT NULL DEFAULT 1,
   `user_status` tinyint(1) NOT NULL DEFAULT 1,
   `user_token` varchar(200) DEFAULT NULL,
+  `user_password_reset_token` varchar(200) DEFAULT NULL,
+  `user_password_reset_token_expire` datetime DEFAULT NULL,
   `user_avatar` varchar(200) DEFAULT NULL,
   `user_specific_encryption_ciphertext` varchar(200) DEFAULT NULL,
   `user_php_session` varchar(255) DEFAULT NULL,
@@ -2068,4 +2114,4 @@ CREATE TABLE `vendors` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-06-13 12:39:55
+-- Dump completed on 2024-10-23 13:27:47

@@ -6,6 +6,9 @@ require_once "functions.php";
 
 require_once "check_login.php";
 
+// Reporting Perms
+enforceUserPermission('module_reporting');
+
 require_once "header.php";
 
 require_once "top_nav.php";
@@ -16,7 +19,7 @@ require_once "inc_wrapper.php";
 
 require_once "inc_alert_feedback.php";
 
-require_once "pagination_head.php";
+require_once "filter_header.php";
 
 // Set variable default values
 $largest_income_month = 0;

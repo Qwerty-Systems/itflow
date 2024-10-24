@@ -6,6 +6,8 @@ $order = "ASC";
 
 require_once "inc_all_client.php";
 
+// Perms
+enforceUserPermission('module_support');
 
 //Rebuild URL
 $url_query_strings_sort = http_build_query($get_copy);
@@ -35,12 +37,14 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
             <div class="card-tools">
                 <div class="btn-group">
                     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addDomainModal"><i class="fas fa-plus mr-2"></i>New Domain</button>
-                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportDomainModal">
-                            <i class="fa fa-fw fa-download mr-2"></i>Export
-                        </a>
-                    </div>
+                    <?php if ($num_rows[0] > 0) { ?>
+                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportDomainModal">
+                                <i class="fa fa-fw fa-download mr-2"></i>Export
+                            </a>
+                        </div>
+                    <?php } ?>
                 </div>
             </div>
         </div>
@@ -60,7 +64,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                     <div class="col-md-8">
                         <div class="btn-group float-right">
-                            <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
+                            <a href="?client_id=<?php echo $client_id; ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>"
                                 class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
                                 <i class="fa fa-fw fa-archive mr-2"></i>Archived
                             </a>
@@ -107,12 +111,36 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                 </div>
                             </td>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=domain_name&order=<?php echo $disp; ?>">Domain</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=registrar_name&order=<?php echo $disp; ?>">Registrar</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=webhost_name&order=<?php echo $disp; ?>">Web Host</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=dnshost_name&order=<?php echo $disp; ?>">DNS Host</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=mailhost_name&order=<?php echo $disp; ?>">Mail Host</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=domain_expire&order=<?php echo $disp; ?>">Expires</a></th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=domain_name&order=<?php echo $disp; ?>">
+                                    Domain <?php if ($sort == 'domain_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=registrar_name&order=<?php echo $disp; ?>">
+                                    Registrar <?php if ($sort == 'registrar_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=webhost_name&order=<?php echo $disp; ?>">
+                                    Web Host <?php if ($sort == 'webhost_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=dnshost_name&order=<?php echo $disp; ?>">
+                                    DNS Host <?php if ($sort == 'dnshost_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=mailhost_name&order=<?php echo $disp; ?>">
+                                    Mail Host <?php if ($sort == 'mailhost_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=domain_expire&order=<?php echo $disp; ?>">
+                                    Expires <?php if ($sort == 'domain_expire') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <th class="text-center">Action</th>
                         </tr>
                         </thead>
@@ -124,6 +152,24 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             $domain_name = nullable_htmlentities($row['domain_name']);
                             $domain_description = nullable_htmlentities($row['domain_description']);
                             $domain_expire = nullable_htmlentities($row['domain_expire']);
+                            $domain_expire_ago = timeAgo($domain_expire);
+                            // Convert the expiry date to a timestamp
+                            $domain_expire_timestamp = strtotime($row['domain_expire']);
+                            $current_timestamp = time(); // Get current timestamp
+
+                            // Calculate the difference in days
+                            $days_until_expiry = ($domain_expire_timestamp - $current_timestamp) / (60 * 60 * 24);
+
+                            // Determine the class based on the number of days until expiry
+                            if ($days_until_expiry <= 0) {
+                                $tr_class = "table-secondary";
+                            } elseif ($days_until_expiry <= 14) {
+                                $tr_class = "table-danger";
+                            } elseif ($days_until_expiry <= 90) {
+                                $tr_class = "table-warning";
+                            } else {
+                                $tr_class = '';
+                            }
                             $domain_registrar_name = nullable_htmlentities($row['registrar_name']);
                             if($domain_registrar_name) {
                                 $domain_registrar_name_display = $domain_registrar_name;
@@ -142,7 +188,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             $domain_mailhost_name_display = $domain_mailhost_name ? $domain_mailhost_name : "-";
 
                             ?>
-                            <tr>
+                            <tr class="<?php echo $tr_class; ?>">
                                 <td class="pr-0">
                                     <div class="form-check">
                                         <input class="form-check-input bulk-select" type="checkbox" name="domain_ids[]" value="<?php echo $domain_id ?>">
@@ -163,7 +209,10 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 <td><?php echo $domain_webhost_name_display; ?></td>
                                 <td><?php echo $domain_dnshost_name_display; ?></td>
                                 <td><?php echo $domain_mailhost_name_display; ?></td>
-                                <td><?php echo $domain_expire; ?></td>
+                                <td>
+                                    <div><?php echo $domain_expire; ?></div>
+                                    <div><small><?php echo $domain_expire_ago; ?></small></div>
+                                </td>
                                 <td>
                                     <div class="dropdown dropleft text-center">
                                         <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown">

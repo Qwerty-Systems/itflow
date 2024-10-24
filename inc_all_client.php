@@ -6,6 +6,9 @@ require_once "functions.php";
 
 require_once "check_login.php";
 
+// Perms
+enforceUserPermission('module_client');
+
 if (isset($_GET['client_id'])) {
     $client_id = intval($_GET['client_id']);
 
@@ -210,35 +213,82 @@ if (isset($_GET['client_id'])) {
         $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('trip_id') AS num FROM trips WHERE trip_archived_at IS NULL AND trip_client_id = $client_id"));
         $num_trips = $row['num'];
 
-        $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('item_id') AS num FROM shared_items WHERE item_client_id = $client_id"));
-        $num_shared_links = $row['num'];
-
-        $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('log_id') AS num FROM logs WHERE log_client_id = $client_id"));
-        $num_logs = $row['num'];
-
         // Expiring Items
 
-        // Count Domains Expiring within 30 Days
+        // Count Domains Expiring within 90 Days
         $row = mysqli_fetch_assoc(mysqli_query(
             $mysqli,
             "SELECT COUNT('domain_id') AS num FROM domains
             WHERE domain_client_id = $client_id
             AND domain_expire IS NOT NULL
-            AND domain_expire < CURRENT_DATE + INTERVAL 30 DAY
+            AND domain_expire < CURRENT_DATE + INTERVAL 90 DAY
             AND domain_archived_at IS NULL"
         ));
         $num_domains_expiring = intval($row['num']);
 
-        // Count Certificates Expiring within 30 Days
+        // Count Domains Expired or within 14 days
+        $row = mysqli_fetch_assoc(mysqli_query(
+            $mysqli,
+            "SELECT COUNT('domain_id') AS num FROM domains
+            WHERE domain_client_id = $client_id
+            AND domain_expire IS NOT NULL
+            AND (
+                    domain_expire < CURRENT_DATE
+                    OR domain_expire < CURRENT_DATE + INTERVAL 14 DAY
+                )
+            AND domain_archived_at IS NULL"
+        ));
+        $num_domains_expired = intval($row['num']);
+
+        // Count Certificates Expiring within 90 Days
         $row = mysqli_fetch_assoc(mysqli_query(
             $mysqli,
             "SELECT COUNT('certificate_id') AS num FROM certificates
             WHERE certificate_client_id = $client_id
             AND certificate_expire IS NOT NULL
-            AND certificate_expire < CURRENT_DATE + INTERVAL 30 DAY
+            AND certificate_expire < CURRENT_DATE + INTERVAL 90 DAY
             AND certificate_archived_at IS NULL"
         ));
-        $num_certs_expiring = intval($row['num']);
+        $num_certificates_expiring = intval($row['num']);
+
+        // Count Certificates Expired or within 14 days
+        $row = mysqli_fetch_assoc(mysqli_query(
+            $mysqli,
+            "SELECT COUNT('certificate_id') AS num FROM certificates
+            WHERE certificate_client_id = $client_id
+            AND certificate_expire IS NOT NULL
+            AND (
+                    certificate_expire < CURRENT_DATE
+                    OR certificate_expire < CURRENT_DATE + INTERVAL 14 DAY
+                )
+            AND certificate_archived_at IS NULL"
+        ));
+        $num_certificates_expired = intval($row['num']);
+
+        // Count Software Expiring within 90 Days
+        $row = mysqli_fetch_assoc(mysqli_query(
+            $mysqli,
+            "SELECT COUNT('software_id') AS num FROM software
+            WHERE software_client_id = $client_id
+            AND software_expire IS NOT NULL
+            AND software_expire < CURRENT_DATE + INTERVAL 90 DAY
+            AND software_archived_at IS NULL"
+        ));
+        $num_software_expiring = intval($row['num']);
+
+        // Count Software Expired or within 14 days
+        $row = mysqli_fetch_assoc(mysqli_query(
+            $mysqli,
+            "SELECT COUNT('software_id') AS num FROM software
+            WHERE software_client_id = $client_id
+            AND software_expire IS NOT NULL
+            AND (
+                    software_expire < CURRENT_DATE
+                    OR software_expire < CURRENT_DATE + INTERVAL 14 DAY
+                )
+            AND software_archived_at IS NULL"
+        ));
+        $num_software_expired = intval($row['num']);
 
     }
 }
@@ -255,7 +305,7 @@ require_once "inc_alert_feedback.php";
 
 require_once "inc_client_top_head.php";
 
-require_once "pagination_head.php";
+require_once "filter_header.php";
 
 ?>
 

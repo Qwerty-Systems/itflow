@@ -6,6 +6,8 @@ $order = "ASC";
 
 require_once "inc_all_client.php";
 
+// Perms
+enforceUserPermission('module_support');
 
 //Rebuild URL
 $url_query_strings_sort = http_build_query($get_copy);
@@ -84,10 +86,26 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                             </div>
                         </td>
-                        <th><a class="text-dark">Subject</a></th>
-                        <th><a class="text-dark">Priority</a></th>
-                        <th><a class="text-dark">Frequency</a></th>
-                        <th><a class="text-dark">Next Run Date</a></th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=scheduled_ticket_subject&order=<?php echo $disp; ?>">
+                                Subject <?php if ($sort == 'scheduled_ticket_subject') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=scheduled_ticket_priority&order=<?php echo $disp; ?>">
+                                Priority <?php if ($sort == 'scheduled_ticket_priority') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=scheduled_ticket_frequency&order=<?php echo $disp; ?>">
+                                Frequency <?php if ($sort == 'scheduled_ticket_frequency') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=scheduled_ticket_next_run&order=<?php echo $disp; ?>">
+                                Next Run Date <?php if ($sort == 'scheduled_ticket_next_run') { echo $order_icon; } ?>
+                            </a>
+                        </th>
                         <th class="text-center">Action</th>
                     </tr>
                     </thead>

@@ -7,13 +7,16 @@ $order = "DESC";
 
 require_once "inc_all_client.php";
 
+// Perms
+enforceUserPermission('module_support');
+
 if (isset($_GET['status']) && ($_GET['status']) == 'Closed') {
     $status = 'Closed';
-    $ticket_status_snippet = "ticket_closed_at IS NOT NULL";
+    $ticket_status_snippet = "ticket_resolved_at IS NOT NULL";
 } else {
     // Default - Show open tickets
     $status = 'Open';
-    $ticket_status_snippet = "ticket_closed_at IS NULL";
+    $ticket_status_snippet = "ticket_resolved_at IS NULL";
 }
 
 if (isset($_GET['billable']) && ($_GET['billable']) == '1') {
@@ -49,12 +52,12 @@ $sql = mysqli_query(
 $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
 //Get Total tickets open
-$sql_total_tickets_open = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_open FROM tickets WHERE ticket_client_id = $client_id AND ticket_closed_at IS NULL");
+$sql_total_tickets_open = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_open FROM tickets WHERE ticket_client_id = $client_id AND ticket_resolved_at IS NULL");
 $row = mysqli_fetch_array($sql_total_tickets_open);
 $total_tickets_open = intval($row['total_tickets_open']);
 
 //Get Total tickets closed
-$sql_total_tickets_closed = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_closed FROM tickets WHERE ticket_client_id = $client_id AND ticket_closed_at IS NOT NULL");
+$sql_total_tickets_closed = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_closed FROM tickets WHERE ticket_client_id = $client_id AND ticket_resolved_at IS NOT NULL");
 $row = mysqli_fetch_array($sql_total_tickets_closed);
 $total_tickets_closed = intval($row['total_tickets_closed']);
 
@@ -73,16 +76,14 @@ $total_tickets_closed = intval($row['total_tickets_closed']);
                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addTicketModal">
                     <i class="fas fa-plus mr-2"></i>New Ticket
                 </button>
+                <?php if ($num_rows[0] > 0) { ?>
                 <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
                 <div class="dropdown-menu">
-                    <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#addTicketFromTemplateModal">
-                        <i class="fa fa-fw fa-plus mr-2"></i>From Template
-                    </a>
-                    <div class="dropdown-divider"></div>
                     <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportTicketModal">
                         <i class="fa fa-fw fa-download mr-2"></i>Export
                     </a>
                 </div>
+                <?php } ?>
             </div>
         </div>
     </div>
@@ -110,20 +111,55 @@ $total_tickets_closed = intval($row['total_tickets_closed']);
         <div class="table-responsive-sm">
             <table class="table table-striped table-borderless table-hover">
                 <thead class="text-dark <?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
-                <tr>
-                    <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_number&order=<?php echo $disp; ?>">Number</a></th>
-                    <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_subject&order=<?php echo $disp; ?>">Subject</a></th>
-                    <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">Contact</a></th>
-                    <?php if ($config_module_enable_accounting) { ?>
-                        <th class="text-center"><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_billable&order=<?php echo $disp; ?>">Billable</a></th>
-                    <?php } ?>
-                    <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_priority&order=<?php echo $disp; ?>">Priority</a></th>
-                    <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_status&order=<?php echo $disp; ?>">Status</a></th>
-                    <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=user_name&order=<?php echo $disp; ?>">Assigned</a></th>
-                    <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_updated_at&order=<?php echo $disp; ?>">Last Response</a></th>
-                    <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_created_at&order=<?php echo $disp; ?>">Created</a></th>
-
-                </tr>
+                    <tr>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_number&order=<?php echo $disp; ?>">
+                                Number <?php if ($sort == 'ticket_number') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_subject&order=<?php echo $disp; ?>">
+                                Subject <?php if ($sort == 'ticket_subject') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=contact_name&order=<?php echo $disp; ?>">
+                                Contact <?php if ($sort == 'contact_name') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <?php if ($config_module_enable_accounting && lookupUserPermission("module_sales") >= 2) { ?>
+                            <th class="text-center">
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_billable&order=<?php echo $disp; ?>">
+                                    Billable <?php if ($sort == 'ticket_billable') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                        <?php } ?>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_priority&order=<?php echo $disp; ?>">
+                                Priority <?php if ($sort == 'ticket_priority') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_status&order=<?php echo $disp; ?>">
+                                Status <?php if ($sort == 'ticket_status') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=user_name&order=<?php echo $disp; ?>">
+                                Assigned <?php if ($sort == 'user_name') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_updated_at&order=<?php echo $disp; ?>">
+                                Last Response <?php if ($sort == 'ticket_updated_at') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                        <th>
+                            <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_created_at&order=<?php echo $disp; ?>">
+                                Created <?php if ($sort == 'ticket_created_at') { echo $order_icon; } ?>
+                            </a>
+                        </th>
+                    </tr>
                 </thead>
                 <tbody>
                 <?php
@@ -215,7 +251,7 @@ $total_tickets_closed = intval($row['total_tickets_closed']);
 
                     ?>
 
-                    <tr class="<?php if(empty($ticket_reply_created_at)) { echo "text-bold"; }?> <?php if ($ticket_reply_type == "Client") { echo "table-warning"; } ?>">
+                    <tr class="<?php if(empty($ticket_reply_created_at)) { echo "text-bold"; }?> <?php if (empty($ticket_closed_at) && $ticket_reply_type == "Client") { echo "table-warning"; } ?>">
 
                         <!-- Ticket Number -->
                         <td>
@@ -232,8 +268,8 @@ $total_tickets_closed = intval($row['total_tickets_closed']);
                             <a href="#" data-toggle="modal" data-target="#editTicketContactModal<?php echo $ticket_id; ?>"><?php echo $contact_display; ?></a>
                         </td>
 
-                        <!-- Ticket Billable (if accounting enabled -->
-                        <?php if ($config_module_enable_accounting) { ?>
+                        <!-- Ticket Billable (if accounting perms & enabled) -->
+                        <?php if ($config_module_enable_accounting && lookupUserPermission("module_sales") >= 2) { ?>
                             <td class="text-center">
                                 <a href="#" data-toggle="modal" data-target="#editTicketBillableModal<?php echo $ticket_id; ?>">
                                     <?php
@@ -263,15 +299,15 @@ $total_tickets_closed = intval($row['total_tickets_closed']);
 
                         <!-- Ticket Last Response -->
                         <td>
-                            <div title="<?php echo $ticket_reply_created_at; ?>"><?php echo $ticket_reply_created_at_time_ago; ?></div>
-                            <div><?php echo $ticket_reply_by_display; ?></div>
+                            <?php if (!empty($ticket_reply_created_at)) { ?>
+                                <div title="<?php echo $ticket_reply_created_at; ?>"><?php echo $ticket_reply_created_at_time_ago; ?></div>
+                                <div><?php echo $ticket_reply_by_display; ?></div>
+                            <?php } ?>
                         </td>
 
                         <!-- Ticket Created At -->
-                        <td>
+                        <td title="<?php echo $ticket_created_at; ?>">
                             <?php echo $ticket_created_at_time_ago; ?>
-                            <br>
-                            <small class="text-secondary"><?php echo $ticket_created_at; ?></small>
                         </td>
 
                     </tr>
@@ -305,7 +341,6 @@ $total_tickets_closed = intval($row['total_tickets_closed']);
 
 <?php
 require_once "ticket_add_modal.php";
-require_once "ticket_add_from_template_modal.php";
 
 require_once "client_ticket_export_modal.php";
 

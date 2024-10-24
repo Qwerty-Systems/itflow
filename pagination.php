@@ -10,7 +10,7 @@
 $total_found_rows = $num_rows[0];
 $total_pages = ceil($total_found_rows / $user_config_records_per_page);
 
-if ($total_found_rows > 10) {
+if ($total_found_rows > 5) {
     $i = 0;
 
     ?>
@@ -59,9 +59,8 @@ if ($total_found_rows > 10) {
                     $next_class = "disabled";
                 }
                 $get_copy = $_GET; // create a copy of the $_GET array
-                //unset($get_copy['page']);
                 // Unset Array Var to prevent Duplicate Get VARs
-                unset($get_copy['page']); 
+                unset($get_copy['page']);
                 $url_query_strings_page = http_build_query($get_copy);
                 $prev_page = $page - 1;
                 $next_page  = $page + 1;

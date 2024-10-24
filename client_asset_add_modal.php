@@ -9,7 +9,7 @@
             </div>
 
             <form action="post.php" method="post" enctype="multipart/form-data" autocomplete="off">
-
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="client_id" value="<?php echo $client_id; ?>">
 
                 <div class="modal-body bg-white">
@@ -314,6 +314,18 @@
                                 </div>
                             </div>
 
+                            <?php if ($_GET['type'] !== 'virtual') { ?>
+                                <div class="form-group">
+                                    <label>Purchase Date</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text"><i class="fa fa-fw fa-shopping-cart"></i></span>
+                                        </div>
+                                        <input type="date" class="form-control" name="purchase_date" max="2999-12-31">
+                                    </div>
+                                </div>
+                            <?php } ?>
+
                             <div class="form-group">
                                 <label>Install Date</label>
                                 <div class="input-group">
@@ -325,15 +337,6 @@
                             </div>
 
                             <?php if ($_GET['type'] !== 'virtual') { ?>
-                                <div class="form-group">
-                                    <label>Purchase Date</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="fa fa-fw fa-shopping-cart"></i></span>
-                                        </div>
-                                        <input type="date" class="form-control" name="purchase_date" max="2999-12-31">
-                                    </div>
-                                </div>
                                 <div class="form-group">
                                     <label>Warranty Expire</label>
                                     <div class="input-group">

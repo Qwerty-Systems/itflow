@@ -11,7 +11,7 @@
             <form action="post.php" method="post" autocomplete="off">
                 <input type="hidden" name="quote_id" id="editQuoteID" value="">
 
-                <div class="modal-body bg-white">
+                <div class="modal-body bg-white" <?php if (lookupUserPermission('module_sales') <= 1) { echo 'inert'; } ?>>
 
                     <div class="form-group">
                         <label>Quote Date</label>
@@ -42,12 +42,12 @@
                             <select class="form-control select2" name="category" id="editQuoteCategory" required>
                             </select>
                             <div class="input-group-append">
-                                <a class="btn btn-secondary" href="admin_categories.php?category=Income" target="_blank"><i class="fas fa-fw fa-plus"></i></a>
+                                <a class="btn btn-secondary" href="admin_category.php?category=Income" target="_blank"><i class="fas fa-fw fa-plus"></i></a>
                             </div>
                         </div>
                     </div>
 
-                    
+
                     <div class='form-group'>
                         <label>Discount Amount</label>
                         <div class='input-group'>

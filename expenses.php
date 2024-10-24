@@ -6,6 +6,9 @@ $order = "DESC";
 
 require_once "inc_all.php";
 
+// Perms
+enforceUserPermission('module_financial');
+
 // Account Filter
 if (isset($_GET['account']) & !empty($_GET['account'])) {
     $account_query = 'AND (expense_account_id = ' . intval($_GET['account']) . ')';
@@ -105,6 +108,13 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkEditClientModal">
                                         <i class="fas fa-fw fa-user mr-2"></i>Set Client
                                     </a>
+                                    <?php if ($session_user_role == 3) { ?>
+                                    <div class="dropdown-divider"></div>
+                                    <button class="dropdown-item text-danger text-bold"
+                                            type="submit" form="bulkActions" name="bulk_delete_expenses">
+                                        <i class="fas fa-fw fa-trash mr-2"></i>Delete
+                                    </button>
+                                    <?php } ?>
                                 </div>
                             </div>
                         </div>
@@ -205,6 +215,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
             </form>
             <hr>
             <form id="bulkActions" action="post.php" method="post">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
+
                 <div class="table-responsive-sm">
                     <table class="table table-striped table-borderless table-hover">
                         <thead class="text-dark <?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
@@ -214,13 +226,41 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                 </div>
                             </td>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=expense_date&order=<?php echo $disp; ?>">Date</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=vendor_name&order=<?php echo $disp; ?>">Vendor</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=category_name&order=<?php echo $disp; ?>">Category</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=expense_description&order=<?php echo $disp; ?>">Description</a></th>
-                            <th class="text-right"><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=expense_amount&order=<?php echo $disp; ?>">Amount</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=account_name&order=<?php echo $disp; ?>">Account</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">Client</a></th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=expense_date&order=<?php echo $disp; ?>">
+                                    Date <?php if ($sort == 'expense_date') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=vendor_name&order=<?php echo $disp; ?>">
+                                    Vendor <?php if ($sort == 'vendor_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=category_name&order=<?php echo $disp; ?>">
+                                    Category <?php if ($sort == 'category_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=expense_description&order=<?php echo $disp; ?>">
+                                    Description <?php if ($sort == 'expense_description') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th class="text-right">
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=expense_amount&order=<?php echo $disp; ?>">
+                                    Amount <?php if ($sort == 'expense_amount') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=account_name&order=<?php echo $disp; ?>">
+                                    Account <?php if ($sort == 'account_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">
+                                    Client <?php if ($sort == 'client_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <th class="text-center">Action</th>
                         </tr>
                         </thead>
@@ -253,7 +293,9 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             if (empty($expense_receipt)) {
                                 $receipt_attached = "";
                             } else {
-                                $receipt_attached = "<a class='text-secondary mr-2' target='_blank' href='uploads/expenses/$expense_receipt' download='$expense_date-$vendor_name-$category_name-$expense_id.pdf'><i class='fa fa-file-pdf'></i></a>";
+                                $path_info = pathinfo($expense_receipt);
+                                $ext = $path_info['extension'];
+                                $receipt_attached = "<a class='text-secondary mr-2' target='_blank' href='uploads/expenses/$expense_receipt' download='$expense_date-$vendor_name-$category_name-$expense_id.$ext'><i class='fa fa-file'></i></a>";
                             }
 
                             ?>

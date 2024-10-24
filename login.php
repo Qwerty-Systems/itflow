@@ -39,6 +39,7 @@ if ($failed_login_count >= 15) {
     mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Login', log_action = 'Blocked', log_description = '$ip was blocked access to login due to IP lockout', log_ip = '$ip', log_user_agent = '$user_agent'");
 
     // Inform user & quit processing page
+    header("HTTP/1.1 429 Too Many Requests");
     exit("<h2>$config_app_name</h2>Your IP address has been blocked due to repeated failed login attempts. Please try again later. <br><br>This action has been logged.");
 }
 
@@ -102,7 +103,7 @@ if (isset($_POST['login'])) {
         $current_code = intval($_POST['current_code']);
     }
 
-    $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT * FROM users LEFT JOIN user_settings on users.user_id = user_settings.user_id WHERE user_email = '$email' AND user_archived_at IS NULL AND user_status = 1"));
+    $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT * FROM users LEFT JOIN user_settings on users.user_id = user_settings.user_id WHERE user_email = '$email' AND user_archived_at IS NULL AND user_status = 1 AND user_type = 1"));
 
     // Check password
     if ($row && password_verify($password, $row['user_password'])) {
@@ -145,7 +146,7 @@ if (isset($_POST['login'])) {
         }
 
         // Validate MFA code
-        if (TokenAuth6238::verify($token, $current_code)) {
+        if (!empty($current_code) && TokenAuth6238::verify($token, $current_code)) {
             $mfa_is_complete = true;
             $extended_log = 'with 2FA';
         }
@@ -378,8 +379,8 @@ if (isset($_POST['login'])) {
                 <button type="submit" class="btn btn-primary btn-block mb-3" name="login">Sign In</button>
 
                 <?php if($config_client_portal_enable == 1){ ?>
-                <hr>
-                <h5 class="text-center">Looking for the <a href="portal">Client Portal?<a/></h5>
+                    <hr>
+                    <h5 class="text-center">Looking for the <a href="portal">Client Portal?<a/></h5>
                 <?php } ?>
 
             </form>

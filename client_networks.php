@@ -6,6 +6,8 @@ $order = "ASC";
 
 require_once "inc_all_client.php";
 
+// Perms
+enforceUserPermission('module_support');
 
 //Rebuild URL
 $url_query_strings_sb = http_build_query(array_merge($_GET, array('sort' => $sort, 'order' => $order)));
@@ -30,12 +32,14 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
             <div class="card-tools">
                 <div class="btn-group">
                     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addNetworkModal"><i class="fas fa-plus mr-2"></i>New Network</button>
-                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportNetworkModal">
-                            <i class="fa fa-fw fa-download mr-2"></i>Export
-                        </a>
-                    </div>
+                    <?php if ($num_rows[0] > 0) { ?>
+                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportNetworkModal">
+                                <i class="fa fa-fw fa-download mr-2"></i>Export
+                            </a>
+                        </div>
+                    <?php } ?>
                 </div>
 
             </div>
@@ -83,16 +87,44 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         <tr>
                             <td class="pr-0">
                                 <div class="form-check">
-                                    <input class="form-check-input" id="selectAllCheckbox"  type="checkbox" onclick="checkAll(this)">
+                                    <input class="form-check-input" id="selectAllCheckbox" type="checkbox" onclick="checkAll(this)">
                                 </div>
                             </td>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_name&order=<?php echo $disp; ?>">Name</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_vlan&order=<?php echo $disp; ?>">vLAN</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network&order=<?php echo $disp; ?>">IP / Network</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_gateway&order=<?php echo $disp; ?>">Gateway</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_primary_dns&order=<?php echo $disp; ?>">DNS</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_dhcp_range&order=<?php echo $disp; ?>">DHCP Range</a></th>
-                            <th><a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=location_name&order=<?php echo $disp; ?>">Location</a></th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_name&order=<?php echo $disp; ?>">
+                                    Name <?php if ($sort == 'network_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_vlan&order=<?php echo $disp; ?>">
+                                    vLAN <?php if ($sort == 'network_vlan') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network&order=<?php echo $disp; ?>">
+                                    IP / Network <?php if ($sort == 'network') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_gateway&order=<?php echo $disp; ?>">
+                                    Gateway <?php if ($sort == 'network_gateway') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_primary_dns&order=<?php echo $disp; ?>">
+                                    DNS <?php if ($sort == 'network_primary_dns') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=network_dhcp_range&order=<?php echo $disp; ?>">
+                                    DHCP Range <?php if ($sort == 'network_dhcp_range') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-secondary" href="?<?php echo $url_query_strings_sb; ?>&sort=location_name&order=<?php echo $disp; ?>">
+                                    Location <?php if ($sort == 'location_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <th class="text-center">Action</th>
                         </tr>
                         </thead>
@@ -115,7 +147,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             $network_primary_dns = nullable_htmlentities($row['network_primary_dns']);
                             $network_secondary_dns = nullable_htmlentities($row['network_secondary_dns']);
                             if ($network_primary_dns && $network_secondary_dns) {
-                                $network_dns_display = "$network_primary_dns<div class='text-secondary mt-1'>$network_secondary_dns</div>";   
+                                $network_dns_display = "$network_primary_dns<div class='text-secondary mt-1'>$network_secondary_dns</div>";
                             } else {
                                 $network_dns_display = "-";
                             }
