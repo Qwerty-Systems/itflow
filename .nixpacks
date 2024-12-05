@@ -1,9 +1,10 @@
 {
   "phases": {
-    "setup": {
+    "postdeploy": {
       "commands": [
-        "chmod -R 775 /app",
-        "chown -R www-data:www-data /app"
+        "echo 'Fixing permissions for the root directory...'",
+        "chmod -R 775 /",               // Grant write permissions
+        "chown -R www-data:www-data /"  // Set ownership to the webserver user
       ]
     }
   }
