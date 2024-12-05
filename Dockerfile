@@ -4,16 +4,22 @@ FROM debian:bullseye-slim
 # Set environment variables to avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Update apt repository and install required packages, including PHP 8.3 from Sury repository
+# Install required dependencies for adding repositories
 RUN apt-get update && \
     apt-get install -y \
     ca-certificates \
     lsb-release \
-    apt-transport-https && \
-    echo "deb https://packages.sury.org/php/ $(lsb_release -cs) main" | tee -a /etc/apt/sources.list.d/sury-php.list && \
+    apt-transport-https \
+    curl && \
+    apt-get clean
+
+# Add the Sury PHP repository
+RUN echo "deb https://packages.sury.org/php/ $(lsb_release -cs) main" | tee -a /etc/apt/sources.list.d/sury-php.list && \
     curl -fsSL https://packages.sury.org/php/apt.gpg | tee /etc/apt/trusted.gpg.d/sury.asc && \
-    apt-get update && \
-    apt-get install -y \
+    apt-get update
+
+# Install PHP 8.3 and Apache packages
+RUN apt-get install -y \
     apache2 \
     mariadb-server \
     php8.3 \
@@ -27,11 +33,10 @@ RUN apt-get update && \
     libapache2-mod-php8.3 \
     git \
     whois \
-    ufw \
-    curl && \
+    ufw && \
     apt-get clean
 
-# Enable required Apache modules (SSL, PHP, etc.)
+# Enable required Apache modules (SSL, PHP)
 RUN a2enmod ssl && \
     a2enmod php8.3
 
