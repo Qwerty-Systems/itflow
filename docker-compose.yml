@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: itflow-app
     ports:
-      - "${ITFLOW_PORT}:${ITFLOW_PORT}" # Bind the container's port to the host
+      - "5656:8080" # Bind the container's port to the host
     environment:
       - TZ=${TZ}
       - ITFLOW_NAME=${ITFLOW_NAME}
@@ -22,19 +22,6 @@ services:
       - ./data:/var/www/html # Bind mount for persistent storage (optional)
     depends_on:
       - itflow-db
-
-  itflow-db:
-    image: mariadb:latest
-    container_name: itflow-db
-    environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword # Replace with a secure password
-      - MYSQL_DATABASE=itflow_db
-      - MYSQL_USER=itflow
-      - MYSQL_PASSWORD=${ITFLOW_DB_PASS}
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql # Persistent database storage
 
 volumes:
   db_data:
