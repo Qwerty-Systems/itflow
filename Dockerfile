@@ -36,12 +36,12 @@ RUN echo "upload_max_filesize = 500M" >> /etc/php/8.3/apache2/php.ini && \
     echo "post_max_size = 500M" >> /etc/php/8.3/apache2/php.ini
 
 # Configure SSL (using Let's Encrypt or your own certificates)
-RUN mkdir -p /etc/ssl/certs /etc/ssl/private && \
-    touch /etc/ssl/certs/public.pem /etc/ssl/private/private.key
+# RUN mkdir -p /etc/ssl/certs /etc/ssl/private && \
+#     touch /etc/ssl/certs/public.pem /etc/ssl/private/private.key
 
 # Configure Apache SSL settings
-RUN sed -i 's|SSLCertificateKeyFile /etc/ssl/certs/ssl-cert-snakeoil.key|SSLCertificateKeyFile /etc/ssl/private/private.key|' /etc/apache2/sites-available/default-ssl.conf && \
-    sed -i 's|SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem|SSLCertificateFile /etc/ssl/certs/public.pem|' /etc/apache2/sites-available/default-ssl.conf
+# RUN sed -i 's|SSLCertificateKeyFile /etc/ssl/certs/ssl-cert-snakeoil.key|SSLCertificateKeyFile /etc/ssl/private/private.key|' /etc/apache2/sites-available/default-ssl.conf && \
+#     sed -i 's|SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem|SSLCertificateFile /etc/ssl/certs/public.pem|' /etc/apache2/sites-available/default-ssl.conf
 
 # Add ITFlow from GitHub
 WORKDIR /var/www/html
@@ -50,11 +50,11 @@ RUN rm -f index.html && \
     chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html
 
-# Set the database for ITFlow
-RUN mysql -u root -e "CREATE DATABASE itflow;" && \
-    mysql -u root -e "CREATE USER 'itflow'@'localhost' IDENTIFIED BY 'supersecurepassword';" && \
-    mysql -u root -e "GRANT ALL PRIVILEGES ON itflow.* TO 'itflow'@'localhost';" && \
-    mysql -u root -e "FLUSH PRIVILEGES;"
+# # Set the database for ITFlow
+# RUN mysql -u root -e "CREATE DATABASE itflow;" && \
+#     mysql -u root -e "CREATE USER 'itflow'@'localhost' IDENTIFIED BY 'supersecurepassword';" && \
+#     mysql -u root -e "GRANT ALL PRIVILEGES ON itflow.* TO 'itflow'@'localhost';" && \
+#     mysql -u root -e "FLUSH PRIVILEGES;"
 
 # Expose ports
 EXPOSE 80 443
