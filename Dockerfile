@@ -7,18 +7,18 @@ ENV TZ Etc/UTC
 
 ENV ITFLOW_NAME ITFlow
 
-ENV ITFLOW_URL demo.itflow.org
+ENV ITFLOW_URL app.qwerty.co.ke
 
 ENV ITFLOW_PORT 8080
 
-ENV ITFLOW_REPO github.com/itflow-org/itflow
+ENV ITFLOW_REPO github.com/Qwerty-Systems/itflow
 
 ENV ITFLOW_REPO_BRANCH master
 
 # apache2 log levels: emerg, alert, crit, error, warn, notice, info, debug
 ENV ITFLOW_LOG_LEVEL warn
 
-ENV ITFLOW_DB_HOST itflow-db
+ENV ITFLOW_DB_HOST 157.230.103.101
 
 ENV ITFLOW_DB_PASS null
 
