@@ -7,8 +7,8 @@ services:
       dockerfile: Dockerfile
     container_name: itflow_apache
     ports:
-      - "80:80"
-      - "443:443"
+      - "8090:80"
+      - "4439:443"
     volumes:
       - ./data:/var/www/html
     networks:
