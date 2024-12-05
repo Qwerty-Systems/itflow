@@ -1,0 +1,10 @@
+{
+  "phases": {
+    "setup": {
+      "commands": [
+        "chmod -R 775 /app",
+        "chown -R www-data:www-data /app"
+      ]
+    }
+  }
+}
