@@ -25,7 +25,7 @@ RUN apt-get update && \
     apt-get clean
 
 # Harden MariaDB and set it up
-RUN mysql_secure_installation --use-default --skip-test-db
+#RUN mysql_secure_installation --use-default --skip-test-db
 
 # Enable required Apache modules (SSL, PHP, etc.)
 RUN a2enmod ssl && \
