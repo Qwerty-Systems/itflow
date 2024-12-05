@@ -1,4 +1,4 @@
-{
+/* {
   "phases": {
     "postdeploy": {
       "commands": [
@@ -9,3 +9,4 @@
     }
   }
 }
+ */
