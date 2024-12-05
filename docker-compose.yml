@@ -6,7 +6,7 @@ services:
     container_name: php_app
     working_dir: /var/www/html
     volumes:
-      - ./src:/var/www/html
+      - ./:/var/www/html
       - ./php.ini:/usr/local/etc/php/php.ini # Custom PHP configuration (optional)
     networks:
       - app_network
