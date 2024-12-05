@@ -28,8 +28,8 @@ RUN apt-get update && \
 #RUN mysql_secure_installation --use-default --skip-test-db
 
 # Enable required Apache modules (SSL, PHP, etc.)
-RUN a2enmod ssl && \
-    a2enmod php8.3
+# RUN a2enmod ssl && \
+#     a2enmod php8.3
 
 # Set PHP file upload limits
 RUN echo "upload_max_filesize = 500M" >> /etc/php/8.3/apache2/php.ini && \
