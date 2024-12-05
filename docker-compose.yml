@@ -20,8 +20,6 @@ services:
       - ITFLOW_DB_PASS=${ITFLOW_DB_PASS}
     volumes:
       - ./data:/var/www/html # Bind mount for persistent storage (optional)
-    depends_on:
-      - itflow-db
 
 volumes:
   db_data:
