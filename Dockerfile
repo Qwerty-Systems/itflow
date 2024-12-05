@@ -1,78 +1,68 @@
-FROM ubuntu:22.04
+# Use the official Debian base image (for Ubuntu, you can use ubuntu:latest)
+FROM debian:bullseye-slim
 
-LABEL dockerfile.version="v1.3" dockerfile.release-date="2023-02-04"
+# Set environment variables to avoid interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Set up ENVs that will be utilized in compose file.
-ENV TZ Etc/UTC
+# Update apt repository and install required packages
+RUN apt-get update && \
+    apt-get install -y \
+    apache2 \
+    mariadb-server \
+    php \
+    php-intl \
+    php-imap \
+    php-mailparse \
+    php-mysqli \
+    php-curl \
+    php-gd \
+    php-mbstring \
+    libapache2-mod-php \
+    git \
+    whois \
+    ufw \
+    curl && \
+    apt-get clean
 
-ENV ITFLOW_NAME ITFlow
+# Harden MariaDB and set it up
+RUN mysql_secure_installation --use-default --skip-test-db
 
-ENV ITFLOW_URL app.qwerty.co.ke
+# Enable required Apache modules (SSL, PHP, etc.)
+RUN a2enmod ssl && \
+    a2enmod php8.3
 
-ENV ITFLOW_PORT 8080
+# Set PHP file upload limits
+RUN echo "upload_max_filesize = 500M" >> /etc/php/8.3/apache2/php.ini && \
+    echo "post_max_size = 500M" >> /etc/php/8.3/apache2/php.ini
 
-ENV ITFLOW_REPO github.com/Qwerty-Systems/itflow
+# Configure SSL (using Let's Encrypt or your own certificates)
+RUN mkdir -p /etc/ssl/certs /etc/ssl/private && \
+    touch /etc/ssl/certs/public.pem /etc/ssl/private/private.key
 
-ENV ITFLOW_REPO_BRANCH master
+# Configure Apache SSL settings
+RUN sed -i 's|SSLCertificateKeyFile /etc/ssl/certs/ssl-cert-snakeoil.key|SSLCertificateKeyFile /etc/ssl/private/private.key|' /etc/apache2/sites-available/default-ssl.conf && \
+    sed -i 's|SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem|SSLCertificateFile /etc/ssl/certs/public.pem|' /etc/apache2/sites-available/default-ssl.conf
 
-# apache2 log levels: emerg, alert, crit, error, warn, notice, info, debug
-ENV ITFLOW_LOG_LEVEL warn
-
-ENV ITFLOW_DB_HOST 157.230.103.101
-
-ENV ITFLOW_DB_PASS null
-
-# Set timezone from TZ ENV
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# PREREQS: php php-intl php-mysqli php-imap php-curl libapache2-mod-php mariadb-server git -y
-# Upgrade, then install prereqs.
-RUN apt-get update && apt-get upgrade -y && apt-get clean 
-
-# ITFlow Requirements
-RUN apt-get install -y \
-    git\
-    apache2\
-    php
-
-# Ubuntu quality of life installs
-RUN apt-get install -y \
-    vim\
-    cron\ 
-    dnsutils\
-    iputils-ping
-
-# Install & enable php extensions
-RUN apt-get install -y \ 
-    php-intl\
-    php-mysqli\
-    php-curl\
-    php-imap\
-    php-mailparse
-
-RUN apt-get install -y \
-    libapache2-mod-php\
-    libapache2-mod-md
-
-# Enable md apache mod
-RUN a2enmod md
-
-# Set the work dir to the git repo.
+# Add ITFlow from GitHub
 WORKDIR /var/www/html
+RUN rm -f index.html && \
+    git clone https://github.com/itflow-org/itflow.git . && \
+    chown -R www-data:www-data /var/www/html && \
+    chmod -R 775 /var/www/html
 
-# Entrypoint
-# On every run of the docker file, perform an entrypoint that verifies the container is good to go.
-COPY entrypoint.sh /usr/bin/
+# Set the database for ITFlow
+RUN mysql -u root -e "CREATE DATABASE itflow;" && \
+    mysql -u root -e "CREATE USER 'itflow'@'localhost' IDENTIFIED BY 'supersecurepassword';" && \
+    mysql -u root -e "GRANT ALL PRIVILEGES ON itflow.* TO 'itflow'@'localhost';" && \
+    mysql -u root -e "FLUSH PRIVILEGES;"
 
-RUN chmod +x /usr/bin/entrypoint.sh
+# Expose ports
+EXPOSE 80 443
 
-# forward request and error logs to docker log collector
-RUN ln -sf /dev/stdout /var/log/apache2/access.log && ln -sf /dev/stderr /var/log/apache2/error.log
+# Configure firewall (Optional for Docker, this might need to be handled externally)
+# RUN ufw allow ssh && \
+#     ufw allow "Apache Full" && \
+#     ufw enable
 
-ENTRYPOINT [ "entrypoint.sh" ]
-
-# Expose the apache port
-EXPOSE $ITFLOW_PORT
-
-# Start the httpd service and have logs appear in stdout
-CMD [ "apache2ctl", "-D", "FOREGROUND" ]
+# Start Apache and MariaDB services
+CMD service apache2 start && service mysql start && tail -f /dev/null
