@@ -1,8 +1,10 @@
 # Use the official Debian base image
 FROM debian:bullseye-slim
 
-# Set environment variables to avoid interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
+# Set environment variables for UTF-8 encoding
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
 
 # Install required dependencies for adding repositories
 RUN apt-get update && \
