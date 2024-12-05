@@ -1,25 +1,32 @@
-version: '3.9'
+version: '3.7'
 
 services:
-  itflow:
+  apache:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: itflow-app
+    container_name: itflow_apache
     ports:
-      - "5656:8080" # Bind the container's port to the host
-    environment:
-      - TZ=${TZ}
-      - ITFLOW_NAME=${ITFLOW_NAME}
-      - ITFLOW_URL=${ITFLOW_URL}
-      - ITFLOW_PORT=${ITFLOW_PORT}
-      - ITFLOW_REPO=${ITFLOW_REPO}
-      - ITFLOW_REPO_BRANCH=${ITFLOW_REPO_BRANCH}
-      - ITFLOW_LOG_LEVEL=${ITFLOW_LOG_LEVEL}
-      - ITFLOW_DB_HOST=${ITFLOW_DB_HOST}
-      - ITFLOW_DB_PASS=${ITFLOW_DB_PASS}
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./data:/var/www/html # Bind mount for persistent storage (optional)
+      - ./data:/var/www/html
+    networks:
+      - itflow-network
+
+
+
+  # Optional: Redis service for caching (if you want to use Redis)
+  redis:
+    image: redis:alpine
+    container_name: itflow_redis
+    networks:
+      - itflow-network
 
 volumes:
-  db_data:
+  mariadb_data:
+    driver: local
+
+networks:
+  itflow-network:
+    driver: bridge
