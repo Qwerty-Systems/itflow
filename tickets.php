@@ -107,10 +107,10 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
     </style>
     <div class="card card-dark">
         <div class="card-header py-2">
-            <h3 class="card-title mt-2"><i class="fa fa-fw fa-life-ring mr-2"></i>Support Tickets
+            <h3 class="card-title mt-2"><i class="fa fa-fw fa-life-ring mr-2"></i>Tickets
                 <small class="ml-3">
-                    <a href="?status=Open" class="text-white"><strong><?php echo $total_tickets_open; ?></strong> Open</a> |
-                    <a href="?status=Closed" class="text-white"><strong><?php echo $total_tickets_closed; ?></strong> Closed</a>
+                    <a href="?status=Open" class="text-light"><strong><?php echo $total_tickets_open; ?></strong> Open</a> |
+                    <a href="?status=Closed" class="text-light"><strong><?php echo $total_tickets_closed; ?></strong> Closed</a>
                 </small>
             </h3>
             <div class='card-tools'>
@@ -141,6 +141,7 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                                 </button>
                                 <div class="dropdown-menu">
                                     <a class="dropdown-item" href="?status=Open&assigned=<?php echo $session_user_id ?>">Active tickets (<?php echo $user_active_assigned_tickets ?>)</a>
+                                    <div class="dropdown-divider"></div>
                                     <a class="dropdown-item " href="?status=Closed&assigned=<?php echo $session_user_id ?>">Closed tickets</a>
                                 </div>
                             </div>

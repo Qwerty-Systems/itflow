@@ -44,7 +44,6 @@ $quote_discount = floatval($row['quote_discount_amount']);
 $quote_amount = floatval($row['quote_amount']);
 $quote_currency_code = nullable_htmlentities($row['quote_currency_code']);
 $quote_note = nullable_htmlentities($row['quote_note']);
-$category_id = intval($row['category_id']);
 $client_id = intval($row['client_id']);
 $client_name = nullable_htmlentities($row['client_name']);
 $client_name_escaped = sanitizeInput($row['client_name']);
@@ -92,7 +91,8 @@ if ($quote_status == 'Sent') {
 mysqli_query($mysqli, "INSERT INTO history SET history_status = '$quote_status', history_description = 'Quote viewed - $ip - $os - $browser', history_quote_id = $quote_id");
 
 if ($quote_status == "Draft" || $quote_status == "Sent" || $quote_status == "Viewed") {
-    mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Quote Viewed', notification = 'Quote $quote_prefix$quote_number has been viewed by $client_name_escaped - $ip - $os - $browser', notification_action = 'quote.php?quote_id=$quote_id', notification_client_id = $client_id, notification_entity_id = $quote_id");
+
+    appNotify("Quote Viewed", "Quote $quote_prefix$quote_number has been viewed by $client_name_escaped - $ip - $os - $browser", "quote.php?quote_id=$quote_id", $client_id);
 }
 
 ?>
@@ -272,10 +272,10 @@ if ($quote_status == "Draft" || $quote_status == "Sent" || $quote_status == "Vie
                 <?php
                     if ($quote_status == "Sent" || $quote_status == "Viewed" && strtotime($quote_expire) > strtotime("now")) {
                         ?>
-                        <a class="btn btn-success" href="guest_post.php?accept_quote=<?php echo $quote_id; ?>&url_key=<?php echo $url_key; ?>">
+                        <a class="btn btn-success confirm-link" href="guest_post.php?accept_quote=<?php echo $quote_id; ?>&url_key=<?php echo $url_key; ?>">
                             <i class="fas fa-fw fa-thumbs-up mr-2"></i>Accept
                         </a>
-                        <a class="btn btn-danger" href="guest_post.php?decline_quote=<?php echo $quote_id; ?>&url_key=<?php echo $url_key; ?>">
+                        <a class="btn btn-danger confirm-link" href="guest_post.php?decline_quote=<?php echo $quote_id; ?>&url_key=<?php echo $url_key; ?>">
                             <i class="fas fa-fw fa-thumbs-down mr-2"></i>Decline
                         </a>
                     <?php } ?>
@@ -710,7 +710,6 @@ if ($quote_status == "Draft" || $quote_status == "Sent" || $quote_status == "Vie
             }
         }
     </script>
-
 
 <?php
 require_once "guest_footer.php";

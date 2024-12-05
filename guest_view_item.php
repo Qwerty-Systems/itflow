@@ -81,7 +81,7 @@ $client_id = intval($row['item_client_id']);
 $item_type_sql_escaped = sanitizeInput($row['item_type']);
 $item_recipient_sql_escaped = sanitizeInput($row['item_recipient']);
 
-mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Share Viewed', notification = '$item_type_sql_escaped has been viewed by $item_recipient_sql_escaped', notification_action = 'client_overview.php?client_id=$client_id', notification_client_id = $client_id, notification_entity_id = $item_id");
+appNotify("Share Viewed", "$item_type_sql_escaped has been viewed by $item_recipient_sql_escaped", "client_overview.php?client_id=$client_id", $client_id);
 
 ?>
 
@@ -139,7 +139,8 @@ if ($item_type == "Document") {
 
     // Logging
     $name = mysqli_real_escape_string($mysqli, $doc_title);
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Sharing', log_action = 'View', log_description = 'Viewed shared $item_type $doc_title_escaped via link', log_client_id = $client_id, log_ip = '$ip', log_user_agent = '$user_agent'");
+    logAction("Share", "View", "Viewed shared $item_type $doc_title_escaped via link", $client_id);
+
 
 } elseif ($item_type == "File") {
     $file_sql = mysqli_query($mysqli, "SELECT * FROM files WHERE file_id = $item_related_id AND file_client_id = $client_id LIMIT 1");
@@ -254,7 +255,7 @@ if ($item_type == "Document") {
 
     // Logging
     $name = sanitizeInput($login_row['login_name']);
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Sharing', log_action = 'View', log_description = 'Viewed shared $item_type $name via link', log_client_id = $client_id, log_ip = '$ip', log_user_agent = '$user_agent'");
+    logAction("Share", "View", "Viewed shared $item_type $name via link", $client_id);
 
 }
 

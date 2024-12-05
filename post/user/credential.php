@@ -14,10 +14,18 @@ if (isset($_POST['add_login'])) {
 
     $login_id = mysqli_insert_id($mysqli);
 
-    // Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Credential', log_action = 'Create', log_description = '$session_name created login $name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $login_id");
+     // Add Tags
+    if (isset($_POST['tags'])) {
+        foreach($_POST['tags'] as $tag) {
+            $tag = intval($tag);
+            mysqli_query($mysqli, "INSERT INTO login_tags SET login_id = $login_id, tag_id = $tag");
+        }
+    }
 
-    $_SESSION['alert_message'] = "Login <strong>$name</strong> created";
+    // Logging
+    logAction("Credential", "Create", "$session_name created credential $name", $client_id, $login_id);
+
+    $_SESSION['alert_message'] = "Credential <strong>$name</strong> created";
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 
@@ -42,10 +50,22 @@ if (isset($_POST['edit_login'])) {
     // Update the login entry with the new details
     mysqli_query($mysqli,"UPDATE logins SET login_name = '$name', login_description = '$description', login_uri = '$uri', login_uri_2 = '$uri_2', login_username = '$username', login_password = '$password', login_otp_secret = '$otp_secret', login_note = '$note', login_important = $important, login_contact_id = $contact_id, login_vendor_id = $vendor_id, login_asset_id = $asset_id, login_software_id = $software_id WHERE login_id = $login_id");
 
-    // Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Credential', log_action = 'Modify', log_description = '$session_name modified login $name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $login_id");
+    // Tags
+    // Delete existing tags
+    mysqli_query($mysqli, "DELETE FROM login_tags WHERE login_id = $login_id");
 
-    $_SESSION['alert_message'] = "Login <strong>$name</strong> updated";
+    // Add new tags
+    if(isset($_POST['tags'])) {
+        foreach($_POST['tags'] as $tag) {
+            $tag = intval($tag);
+            mysqli_query($mysqli, "INSERT INTO login_tags SET login_id = $login_id, tag_id = $tag");
+        }
+    }
+
+    // Logging
+    logAction("Credential", "Edit", "$session_name edited credential $name", $client_id, $login_id);
+
+    $_SESSION['alert_message'] = "Login <strong>$name</strong> edited";
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 
@@ -66,7 +86,8 @@ if(isset($_GET['archive_login'])){
     mysqli_query($mysqli,"UPDATE logins SET login_archived_at = NOW() WHERE login_id = $login_id");
 
     //logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Credential', log_action = 'Archive', log_description = '$session_name archived login $login_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $login_id");
+    logAction("Credential", "Archive", "$session_name archived credential $login_name", $client_id, $login_id);
+
 
     $_SESSION['alert_type'] = "error";
     $_SESSION['alert_message'] = "Credential <strong>$login_name</strong> archived";
@@ -90,7 +111,7 @@ if(isset($_GET['unarchive_login'])){
     mysqli_query($mysqli,"UPDATE logins SET login_archived_at = NULL WHERE login_id = $login_id");
 
     //Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Login', log_action = 'Unarchive', log_description = '$session_name restored credential $login_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $login_id");
+    logAction("Credential", "Unarchive", "$session_name unarchived credential $login_name", $client_id, $login_id);
 
     $_SESSION['alert_message'] = "Credential <strong>$login_name</strong> restored";
 
@@ -112,16 +133,68 @@ if (isset($_GET['delete_login'])) {
     mysqli_query($mysqli,"DELETE FROM logins WHERE login_id = $login_id");
 
     // Remove Relations
-    mysqli_query($mysqli,"DELETE FROM client_logins WHERE login_id = $login_id");
+    mysqli_query($mysqli,"DELETE FROM contact_logins WHERE login_id = $login_id");
     mysqli_query($mysqli,"DELETE FROM service_logins WHERE login_id = $login_id");
     mysqli_query($mysqli,"DELETE FROM software_logins WHERE login_id = $login_id");
     mysqli_query($mysqli,"DELETE FROM vendor_logins WHERE login_id = $login_id");
 
 
     // Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Credential', log_action = 'Delete', log_description = '$session_name deleted login $login_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $login_id");
+    logAction("Credential", "Delete", "$session_name deleted credential $login_name", $client_id);
 
-    $_SESSION['alert_message'] = "Login <strong>$login_name</strong> deleted";
+    $_SESSION['alert_type'] = "error";
+    $_SESSION['alert_message'] = "Credential <strong>$login_name</strong> deleted";
+
+    header("Location: " . $_SERVER["HTTP_REFERER"]);
+
+}
+
+if (isset($_POST['bulk_assign_login_tags'])) {
+
+    enforceUserPermission('module_credential', 2);
+
+    // Assign tags to Selected Credentials
+    if (isset($_POST['login_ids'])) {
+
+        // Get Selected Credential Count
+        $count = count($_POST['login_ids']);
+
+        foreach($_POST['login_ids'] as $login_id) {
+            $login_id = intval($login_id);
+
+            // Get Contact Details for Logging
+            $sql = mysqli_query($mysqli,"SELECT login_name, login_client_id FROM logins WHERE login_id = $login_id");
+            $row = mysqli_fetch_array($sql);
+            $login_name = sanitizeInput($row['login_name']);
+            $client_id = intval($row['login_client_id']);
+
+            if($_POST['bulk_remove_tags']) {
+                // Delete tags if chosed to do so
+                mysqli_query($mysqli, "DELETE FROM login_tags WHERE login_id = $login_id");
+            }
+
+            // Add new tags
+            if (isset($_POST['bulk_tags'])) {
+                foreach($_POST['bulk_tags'] as $tag) {
+                    $tag = intval($tag);
+
+                    $sql = mysqli_query($mysqli,"SELECT * FROM login_tags WHERE login_id = $login_id AND tag_id = $tag");
+                    if (mysqli_num_rows($sql) == 0) {
+                        mysqli_query($mysqli, "INSERT INTO login_tags SET login_id = $login_id, tag_id = $tag");
+                    }
+                }
+            }
+
+            // Logging
+            logAction("Credential", "Edit", "$session_name added tags to $login_name", $client_id, $login_id);
+
+            $_SESSION['alert_message'] = "Assigned tags for <strong>$count</strong> credentials";
+
+        } // End Assign Loop
+
+        // Logging
+        logAction("Credential", "Bulk Edit", "$session_name added tags to $count credentials", $client_id);
+    }
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 
@@ -132,13 +205,13 @@ if (isset($_POST['bulk_archive_logins'])) {
     enforceUserPermission('module_credential', 2);
     validateCSRFToken($_POST['csrf_token']);
 
-    $count = 0; // Default 0
-    $login_ids = $_POST['login_ids']; // Get array of IDs to be deleted
+    if (isset($_POST['login_ids'])) {
 
-    if (!empty($login_ids)) {
+        // Get Selected Credential Count
+        $count = count($_POST['login_ids']);
 
         // Cycle through array and archive each record
-        foreach ($login_ids as $login_id) {
+        foreach ($_POST['login_ids'] as $login_id) {
 
             $login_id = intval($login_id);
 
@@ -151,15 +224,14 @@ if (isset($_POST['bulk_archive_logins'])) {
             mysqli_query($mysqli,"UPDATE logins SET login_archived_at = NOW() WHERE login_id = $login_id");
 
             // Individual Contact logging
-            mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Credential', log_action = 'Archive', log_description = '$session_name archived login $login_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $login_id");
-            $count++;
+            logAction("Credential", "Archive", "$session_name archived credential $login_name", $client_id, $login_id);
         }
 
         // Bulk Logging
-        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Credential', log_action = 'Archive', log_description = '$session_name archived $count logins', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id");
+        logAction("Credential", "Bulk Archive", "$session_name archived $count credentials", $client_id);
 
         $_SESSION['alert_type'] = "error";
-        $_SESSION['alert_message'] = "Archived $count credential(s)";
+        $_SESSION['alert_message'] = "Archived <strong>$count</strong> credential(s)";
 
     }
 
@@ -172,13 +244,13 @@ if (isset($_POST['bulk_unarchive_logins'])) {
 
     validateCSRFToken($_POST['csrf_token']);
 
-    $count = 0; // Default 0
-    $login_ids = $_POST['login_ids']; // Get array of IDs
+    if (isset($_POST['login_ids'])) {
 
-    if (!empty($login_ids)) {
+        // Get Selected Credential Count
+        $count = count($_POST['login_ids']);
 
         // Cycle through array and unarchive
-        foreach ($login_ids as $login_id) {
+        foreach ($_POST['login_ids'] as $login_id) {
 
             $login_id = intval($login_id);
 
@@ -191,16 +263,14 @@ if (isset($_POST['bulk_unarchive_logins'])) {
             mysqli_query($mysqli,"UPDATE logins SET login_archived_at = NULL WHERE login_id = $login_id");
 
             // Individual logging
-            mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Credential', log_action = 'Unarchive', log_description = '$session_name Unarchived login $logins_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $login_id");
+            logAction("Credential", "Unarchive", "$session_name unarchived credential $login_name", $client_id, $login_id);
 
-
-            $count++;
         }
 
         // Bulk Logging
-        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Credential', log_action = 'Unarchive', log_description = '$session_name Unarchived $count logins', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id");
+        logAction("Credential", "Bulk Unarchive", "$session_name unarchived $count credential(s)", $client_id);
 
-        $_SESSION['alert_message'] = "Unarchived $count credential(s)";
+        $_SESSION['alert_message'] = "Unarchived <strong>$count</strong> credential(s)";
 
     }
 
@@ -213,13 +283,13 @@ if (isset($_POST['bulk_delete_logins'])) {
 
     validateCSRFToken($_POST['csrf_token']);
 
-    $count = 0; // Default 0
-    $login_ids = $_POST['login_ids']; // Get array of IDs to be deleted
+    if (isset($_POST['login_ids'])) {
 
-    if (!empty($login_ids)) {
+        // Get Selected Credential Count
+        $count = count($_POST['login_ids']);
 
         // Cycle through array and delete each record
-        foreach ($login_ids as $login_id) {
+        foreach ($_POST['login_ids'] as $login_id) {
 
             $login_id = intval($login_id);
 
@@ -229,24 +299,24 @@ if (isset($_POST['bulk_delete_logins'])) {
             $login_name = sanitizeInput($row['login_name']);
             $client_id = intval($row['login_client_id']);
 
-
             mysqli_query($mysqli, "DELETE FROM logins WHERE login_id = $login_id AND login_client_id = $client_id");
 
             // Remove Relations
-            mysqli_query($mysqli,"DELETE FROM client_logins WHERE login_id = $login_id");
+            mysqli_query($mysqli,"DELETE FROM contact_logins WHERE login_id = $login_id");
             mysqli_query($mysqli,"DELETE FROM service_logins WHERE login_id = $login_id");
             mysqli_query($mysqli,"DELETE FROM software_logins WHERE login_id = $login_id");
             mysqli_query($mysqli,"DELETE FROM vendor_logins WHERE login_id = $login_id");
 
-            mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Credential', log_action = 'Delete', log_description = '$session_name deleted login $login_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $login_id");
+            // Logging
+            logAction("Credential", "Delete", "$session_name deleted credential $login_name", $client_id);
 
-            $count++;
         }
 
-        // Logging
-        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Credential', log_action = 'Delete', log_description = '$session_name bulk deleted $count logins', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id");
+        // Bulk Logging
+        logAction("Credential", "Bulk Delete", "$session_name deleted $count credential(s)", $client_id);
 
-        $_SESSION['alert_message'] = "Deleted $count credential(s)";
+        $_SESSION['alert_type'] = "error"; 
+        $_SESSION['alert_message'] = "Deleted <strong>$count</strong> credential(s)";
 
     }
 
@@ -298,7 +368,7 @@ if (isset($_POST['export_client_logins_csv'])) {
     }
 
     // Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Credential', log_action = 'Export', log_description = '$session_name exported $num_rows login(s) to a CSV file', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id");
+    logAction("Credential", "Export", "$session_name exported $num_rows credential(s) to a CSV file", $client_id);
 
     exit;
 
@@ -309,8 +379,16 @@ if (isset($_POST["import_client_logins_csv"])) {
     enforceUserPermission('module_credential', 2);
 
     $client_id = intval($_POST['client_id']);
-    $file_name = $_FILES["file"]["tmp_name"];
     $error = false;
+
+    if (!empty($_FILES["file"]["tmp_name"])) {
+        $file_name = $_FILES["file"]["tmp_name"];
+    } else {
+        $_SESSION['alert_message'] = "Please select a file to upload.";
+        $_SESSION['alert_type'] = "error";
+        header("Location: " . $_SERVER["HTTP_REFERER"]);
+        exit();
+    }
 
     //Check file is CSV
     $file_extension = strtolower(end(explode('.',$_FILES['file']['name'])));
@@ -372,10 +450,10 @@ if (isset($_POST["import_client_logins_csv"])) {
         }
         fclose($file);
 
-        //Logging
-        mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Credential', log_action = 'Import', log_description = '$session_name imported $row_count login(s) via csv file. $duplicate_count duplicate(s) detected and not imported', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id");
+        // Logging
+        logAction("Credential", "Import", "$session_name imported $row_count credential(s) via CSV file. $duplicate_count duplicate(s) found and not imported", $client_id);
 
-        $_SESSION['alert_message'] = "$row_count Login(s) imported, $duplicate_count duplicate(s) detected and not imported";
+        $_SESSION['alert_message'] = "$row_count credential(s) imported, $duplicate_count duplicate(s) detected and not imported";
         header("Location: " . $_SERVER["HTTP_REFERER"]);
     }
     //Check for any errors, if there are notify user and redirect

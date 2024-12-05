@@ -1,7 +1,11 @@
 <?php
 
-require_once "inc_all.php";
-
+// If client_id is in URI then show client Side Bar and client header
+if (isset($_GET['client_id'])) {
+    require_once "inc_all_client.php";
+} else { 
+    require_once "inc_all.php";
+}
 
 if (isset($_GET['invoice_id'])) {
 
@@ -140,12 +144,21 @@ if (isset($_GET['invoice_id'])) {
     ?>
 
     <ol class="breadcrumb d-print-none">
+        <?php if (isset($_GET['client_id'])) { ?>
+        <li class="breadcrumb-item">
+            <a href="client_overview.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="client_invoices.php?client_id=<?php echo $client_id; ?>">Invoices</a>
+        </li>
+        <?php } else { ?>
         <li class="breadcrumb-item">
             <a href="invoices.php">Invoices</a>
         </li>
         <li class="breadcrumb-item">
             <a href="client_invoices.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
         </li>
+        <?php } ?>
         <li class="breadcrumb-item active"><?php echo "$invoice_prefix$invoice_number"; ?></li>
         <?php if (isset($invoice_overdue)) { ?>
             <span class="p-2 ml-2 badge badge-danger"><?php echo $invoice_overdue; ?></span>
@@ -159,7 +172,7 @@ if (isset($_GET['invoice_id'])) {
             <div class="row">
 
                 <div class="col-8">
-                    <?php if ($invoice_status == 'Draft' && $invoice_amount != 0) { ?>
+                    <?php if ($invoice_status == 'Draft') { ?>
                         <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
                             <i class="fas fa-fw fa-paper-plane mr-2"></i>Send
                         </button>
@@ -181,6 +194,13 @@ if (isset($_GET['invoice_id'])) {
                             <i class="fa fa-fw fa-credit-card mr-2"></i>Add Payment
                         </a>
                     <?php } ?>
+                    
+                    <?php if (($invoice_status == 'Sent' || $invoice_status == 'Viewed') && $invoice_amount == 0 && $invoice_status !== 'Non-Billable') { ?>
+                        <a class="btn btn-dark" href="post.php?mark_invoice_non-billable=<?php echo $invoice_id; ?>">
+                            Mark Non-Billable
+                        </a>
+                    <?php } ?>
+                
                 </div>
 
                 <div class="col-4">
@@ -238,7 +258,7 @@ if (isset($_GET['invoice_id'])) {
                 <div class="col-sm-10">
                     <div class="ribbon-wrapper">
                         <div class="ribbon bg-<?php echo $invoice_badge_color; ?>">
-                            <?php echo $invoice_status; ?>
+                            <?php echo "$invoice_status"; ?>
                         </div>
                     </div>
                     <h3 class="text-right mt-5"><strong>Invoice</strong><br><small class="text-secondary"><?php echo "$invoice_prefix$invoice_number"; ?></small></h3>

@@ -1,5 +1,11 @@
 <?php
-require_once "inc_all.php";
+
+// If client_id is in URI then show client Side Bar and client header
+if (isset($_GET['client_id'])) {
+    require_once "inc_all_client.php";
+} else {
+    require_once "inc_all.php";
+}
 
 // Perms
 enforceUserPermission('module_support');
@@ -253,7 +259,7 @@ if (isset($_GET['ticket_id'])) {
         }
 
 
-        // Get all ticket replies
+        // Get ticket replies
         $sql_ticket_replies = mysqli_query($mysqli, "SELECT * FROM ticket_replies 
             LEFT JOIN users ON ticket_reply_by = user_id
             LEFT JOIN contacts ON ticket_reply_by = contact_id
@@ -262,17 +268,15 @@ if (isset($_GET['ticket_id'])) {
             ORDER BY ticket_reply_id DESC"
         );
 
-        // Get all Events
-        $sql_ticket_events = mysqli_query($mysqli, "SELECT * FROM logs 
-            LEFT JOIN users ON log_user_id = user_id
-            WHERE log_type = 'Ticket'
-            AND log_entity_id = $ticket_id
-            ORDER BY log_id DESC"
+        // Get ticket Events
+        $sql_ticket_events = mysqli_query($mysqli, "SELECT * FROM ticket_history
+            WHERE ticket_history_ticket_id = $ticket_id
+            ORDER BY ticket_history_id DESC"
         );
 
 
-        // Get other tickets for this asset
-        if (!empty($asset_id)) {
+        // Get past tickets for selected asset
+        if ($asset_id) {
             $sql_asset_tickets = mysqli_query($mysqli, "SELECT * FROM tickets WHERE ticket_asset_id = $asset_id ORDER BY ticket_number DESC");
             $ticket_asset_count = mysqli_num_rows($sql_asset_tickets);
         }
@@ -284,6 +288,7 @@ if (isset($_GET['ticket_id'])) {
             "SELECT users.user_id, user_name FROM users
             LEFT JOIN user_settings on users.user_id = user_settings.user_id
             WHERE user_role > 1
+            AND user_type = 1
             AND user_status = 1
             AND user_archived_at IS NULL
             ORDER BY user_name ASC"
@@ -338,13 +343,22 @@ if (isset($_GET['ticket_id'])) {
 
         <!-- Breadcrumbs-->
         <ol class="breadcrumb d-print-none">
+            <?php if (isset($_GET['client_id'])) { ?>
+            <li class="breadcrumb-item">
+                <a href="client_overview.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="client_tickets.php?client_id=<?php echo $client_id; ?>">Tickets</a>
+            </li>
+            <?php } else { ?>
             <li class="breadcrumb-item">
                 <a href="tickets.php">Tickets</a>
             </li>
             <li class="breadcrumb-item">
                 <a href="client_tickets.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
             </li>
-            <li class="breadcrumb-item active">Ticket Details</li>
+            <?php } ?>
+            <li class="breadcrumb-item active"><i class="fas fa-life-ring mr-1"></i><?php echo "$ticket_prefix$ticket_number";?></li>
         </ol>
 
         <div class="card">
@@ -612,7 +626,7 @@ if (isset($_GET['ticket_id'])) {
                             </div>
 
                             <div class="form-group">
-                                <textarea class="form-control tinymce<?php if ($config_ai_enable) { echo "ai"; } ?>" id="textInput" name="ticket_reply" placeholder="Type a response"></textarea>
+                                <textarea class="form-control tinymceTicket<?php if ($config_ai_enable) { echo "AI"; } ?>" id="textInput" name="ticket_reply" placeholder="Type a response"></textarea>
                             </div>
 
                             <div class="form-row">
@@ -662,10 +676,6 @@ if (isset($_GET['ticket_id'])) {
 
                                 <div class="col-md-3">
                                     <div class="btn-toolbar float-right">
-                                        <?php if ($config_ai_enable) { ?>
-                                            <button id="rewordButton" class="btn btn-secondary ml-3" type="button"><i class="fas fa-fw fa-robot mr-2"></i>Reword</button>
-                                            <button id="undoButton" class="btn btn-secondary ml-3" type="button" style="display:none;"><i class="fas fa-fw fa-redo-alt mr-2"></i>Undo</button>
-                                        <?php } ?>
                                         <button type="submit" id="ticket_add_reply" name="add_ticket_reply" class="btn btn-success ml-3"><i class="fas fa-check mr-2"></i>Submit</button>
                                     </div>
                                 </div>
@@ -864,6 +874,14 @@ if (isset($_GET['ticket_id'])) {
                         <?php } ?>
 
                     </div>
+                <?php } else { ?>
+                <div class="card card-body mb-3">
+                    <h5 class="text-secondary">Contact</h5>
+                    <div>
+                        <i class="fa fa-fw fa-user text-secondary mr-2"></i><a href="#" data-toggle="modal" data-target="#editTicketContactModal<?php echo $ticket_id; ?>"><i>No One</i>
+                        </a>
+                    </div>
+                </div>
                 <?php } ?>
                 <!-- End contact card -->
 

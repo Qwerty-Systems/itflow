@@ -187,7 +187,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 </div>
             </form>
             <hr>
-            <form id="bulkActions" action="post.php" method="post">
+            <form id="bulkActions" action="post.php" method="post" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
 
                 <div class="table-responsive-sm">
@@ -328,7 +328,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 }
 
                                 $contact_tag_id_array[] = $contact_tag_id;
-                                $contact_tag_name_display_array[] = "<a href='client_contacts.php?client_id=$client_id&q=$contact_tag_name'><span class='badge text-light p-1 mr-1' style='background-color: $contact_tag_color;'><i class='fa fa-fw fa-$contact_tag_icon mr-2'></i>$contact_tag_name</span></a>";
+                                $contact_tag_name_display_array[] = "<a href='client_contacts.php?client_id=$client_id&tags[]=$contact_tag_id'><span class='badge text-light p-1 mr-1' style='background-color: $contact_tag_color;'><i class='fa fa-fw fa-$contact_tag_icon mr-2'></i>$contact_tag_name</span></a>";
                             }
                             $contact_tags_display = implode('', $contact_tag_name_display_array);
 
@@ -382,6 +382,9 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                             <a class="dropdown-item" href="client_contact_details.php?client_id=<?php echo $client_id; ?>&contact_id=<?php echo $contact_id; ?>">
                                                 <i class="fas fa-fw fa-eye mr-2"></i>Details
                                             </a>
+                                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#createContactNoteModal<?php echo $contact_id; ?>">
+                                                <i class="fas fa-fw fa-sticky-note mr-2"></i>Make Note
+                                            </a>
                                             <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editContactModal<?php echo $contact_id; ?>">
                                                 <i class="fas fa-fw fa-edit mr-2"></i>Edit
                                             </a>
@@ -416,6 +419,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                             <?php
 
+                            require "client_contact_create_note_modal.php";
                             require "client_contact_edit_modal.php";
 
                         }

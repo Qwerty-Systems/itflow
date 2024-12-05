@@ -1,10 +1,11 @@
 <?php
 
 require_once "config.php";
-require_once "inc_set_timezone.php";
 require_once "functions.php";
 
 session_start();
+
+require_once "inc_set_timezone.php"; // Must be included after session_start to work
 
 if (isset($_GET['accept_quote'], $_GET['url_key'])) {
     $quote_id = intval($_GET['accept_quote']);
@@ -22,10 +23,44 @@ if (isset($_GET['accept_quote'], $_GET['url_key'])) {
 
         mysqli_query($mysqli, "UPDATE quotes SET quote_status = 'Accepted' WHERE quote_id = $quote_id");
         mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Accepted', history_description = 'Client accepted Quote!', history_quote_id = $quote_id");
-        // Notification
-        mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Quote Accepted', notification = 'Quote $quote_prefix$quote_number has been accepted by $client_name', notification_action = 'quote.php?quote_id=$quote_id', notification_client_id = $client_id, notification_entity_id = $quote_id");
 
+        // Notification
+        appNotify("Quote Accepted", "Quote $quote_prefix$quote_number has been accepted by $client_name", "quote.php?quote_id=$quote_id", $client_id);
         customAction('quote_accept', $quote_id);
+
+        // Internal email notification
+
+        $sql_company = mysqli_query($mysqli, "SELECT company_name FROM companies WHERE company_id = 1");
+        $row = mysqli_fetch_array($sql_company);
+        $company_name = sanitizeInput($row['company_name']);
+
+        $sql_settings = mysqli_query($mysqli, "SELECT * FROM settings WHERE company_id = 1");
+        $row = mysqli_fetch_array($sql_settings);
+        $config_smtp_host = $row['config_smtp_host'];
+        $config_smtp_port = intval($row['config_smtp_port']);
+        $config_smtp_encryption = $row['config_smtp_encryption'];
+        $config_smtp_username = $row['config_smtp_username'];
+        $config_smtp_password = $row['config_smtp_password'];
+        $config_quote_from_name = sanitizeInput($row['config_quote_from_name']);
+        $config_quote_from_email = sanitizeInput($row['config_quote_from_email']);
+        $config_quote_notification_email = sanitizeInput($row['config_quote_notification_email']);
+        $config_base_url = sanitizeInput($config_base_url);
+
+        if (!empty($config_smtp_host) && !empty($config_quote_notification_email)) {
+            $subject = "Quote Accepted - $client_name - Quote $quote_prefix$quote_number";
+            $body = "Hello, <br><br>This is a notification that a quote has been accepted in ITFlow. <br><br>Client: $client_name<br>Quote: <a href=\'https://$config_base_url/quote.php?quote_id=$quote_id\'>$quote_prefix$quote_number</a><br><br>~<br>$company_name - Billing<br>$config_quote_from_email";
+
+                $data[] = [
+                    'from' => $config_quote_from_email,
+                    'from_name' => $config_quote_from_name,
+                    'recipient' => $config_quote_notification_email,
+                    'subject' => $subject,
+                    'body' => $body,
+                ];
+
+            $mail = addToMailQueue($mysqli, $data);
+        }
+
         $_SESSION['alert_message'] = "Quote Accepted";
         header("Location: " . $_SERVER["HTTP_REFERER"]);
     } else {
@@ -49,10 +84,44 @@ if (isset($_GET['decline_quote'], $_GET['url_key'])) {
 
         mysqli_query($mysqli, "UPDATE quotes SET quote_status = 'Declined' WHERE quote_id = $quote_id");
         mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Declined', history_description = 'Client declined Quote!', history_quote_id = $quote_id");
-        // Notification
-        mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Quote Declined', notification = 'Quote $quote_prefix$quote_number has been declined by $client_name', notification_action = 'quote.php?quote_id=$quote_id', notification_client_id = $client_id, notification_entity_id = $quote_id");
 
+        // Notification
+        appNotify("Quote Declined", "Quote $quote_prefix$quote_number has been declined by $client_name", "quote.php?quote_id=$quote_id", $client_id);
         customAction('quote_decline', $quote_id);
+
+        // Internal email notification
+
+        $sql_company = mysqli_query($mysqli, "SELECT company_name FROM companies WHERE company_id = 1");
+        $row = mysqli_fetch_array($sql_company);
+        $company_name = sanitizeInput($row['company_name']);
+
+        $sql_settings = mysqli_query($mysqli, "SELECT * FROM settings WHERE company_id = 1");
+        $row = mysqli_fetch_array($sql_settings);
+        $config_smtp_host = $row['config_smtp_host'];
+        $config_smtp_port = intval($row['config_smtp_port']);
+        $config_smtp_encryption = $row['config_smtp_encryption'];
+        $config_smtp_username = $row['config_smtp_username'];
+        $config_smtp_password = $row['config_smtp_password'];
+        $config_quote_from_name = sanitizeInput($row['config_quote_from_name']);
+        $config_quote_from_email = sanitizeInput($row['config_quote_from_email']);
+        $config_quote_notification_email = sanitizeInput($row['config_quote_notification_email']);
+        $config_base_url = sanitizeInput($config_base_url);
+
+        if (!empty($config_smtp_host) && !empty($config_quote_notification_email)) {
+            $subject = "Quote Declined - $client_name - Quote $quote_prefix$quote_number";
+            $body = "Hello, <br><br>This is a notification that a quote has been declined in ITFlow. <br><br>Client: $client_name<br>Quote: <a href=\'https://$config_base_url/quote.php?quote_id=$quote_id\'>$quote_prefix$quote_number</a><br><br>~<br>$company_name - Billing<br>$config_quote_from_email";
+
+            $data[] = [
+                'from' => $config_quote_from_email,
+                'from_name' => $config_quote_from_name,
+                'recipient' => $config_quote_notification_email,
+                'subject' => $subject,
+                'body' => $body,
+            ];
+
+            $mail = addToMailQueue($mysqli, $data);
+        }
+
         $_SESSION['alert_type'] = "danger";
         $_SESSION['alert_message'] = "Quote Declined";
         header("Location: " . $_SERVER["HTTP_REFERER"]);
@@ -116,7 +185,7 @@ if (isset($_GET['add_ticket_feedback'], $_GET['url_key'])) {
         mysqli_query($mysqli, "UPDATE tickets SET ticket_feedback = '$feedback' WHERE ticket_id = $ticket_id AND ticket_url_key = '$url_key'");
         // Notify on bad feedback
         if ($feedback == "Bad") {
-            mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Feedback', notification = 'Guest rated ticket ID $ticket_id as bad'");
+            appNotify("Feedback", "Guest rated ticket ID $ticket_id as bad", "ticket.php?ticket_id=$ticket_id");
         }
 
         $_SESSION['alert_message'] = "Feedback recorded - thank you";

@@ -41,7 +41,7 @@ if (isset($_POST['add_client'])) {
     if(mysqli_num_rows($sql) == 0) {
         mysqli_query($mysqli, "INSERT INTO categories SET category_name = '$referral', category_type = 'Referral'");
         // Logging
-        mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Category', log_action = 'Create', log_description = '$name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+        logAction("Category", "Create", "$session_name created referral category $referral");
     }
 
     // Create Location
@@ -63,7 +63,7 @@ if (isset($_POST['add_client'])) {
 
     // Add Tags
     if (isset($_POST['tags'])) {
-        foreach($_POST['tags'] as $tag) {
+        foreach ($_POST['tags'] as $tag) {
             $tag = intval($tag);
             mysqli_query($mysqli, "INSERT INTO client_tags SET client_id = $client_id, tag_id = $tag");
         }
@@ -85,7 +85,7 @@ if (isset($_POST['add_client'])) {
         mysqli_query($mysqli, "INSERT INTO domains SET domain_name = '$website', domain_registrar = 0,  domain_webhost = 0, domain_expire = '$expire', domain_ip = '$a', domain_name_servers = '$ns', domain_mail_servers = '$mx', domain_raw_whois = '$whois', domain_client_id = $client_id");
 
         //Extended Logging
-        $extended_log_description .= ", domain added";
+        $extended_log_description .= ", domain $website added";
 
         // Get inserted ID (for linking certificate, if exists)
         $domain_id = mysqli_insert_id($mysqli);
@@ -100,18 +100,17 @@ if (isset($_POST['add_client'])) {
             mysqli_query($mysqli, "INSERT INTO certificates SET certificate_name = '$website', certificate_domain = '$website', certificate_issued_by = '$issued_by', certificate_expire = '$expire', certificate_public_key = '$public_key', certificate_domain_id = $domain_id, certificate_client_id = $client_id");
 
             //Extended Logging
-            $extended_log_description .= ", SSL certificate added";
+            $extended_log_description .= ", SSL certificate $website added";
         }
 
     }
 
     // Logging
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Client', log_action = 'Create', log_description = '$session_name created client $name$extended_log_description', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $client_id");
+    logAction("Client", "Create", "$session_name created client $name$extended_log_description", $client_id, $client_id);
 
     $_SESSION['alert_message'] = "Client <strong>$name</strong> created";
 
     header("Location: clients.php");
-    exit;
 
 }
 
@@ -129,8 +128,9 @@ if (isset($_POST['edit_client'])) {
     $sql = mysqli_query($mysqli, "SELECT category_name FROM categories WHERE category_type = 'Referral' AND category_archived_at IS NULL AND category_name = '$referral'");
     if(mysqli_num_rows($sql) == 0) {
         mysqli_query($mysqli, "INSERT INTO categories SET category_name = '$referral', category_type = 'Referral'");
+        
         // Logging
-        mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Category', log_action = 'Create', log_description = '$name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+        logAction("Category", "Create", "$session_name created referral category $referral");
     }
 
     // Tags
@@ -138,15 +138,17 @@ if (isset($_POST['edit_client'])) {
     mysqli_query($mysqli, "DELETE FROM client_tags WHERE client_id = $client_id");
 
     // Add new tags
-    foreach($_POST['tags'] as $tag) {
-        $tag = intval($tag);
-        mysqli_query($mysqli, "INSERT INTO client_tags SET client_id = $client_id, tag_id = $tag");
+    if(isset($_POST['tags'])) {
+        foreach($_POST['tags'] as $tag) {
+            $tag = intval($tag);
+            mysqli_query($mysqli, "INSERT INTO client_tags SET client_id = $client_id, tag_id = $tag");
+        }
     }
 
     // Logging
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Client', log_action = 'Modify', log_description = '$session_name modified client $name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $client_id");
+    logAction("Client", "Edit", "$session_name edited client $name", $client_id, $client_id);
 
-    $_SESSION['alert_message'] = "Client <strong>$client_name</strong> updated";
+    $_SESSION['alert_message'] = "Client <strong>$name</strong> updated";
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 }
@@ -165,11 +167,11 @@ if (isset($_GET['archive_client'])) {
 
     mysqli_query($mysqli, "UPDATE clients SET client_archived_at = NOW() WHERE client_id = $client_id");
 
-    //Logging
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Client', log_action = 'Archive', log_description = '$session_name archived client $client_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $client_id");
+    // Logging
+    logAction("Client", "Archive", "$session_name archived client $client_name", $client_id, $client_id);
 
     $_SESSION['alert_type'] = "error";
-    $_SESSION['alert_message'] = "Client $client_name archived";
+    $_SESSION['alert_message'] = "Client <strong>$client_name</strong> archived";
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 }
@@ -187,10 +189,10 @@ if (isset($_GET['undo_archive_client'])) {
 
     mysqli_query($mysqli, "UPDATE clients SET client_archived_at = NULL WHERE client_id = $client_id");
 
-    //Logging
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Client', log_action = 'Undo Archive', log_description = '$session_name unarchived client $client_name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $client_id");
+    // Logging
+    logAction("Client", "Unarchive", "$session_name unarchived client $client_name", $client_id, $client_id);
 
-    $_SESSION['alert_message'] = "Client $client_name unarchived";
+    $_SESSION['alert_message'] = "Client <strong>$client_name</strong> unarchived";
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
 }
@@ -212,11 +214,16 @@ if (isset($_GET['delete_client'])) {
     mysqli_query($mysqli, "DELETE FROM certificates WHERE certificate_client_id = $client_id");
     mysqli_query($mysqli, "DELETE FROM documents WHERE document_client_id = $client_id");
 
-    // Delete Contacts and contact tags
+    // Delete Contacts including contact tags, notes
     $sql = mysqli_query($mysqli, "SELECT contact_id FROM contacts WHERE contact_client_id = $client_id");
     while($row = mysqli_fetch_array($sql)) {
         $contact_id = $row['contact_id'];
         mysqli_query($mysqli, "DELETE FROM contact_tags WHERE contact_id = $contact_id");
+        mysqli_query($mysqli, "DELETE FROM contact_assets WHERE contact_id = $contact_id");
+        mysqli_query($mysqli, "DELETE FROM contact_documents WHERE contact_id = $contact_id");
+        mysqli_query($mysqli, "DELETE FROM contact_files WHERE contact_id = $contact_id");
+        mysqli_query($mysqli, "DELETE FROM contact_logins WHERE contact_id = $contact_id");
+        mysqli_query($mysqli, "DELETE FROM contact_notes WHERE contact_note_contact_id = $contact_id");
     }
     mysqli_query($mysqli, "DELETE FROM contacts WHERE contact_client_id = $client_id");
 
@@ -328,10 +335,10 @@ if (isset($_GET['delete_client'])) {
     mysqli_query($mysqli, "DELETE FROM clients WHERE client_id = $client_id");
 
     //Logging
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Client', log_action = 'Delete', log_description = '$session_name deleted client $client_name and all associated data', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+    logAction("Client", "Deleted", "$session_name deleted Client $client_name and all associated data");
 
     $_SESSION['alert_type'] = "error";
-    $_SESSION['alert_message'] = "Client $client_name deleted along with all associated data";
+    $_SESSION['alert_message'] = "Client <strong>$client_name</strong> deleted along with all associated data";
 
     header("Location: clients.php");
 }
@@ -347,7 +354,9 @@ if (isset($_POST['export_clients_csv'])) {
         ORDER BY client_name ASC
     ");
 
-    if ($sql->num_rows > 0) {
+    $num_rows = mysqli_num_rows($sql);
+
+    if ($num_rows > 0) {
         $delimiter = ",";
         $filename = $session_company_name . "-Clients-" . date('Y-m-d') . ".csv";
 
@@ -373,6 +382,9 @@ if (isset($_POST['export_clients_csv'])) {
 
         //output all remaining data on a file pointer
         fpassthru($f);
+        
+        logAction("Client", "Export", "$session_name exported $num_rows client(s) to a CSV file");
+
     }
     exit;
 
@@ -381,9 +393,16 @@ if (isset($_POST['export_clients_csv'])) {
 if (isset($_POST["import_clients_csv"])) {
 
     enforceUserPermission('module_client', 2);
-
-    $file_name = $_FILES["file"]["tmp_name"];
     $error = false;
+
+    if (!empty($_FILES["file"]["tmp_name"])) {
+        $file_name = $_FILES["file"]["tmp_name"];
+    } else {
+        $_SESSION['alert_message'] = "Please select a file to upload.";
+        $_SESSION['alert_type'] = "error";
+        header("Location: " . $_SERVER["HTTP_REFERER"]);
+        exit();
+    }
 
     //Check file is CSV
     $file_extension = strtolower(end(explode('.',$_FILES['file']['name'])));
@@ -545,7 +564,7 @@ if (isset($_POST["import_clients_csv"])) {
                 if(mysqli_num_rows($sql) == 0) {
                     mysqli_query($mysqli, "INSERT INTO categories SET category_name = '$referral', category_type = 'Referral'");
                     // Logging
-                    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Category', log_action = 'Create', log_description = '$name', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+                    logAction("Category", "Create", "$session_name created new refferal category $referral");
                 }
 
                 // Create Location
@@ -566,9 +585,9 @@ if (isset($_POST["import_clients_csv"])) {
         fclose($file);
 
         //Logging
-        mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Client', log_action = 'Import', log_description = '$session_name imported $row_count clients) via CSV file', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+        logAction("Client", "Import", "$session_name imported $row_count client(s) via CSV file, $duplicate_count duplicate(s) found");
 
-        $_SESSION['alert_message'] = "$row_count Client(s) added, $duplicate_count duplicate(s) detected";
+        $_SESSION['alert_message'] = "<strong>$row_count</strong> Client(s) added, <strong>$duplicate_count</strong> duplicate(s) found";
         header("Location: " . $_SERVER["HTTP_REFERER"]);
 
     }
@@ -583,7 +602,7 @@ if (isset($_POST["import_clients_csv"])) {
 if (isset($_GET['download_clients_csv_template'])) {
 
     $delimiter = ",";
-    $filename = strtoAZaz09($client_name) . "-Clients-Template.csv";
+    $filename = "Clients-Template.csv";
 
     //create a file pointer
     $f = fopen('php://memory', 'w');
@@ -636,8 +655,7 @@ if (isset($_POST['export_client_pdf'])) {
     $export_logs = intval($_POST['export_logs']);
 
     //Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Client', log_action = 'Export', log_description = '$session_name exported client data to a PDF file', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id");
-
+    logAction("Client", "Export", "$session_name exported client data to a PDF file", $client_id, $client_id);
 
     //get records from database
     $sql = mysqli_query($mysqli,"SELECT * FROM clients 

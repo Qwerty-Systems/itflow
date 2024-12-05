@@ -2,10 +2,10 @@
 
 if (isset($_POST['edit_module_settings'])) {
 
-    $config_module_enable_itdoc = intval($_POST['config_module_enable_itdoc']);
-    $config_module_enable_ticketing = intval($_POST['config_module_enable_ticketing']);
-    $config_module_enable_accounting = intval($_POST['config_module_enable_accounting']);
-    $config_client_portal_enable = intval($_POST['config_client_portal_enable']);
+    $config_module_enable_itdoc = intval($_POST['config_module_enable_itdoc'] ?? 0);
+    $config_module_enable_ticketing = intval($_POST['config_module_enable_ticketing'] ?? 0);
+    $config_module_enable_accounting = intval($_POST['config_module_enable_accounting'] ?? 0);
+    $config_client_portal_enable = intval($_POST['config_client_portal_enable'] ?? 0);
     $config_whitelabel_key = sanitizeInput($_POST['config_whitelabel_key']);
 
     mysqli_query($mysqli,"UPDATE settings SET config_module_enable_itdoc = $config_module_enable_itdoc, config_module_enable_ticketing = $config_module_enable_ticketing, config_module_enable_accounting = $config_module_enable_accounting, config_client_portal_enable = $config_client_portal_enable WHERE company_id = 1");
@@ -17,8 +17,8 @@ if (isset($_POST['edit_module_settings'])) {
         mysqli_query($mysqli, "UPDATE settings SET config_whitelabel_enabled = 0, config_whitelabel_key = '' WHERE company_id = 1");
     }
 
-    //Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Settings', log_action = 'Modify', log_description = '$session_name modified module settings', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+    // Logging
+    logAction("Settings", "Edit", "$session_name edited module settings");
 
     $_SESSION['alert_message'] = "Module Settings updated";
 

@@ -8,13 +8,6 @@
                 </button>
             </div>
             <form action="post.php" method="post" enctype="multipart/form-data" autocomplete="off">
-                <!-- Prevent undefined checkbox errors on submit -->
-                <input type="hidden" name="contact_primary" value="0">
-                <input type="hidden" name="contact_important" value="0">
-                <input type="hidden" name="contact_billing" value="0">
-                <input type="hidden" name="contact_technical" value="0">
-                <input type="hidden" name="send_email" value="0">
-                <!-- End prevent undefined errors -->
                 <input type="hidden" name="contact_id" value="<?php echo $contact_id; ?>">
                 <input type="hidden" name="client_id" value="<?php echo $client_id; ?>">
                 <div class="modal-body bg-white">
@@ -206,6 +199,7 @@
                                         <div class="custom-control custom-checkbox">
                                             <input type="checkbox" class="custom-control-input" id="contactImportantCheckbox<?php echo $contact_id; ?>" name="contact_important" value="1" <?php if ($contact_important == 1) { echo "checked"; } ?>>
                                             <label class="custom-control-label" for="contactImportantCheckbox<?php echo $contact_id; ?>">Important</label>
+                                            <p class="text-secondary"><small>Pin Top</small></p>
                                         </div>
                                     </div>
                                 </div>
@@ -214,6 +208,7 @@
                                         <div class="custom-control custom-checkbox">
                                             <input type="checkbox" class="custom-control-input" id="contactBillingCheckbox<?php echo $contact_id; ?>" name="contact_billing" value="1" <?php if ($contact_billing == 1) { echo "checked"; } ?>>
                                             <label class="custom-control-label" for="contactBillingCheckbox<?php echo $contact_id; ?>">Billing</label>
+                                            <p class="text-secondary"><small>Receives Invoices</small></p>
                                         </div>
                                     </div>
                                 </div>
@@ -233,7 +228,7 @@
                         <div class="tab-pane fade" id="pills-photo<?php echo $contact_id; ?>">
 
                             <div class="mb-3 text-center">
-                                <?php if (!empty($contact_photo)) { ?>
+                                <?php if ($contact_photo) { ?>
                                     <img class="img-fluid" alt="contact_photo" src="<?php echo "uploads/clients/$client_id/$contact_photo"; ?>">
                                 <?php } else { ?>
                                     <span class="fa-stack fa-4x">
@@ -244,7 +239,7 @@
                             </div>
 
                             <div class="form-group">
-                                <input type="file" class="form-control-file" name="file">
+                                <input type="file" class="form-control-file" name="file" accept="image/*">
                             </div>
 
                         </div>

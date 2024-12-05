@@ -1,9 +1,11 @@
 <?php
 /*
  * CRON - Email Parser
- * Based on Libraries php-mime-mail-parser and PHP Extensions PHP IMAP and PHP MAilparse
- * Process emails and create/update tickets
+ * Process emails and create/update tickets using PHP's native IMAP functions with UIDs
  */
+
+// Start the timer
+$script_start_time = microtime(true); // unComment when Debugging Execution time
 
 // Set working directory to the directory this cron script lives at.
 chdir(dirname(__FILE__));
@@ -50,12 +52,18 @@ $lock_file_path = "{$temp_dir}/itflow_email_parser_{$installation_id}.lock";
 if (file_exists($lock_file_path)) {
     $file_age = time() - filemtime($lock_file_path);
 
-    // If file is older than 3 minutes (180 seconds), delete and continue
+    // If file is older than 5 minutes (300 seconds), delete and continue
     if ($file_age > 300) {
         unlink($lock_file_path);
-        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron-Email-Parser', log_action = 'Delete', log_description = 'Cron Email Parser detected a lock file was present but was over 10 minutes old so it removed it'");
+
+        // Logging
+        logAction("Cron-Email-Parser", "Delete", "Cron Email Parser detected a lock file was present but was over 5 minutes old so it removed it.");
+    
     } else {
-        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron-Email-Parser', log_action = 'Locked', log_description = 'Cron Email Parser attempted to execute but was already executing, so instead it terminated.'");
+       
+        // Logging
+        logAction("Cron-Email-Parser", "Locked", "Cron Email Parser attempted to execute but was already executing, so instead it terminated.");
+
         exit("Script is already running. Exiting.");
     }
 }
@@ -98,15 +106,16 @@ function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date
     $ticket_prefix_esc = mysqli_real_escape_string($mysqli, $config_ticket_prefix);
     $message_esc = mysqli_real_escape_string($mysqli, $message);
     $contact_email_esc = mysqli_real_escape_string($mysqli, $contact_email);
-    $client_id_esc = intval($client_id);
+    $client_id = intval($client_id);
 
     //Generate a unique URL key for clients to access
     $url_key = randomString(156);
 
-    mysqli_query($mysqli, "INSERT INTO tickets SET ticket_prefix = '$ticket_prefix_esc', ticket_number = $ticket_number, ticket_subject = '$subject', ticket_details = '$message_esc', ticket_priority = 'Low', ticket_status = 1, ticket_created_by = 0, ticket_contact_id = $contact_id, ticket_url_key = '$url_key', ticket_client_id = $client_id_esc");
+    mysqli_query($mysqli, "INSERT INTO tickets SET ticket_prefix = '$ticket_prefix_esc', ticket_number = $ticket_number, ticket_subject = '$subject', ticket_details = '$message_esc', ticket_priority = 'Low', ticket_status = 1, ticket_created_by = 0, ticket_contact_id = $contact_id, ticket_url_key = '$url_key', ticket_client_id = $client_id");
     $id = mysqli_insert_id($mysqli);
 
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Ticket', log_action = 'Create', log_description = 'Email parser: Client contact $contact_email_esc created ticket $ticket_prefix_esc$ticket_number ($subject_esc) ($id)', log_client_id = $client_id_esc");
+    // Logging
+    logAction("Ticket", "Create", "Email parser: Client contact $contact_email_esc created ticket $ticket_prefix_esc$ticket_number ($subject) ($id)", $client_id, $id);
 
     mkdirMissing('uploads/tickets/');
     $att_dir = "uploads/tickets/" . $id . "/";
@@ -134,7 +143,7 @@ function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date
             mysqli_query($mysqli, "INSERT INTO ticket_attachments SET ticket_attachment_name = '$ticket_attachment_name_esc', ticket_attachment_reference_name = '$ticket_attachment_reference_name_esc', ticket_attachment_ticket_id = $id");
         } else {
             $ticket_attachment_name_esc = mysqli_real_escape_string($mysqli, $att_name);
-            mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Ticket', log_action = 'Update', log_description = 'Email parser: Blocked attachment $ticket_attachment_name_esc from Client contact $contact_email_esc for ticket $ticket_prefix_esc$ticket_number', log_client_id = $client_id_esc");
+            logAction("Ticket", "Edit", "Email parser: Blocked attachment $ticket_attachment_name_esc from Client contact $contact_email_esc for ticket $ticket_prefix_esc$ticket_number", $client_id, $id);
         }
     }
 
@@ -218,10 +227,8 @@ function addReply($from_email, $date, $subject, $ticket_number, $message, $attac
         if ($ticket_status == 5) {
             $config_ticket_prefix_esc = mysqli_real_escape_string($mysqli, $config_ticket_prefix);
             $ticket_number_esc = mysqli_real_escape_string($mysqli, $ticket_number);
-            $ticket_id_esc = intval($ticket_id);
-            $client_id_esc = intval($client_id);
 
-            mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Ticket', notification = 'Email parser: $from_email attempted to re-open ticket $config_ticket_prefix_esc$ticket_number_esc (ID $ticket_id_esc) - check inbox manually to see email', notification_action = 'ticket.php?ticket_id=$ticket_id_esc', notification_client_id = $client_id_esc");
+            appNotify("Ticket", "Email parser: $from_email attempted to re-open ticket $config_ticket_prefix_esc$ticket_number_esc (ID $ticket_id) - check inbox manually to see email", "ticket.php?ticket_id=$ticket_id", $client_id);
 
             $email_subject = "Action required: This ticket is already closed";
             $email_body = "Hi there, <br><br>You've tried to reply to a ticket that is closed - we won't see your response. <br><br>Please raise a new ticket by sending a new e-mail to our support address below. <br><br>--<br>$company_name - Support<br>$config_ticket_from_email<br>$company_phone";
@@ -277,7 +284,7 @@ function addReply($from_email, $date, $subject, $ticket_number, $message, $attac
                 mysqli_query($mysqli, "INSERT INTO ticket_attachments SET ticket_attachment_name = '$ticket_attachment_name_esc', ticket_attachment_reference_name = '$ticket_attachment_reference_name_esc', ticket_attachment_reply_id = $reply_id, ticket_attachment_ticket_id = $ticket_id");
             } else {
                 $ticket_attachment_name_esc = mysqli_real_escape_string($mysqli, $att_name);
-                mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Ticket', log_action = 'Update', log_description = 'Email parser: Blocked attachment $ticket_attachment_name_esc from Client contact $from_email_esc for ticket $config_ticket_prefix$ticket_number_esc', log_client_id = $client_id");
+                logAction("Ticket", "Edit", "Email parser: Blocked attachment $ticket_attachment_name_esc from Client contact $from_email_esc for ticket $config_ticket_prefix$ticket_number_esc", $client_id, $ticket_id);
             }
         }
 
@@ -313,7 +320,7 @@ function addReply($from_email, $date, $subject, $ticket_number, $message, $attac
 
         mysqli_query($mysqli, "UPDATE tickets SET ticket_status = 2, ticket_resolved_at = NULL WHERE ticket_id = $ticket_id AND ticket_client_id = $client_id LIMIT 1");
 
-        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Ticket', log_action = 'Update', log_description = 'Email parser: Client contact $from_email_esc updated ticket $config_ticket_prefix$ticket_number_esc ($subject)', log_client_id = $client_id");
+        logAction("Ticket", "Edit", "Email parser: Client contact $from_email_esc updated ticket $config_ticket_prefix$ticket_number_esc ($subject)", $client_id, $ticket_id);
 
         customAction('ticket_reply_client', $ticket_id);
 
@@ -346,17 +353,29 @@ function createMailboxFolder($imap, $mailbox, $folderName) {
 // Initialize IMAP connection
 $validate_cert = true; // or false based on your configuration
 
-$imap_encryption = $config_imap_encryption; // e.g., 'ssl' or 'tls'
+$imap_encryption = $config_imap_encryption; // e.g., 'ssl', 'tls', or '' (empty string) for none
 
-$mailbox = '{' . $config_imap_host . ':' . $config_imap_port . '/' . $imap_encryption;
+// Start building the mailbox string
+$mailbox = '{' . $config_imap_host . ':' . $config_imap_port;
+
+// Only add the encryption part if $imap_encryption is not empty
+if (!empty($imap_encryption)) {
+    $mailbox .= '/' . $imap_encryption;
+}
+
+// Add the certificate validation part
 if ($validate_cert) {
     $mailbox .= '/validate-cert';
 } else {
     $mailbox .= '/novalidate-cert';
 }
+
 $mailbox .= '}';
+
+// Append 'INBOX' to specify the mailbox folder
 $inbox_mailbox = $mailbox . 'INBOX';
 
+// Open the IMAP connection
 $imap = imap_open($inbox_mailbox, $config_imap_username, $config_imap_password);
 
 if ($imap === false) {
@@ -367,18 +386,22 @@ if ($imap === false) {
 // Create the "ITFlow" mailbox folder if it doesn't exist
 createMailboxFolder($imap, $mailbox, 'ITFlow');
 
-// Search for unseen messages
-$emails = imap_search($imap, 'UNSEEN');
+// Search for unseen messages and get UIDs
+$emails = imap_search($imap, 'UNSEEN', SE_UID);
+
+// Set Processed and Unprocessed Email count to 0
+$processed_count = 0;
+$unprocessed_count = 0;
 
 if ($emails !== false) {
-    foreach ($emails as $email_number) {
+    foreach ($emails as $email_uid) {
         $email_processed = false;
 
         // Save original message
         mkdirMissing('uploads/tmp/');
         $original_message_file = "processed-eml-" . randomString(200) . ".eml";
 
-        $raw_message = imap_fetchheader($imap, $email_number) . imap_body($imap, $email_number);
+        $raw_message = imap_fetchheader($imap, $email_uid, FT_UID) . imap_body($imap, $email_uid, FT_UID);
         file_put_contents("uploads/tmp/{$original_message_file}", $raw_message);
 
         // Parse the message using php-mime-mail-parser
@@ -411,7 +434,7 @@ if ($emails !== false) {
             if ($attachment->getContentDisposition() === 'inline' && $attachment->getContentID()) {
                 $cid = trim($attachment->getContentID(), '<>');
                 $data = base64_encode($attachment->getContent());
-                $mime = $attachment->getContentType(); // Use getContentType() instead of getMimeType()
+                $mime = $attachment->getContentType();
                 $dataUri = "data:$mime;base64,$data";
                 $message_body = str_replace("cid:$cid", $dataUri, $message_body);
             } else {
@@ -452,13 +475,13 @@ if ($emails !== false) {
                     $client_id = intval($row['domain_client_id']);
 
                     // Create a new contact
-                    $password = password_hash(randomString(), PASSWORD_DEFAULT);
                     $contact_name = $from_name;
                     $contact_email = $from_email;
-                    mysqli_query($mysqli, "INSERT INTO contacts SET contact_name = '".mysqli_real_escape_string($mysqli, $contact_name)."', contact_email = '".mysqli_real_escape_string($mysqli, $contact_email)."', contact_notes = 'Added automatically via email parsing.', contact_password_hash = '$password', contact_client_id = $client_id");
+                    mysqli_query($mysqli, "INSERT INTO contacts SET contact_name = '".mysqli_real_escape_string($mysqli, $contact_name)."', contact_email = '".mysqli_real_escape_string($mysqli, $contact_email)."', contact_notes = 'Added automatically via email parsing.', contact_client_id = $client_id");
                     $contact_id = mysqli_insert_id($mysqli);
 
-                    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Contact', log_action = 'Create', log_description = 'Email parser: created contact ".mysqli_real_escape_string($mysqli, $contact_name)."', log_client_id = $client_id");
+                    // Logging
+                    logAction("Contact", "Create", "Email parser: created contact " . mysqli_real_escape_string($mysqli, $contact_name) . "", $client_id, $contact_id);
                     customAction('contact_create', $contact_id);
 
                     if (addTicket($contact_id, $contact_name, $contact_email, $client_id, $date, $subject, $message_body, $attachments, $original_message_file)) {
@@ -478,12 +501,18 @@ if ($emails !== false) {
 
         if ($email_processed) {
             // Mark the message as seen
-            imap_setflag_full($imap, $email_number, "\\Seen");
+            imap_setflag_full($imap, $email_uid, "\\Seen", ST_UID);
             // Move the message to the 'ITFlow' folder
-            imap_mail_move($imap, $email_number, 'ITFlow');
+            imap_mail_move($imap, $email_uid, 'ITFlow', CP_UID);
+            // Get a Processed Email Count
+            $processed_count++;
         } else {
-            // Flag the message for manual review
-            imap_setflag_full($imap, $email_number, "\\Flagged");
+            // Flag the message for manual review without marking it as read
+            imap_setflag_full($imap, $email_uid, "\\Flagged", ST_UID);
+            // Clear the Seen flag to ensure the email remains unread
+            imap_clearflag_full($imap, $email_uid, "\\Seen", ST_UID);
+            // Get an Unprocessed email count
+            $unprocessed_count++;
         }
 
         // Delete the temporary message file
@@ -499,6 +528,28 @@ imap_expunge($imap);
 // Close the IMAP connection
 imap_close($imap);
 
+// Calculate the total execution time -uncomment the code below to get exec time
+$script_end_time = microtime(true);
+$execution_time = $script_end_time - $script_start_time;
+$execution_time_formatted = number_format($execution_time, 2);
+
+// Insert a log entry into the logs table
+$processed_info = "Processed: $processed_count email(s), Unprocessed: $unprocessed_count email(s)";
+// Remove Comment below for Troubleshooting
+
+//logAction("Cron-Email-Parser", "Execution", "Cron Email Parser executed in $execution_time_formatted seconds. $processed_info");
+
+// END Calculate execution time
+
 // Remove the lock file
 unlink($lock_file_path);
+
+// DEBUG
+echo "\nLock File Path: $lock_file_path\n";
+if (file_exists($lock_file_path)) {
+    echo "\nLock is present\n\n";
+}
+echo "Processed Emails into tickets: $processed_count\n";
+echo "Unprocessed Emails: $unprocessed_count\n";
+
 ?>

@@ -117,8 +117,11 @@ if (isset($_GET['asset_id'])) {
 
     // Related Logins Query
     $sql_related_logins = mysqli_query($mysqli, "SELECT * FROM logins
+         LEFT JOIN login_tags ON login_tags.login_id = logins.login_id
+        LEFT JOIN tags ON tags.tag_id = login_tags.tag_id
         WHERE login_asset_id = $asset_id
         AND login_archived_at IS NULL
+        GROUP BY logins.login_id
         ORDER BY login_name DESC"
     );
     $login_count = mysqli_num_rows($sql_related_logins);
@@ -410,6 +413,28 @@ if (isset($_GET['asset_id'])) {
                                 $login_asset_id = intval($row['login_asset_id']);
                                 $login_software_id = intval($row['login_software_id']);
 
+                                // Tags
+                                $login_tag_name_display_array = array();
+                                $login_tag_id_array = array();
+                                $sql_login_tags = mysqli_query($mysqli, "SELECT * FROM login_tags LEFT JOIN tags ON login_tags.tag_id = tags.tag_id WHERE login_id = $login_id ORDER BY tag_name ASC");
+                                while ($row = mysqli_fetch_array($sql_login_tags)) {
+
+                                    $login_tag_id = intval($row['tag_id']);
+                                    $login_tag_name = nullable_htmlentities($row['tag_name']);
+                                    $login_tag_color = nullable_htmlentities($row['tag_color']);
+                                    if (empty($login_tag_color)) {
+                                        $login_tag_color = "dark";
+                                    }
+                                    $login_tag_icon = nullable_htmlentities($row['tag_icon']);
+                                    if (empty($login_tag_icon)) {
+                                        $login_tag_icon = "tag";
+                                    }
+
+                                    $login_tag_id_array[] = $login_tag_id;
+                                    $login_tag_name_display_array[] = "<a href='client_logins.php?client_id=$client_id&tags[]=$login_tag_id'><span class='badge text-light p-1 mr-1' style='background-color: $login_tag_color;'><i class='fa fa-fw fa-$login_tag_icon mr-2'></i>$login_tag_name</span></a>";
+                                }
+                                $login_tags_display = implode('', $login_tag_name_display_array);
+
                                 ?>
                                 <tr>
                                     <td>
@@ -684,8 +709,8 @@ if (isset($_GET['asset_id'])) {
                                 ?>
 
                                 <tr>
-                                    <td><a href="ticket.php?ticket_id=<?php echo $ticket_id; ?>"><span class="badge badge-pill badge-secondary p-3"><?php echo "$ticket_prefix$ticket_number"; ?></span></a></td>
-                                    <td><a href="ticket.php?ticket_id=<?php echo $ticket_id; ?>"><?php echo $ticket_subject; ?></a></td>
+                                    <td><a href="ticket.php?client_id=<?php echo $client_id; ?>&ticket_id=<?php echo $ticket_id; ?>"><span class="badge badge-pill badge-secondary p-3"><?php echo "$ticket_prefix$ticket_number"; ?></span></a></td>
+                                    <td><a href="ticket.php?client_id=<?php echo $client_id; ?>&ticket_id=<?php echo $ticket_id; ?>"><?php echo $ticket_subject; ?></a></td>
                                     <td><?php echo $ticket_priority_display; ?></td>
                                     <td>
                                         <span class='badge badge-pill text-light p-2' style="background-color: <?php echo $ticket_status_color; ?>"><?php echo $ticket_status_name; ?></span>

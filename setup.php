@@ -177,7 +177,7 @@ if (isset($_POST['add_user'])) {
     //Create Settings
     mysqli_query($mysqli,"INSERT INTO user_settings SET user_id = 1, user_role = 3");
 
-    $_SESSION['alert_message'] = "User <strong>$name</strong> created!";
+    $_SESSION['alert_message'] = "User <strong>$name</strong> created";
 
     header("Location: setup.php?company");
     exit;
@@ -216,7 +216,7 @@ if (isset($_POST['add_company_settings'])) {
         $new_file_name = md5(time() . $file_name) . '.' . $file_extension;
 
         // check if file has one of the following extensions
-        $allowed_file_extensions = array('jpg', 'gif', 'png');
+        $allowed_file_extensions = array('jpg', 'jpeg', 'png');
 
         if (in_array($file_extension,$allowed_file_extensions) === false) {
             $file_error = 1;
@@ -246,7 +246,7 @@ if (isset($_POST['add_company_settings'])) {
 
 
     $latest_database_version = LATEST_DATABASE_VERSION;
-    mysqli_query($mysqli,"INSERT INTO settings SET company_id = 1, config_current_database_version = '$latest_database_version', config_invoice_prefix = 'INV-', config_invoice_next_number = 1, config_recurring_prefix = 'REC-', config_recurring_next_number = 1, config_invoice_overdue_reminders = '1,3,7', config_quote_prefix = 'QUO-', config_quote_next_number = 1, config_default_net_terms = 30, config_ticket_next_number = 1, config_ticket_prefix = 'TCK-', config_timezone = '$timezone'");
+    mysqli_query($mysqli,"INSERT INTO settings SET company_id = 1, config_current_database_version = '$latest_database_version', config_invoice_prefix = 'INV-', config_invoice_next_number = 1, config_recurring_prefix = 'REC-', config_recurring_next_number = 1, config_invoice_overdue_reminders = '1,3,7', config_quote_prefix = 'QUO-', config_quote_next_number = 1, config_default_net_terms = 30, config_ticket_next_number = 1, config_ticket_prefix = 'TCK-'");
 
     # Used only for the install script to grab the generated cronkey and insert into the db
     if (file_exists("uploads/tmp/cronkey.php")) {
@@ -257,9 +257,6 @@ if (isset($_POST['add_company_settings'])) {
 
         unlink('uploads/tmp/cronkey.php');
     }
-
-    // Create Default Cash Account
-    mysqli_query($mysqli,"INSERT INTO accounts SET account_name = 'Cash', account_currency_code = '$currency_code'");
 
     // Create Categories
     // Expense Categories Examples
@@ -317,7 +314,28 @@ if (isset($_POST['add_company_settings'])) {
     mysqli_query($mysqli,"INSERT INTO custom_links SET custom_link_name = 'Docs', custom_link_uri = 'https://docs.itflow.org', custom_link_new_tab = 1, custom_link_icon = 'question-circle'");
 
 
-    $_SESSION['alert_message'] = "Company <strong>$name</strong> created!";
+    $_SESSION['alert_message'] = "Company <strong>$name</strong> created";
+
+    header("Location: setup.php?localization");
+
+}
+
+if (isset($_POST['add_localization_settings'])) {
+
+    $locale = sanitizeInput($_POST['locale']);
+    $currency_code = sanitizeInput($_POST['currency_code']);
+    $timezone = sanitizeInput($_POST['timezone']);
+    $phone_mask = intval($_POST['phone_mask']);
+
+    mysqli_query($mysqli,"UPDATE companies SET company_locale = '$locale', company_currency = '$currency_code' WHERE company_id = 1");
+
+    mysqli_query($mysqli,"UPDATE settings SET config_timezone = '$timezone', config_phone_mask = $phone_mask WHERE company_id = 1");
+
+    // Create Default Cash Account
+    mysqli_query($mysqli,"INSERT INTO accounts SET account_name = 'Cash', account_currency_code = '$currency_code'");
+
+
+    $_SESSION['alert_message'] = "Localization Info saved";
 
     header("Location: setup.php?telemetry");
 
@@ -442,6 +460,13 @@ if (isset($_POST['add_telemetry'])) {
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                     <li class="nav-item">
+                        <a href="?checks" class="nav-link <?php if (isset($_GET['checks'])) { echo "active"; } ?>">
+                            <i class="nav-icon fas fa-check"></i>
+                            <p>Checks</p>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
                         <a href="?database" class="nav-link <?php if (isset($_GET['database'])) { echo "active"; } ?>">
                             <i class="nav-icon fas fa-database"></i>
                             <p>Database</p>
@@ -458,6 +483,12 @@ if (isset($_POST['add_telemetry'])) {
                         <a href="?company" class="nav-link <?php if (isset($_GET['company'])) { echo "active"; } ?>">
                             <i class="nav-icon fas fa-briefcase"></i>
                             <p>Company</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="?localization" class="nav-link <?php if (isset($_GET['localization'])) { echo "active"; } ?>">
+                            <i class="nav-icon fas fa-globe-americas"></i>
+                            <p>Localization</p>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -491,24 +522,315 @@ if (isset($_POST['add_telemetry'])) {
                     $_SESSION['alert_message'] = '';
                 }
                 ?>
-                <?php if (isset($_GET['setup_checks'])) { ?>
+                
+                <?php if (isset($_GET['checks'])) {
 
-                    <div class="card mb-3">
+                    $checks = [];
+
+                    // Section: PHP Extensions
+                    $phpExtensions = [];
+                    $extensions = [
+                        'php-mailparse' => 'mailparse',
+                        'php-imap' => 'imap',
+                        'php-mysqli' => 'mysqli',
+                        'php-intl' => 'intl',
+                        'php-curl' => 'curl',
+                        'php-mbstring' => 'mbstring',
+                        'php-gd' => 'gd',
+                    ];
+
+                    foreach ($extensions as $name => $ext) {
+                        $loaded = extension_loaded($ext);
+                        $phpExtensions[] = [
+                            'name' => "$name installed",
+                            'passed' => $loaded,
+                            'value' => $loaded ? 'Installed' : 'Not Installed',
+                        ];
+                    }
+
+                    // Section: PHP Configuration
+                    $phpConfig = [];
+
+                    // Check if shell_exec is enabled
+                    $disabled_functions = explode(',', ini_get('disable_functions'));
+                    $disabled_functions = array_map('trim', $disabled_functions);
+                    $shell_exec_enabled = !in_array('shell_exec', $disabled_functions);
+
+                    $phpConfig[] = [
+                        'name' => 'shell_exec is enabled',
+                        'passed' => $shell_exec_enabled,
+                        'value' => $shell_exec_enabled ? 'Enabled' : 'Disabled',
+                    ];
+
+                    // Check upload_max_filesize and post_max_size >= 500M
+                    function return_bytes($val) {
+                        $val = trim($val);
+                        $unit = strtolower(substr($val, -1));
+                        $num = (float)$val;
+                        switch ($unit) {
+                            case 'g':
+                                $num *= 1024;
+                            case 'm':
+                                $num *= 1024;
+                            case 'k':
+                                $num *= 1024;
+                        }
+                        return $num;
+                    }
+
+                    $required_bytes = 500 * 1024 * 1024; // 500M in bytes
+
+                    $upload_max_filesize = ini_get('upload_max_filesize');
+                    $post_max_size = ini_get('post_max_size');
+
+                    $upload_passed = return_bytes($upload_max_filesize) >= $required_bytes;
+                    $post_passed = return_bytes($post_max_size) >= $required_bytes;
+
+                    $phpConfig[] = [
+                        'name' => 'upload_max_filesize >= 500M',
+                        'passed' => $upload_passed,
+                        'value' => $upload_max_filesize,
+                    ];
+
+                    $phpConfig[] = [
+                        'name' => 'post_max_size >= 500M',
+                        'passed' => $post_passed,
+                        'value' => $post_max_size,
+                    ];
+
+                    // Check PHP version >= 8.2.0
+                    $php_version = PHP_VERSION;
+                    $php_passed = version_compare($php_version, '8.2.0', '>=');
+
+                    $phpConfig[] = [
+                        'name' => 'PHP version >= 8.2.0',
+                        'passed' => $php_passed,
+                        'value' => $php_version,
+                    ];
+
+                    // Section: Shell Commands
+                    $shellCommands = [];
+
+                    if ($shell_exec_enabled) {
+                        $commands = ['whois', 'dig', 'git'];
+
+                        foreach ($commands as $command) {
+                            $which = trim(shell_exec("which $command 2>/dev/null"));
+                            $exists = !empty($which);
+                            $shellCommands[] = [
+                                'name' => "Command '$command' available",
+                                'passed' => $exists,
+                                'value' => $exists ? $which : 'Not Found',
+                            ];
+                        }
+                    } else {
+                        // If shell_exec is disabled, mark commands as unavailable
+                        foreach (['whois', 'dig', 'git'] as $command) {
+                            $shellCommands[] = [
+                                'name' => "Command '$command' available",
+                                'passed' => false,
+                                'value' => 'shell_exec Disabled',
+                            ];
+                        }
+                    }
+
+                    // Section: SSL Checks
+                    $sslChecks = [];
+
+                    // Check if accessing via HTTPS
+                    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443;
+                    $sslChecks[] = [
+                        'name' => 'Accessing via HTTPS',
+                        'passed' => $https,
+                        'value' => $https ? 'Yes' : 'No',
+                    ];
+
+                    // SSL Certificate Validity Check
+                    if ($https) {
+                        $streamContext = stream_context_create(["ssl" => ["capture_peer_cert" => true]]);
+                        $socket = @stream_socket_client("ssl://{$_SERVER['HTTP_HOST']}:443", $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $streamContext);
+
+                        if ($socket) {
+                            $params = stream_context_get_params($socket);
+                            $cert = $params['options']['ssl']['peer_certificate'];
+                            $certInfo = openssl_x509_parse($cert);
+
+                            $validFrom = $certInfo['validFrom_time_t'];
+                            $validTo = $certInfo['validTo_time_t'];
+                            $currentTime = time();
+
+                            $certValid = ($currentTime >= $validFrom && $currentTime <= $validTo);
+
+                            $sslChecks[] = [
+                                'name' => 'SSL Certificate is valid',
+                                'passed' => $certValid,
+                                'value' => $certValid ? 'Valid' : 'Invalid or Expired',
+                            ];
+                        } else {
+                            $sslChecks[] = [
+                                'name' => 'SSL Certificate is valid',
+                                'passed' => false,
+                                'value' => 'Unable to retrieve certificate',
+                            ];
+                        }
+                    } else {
+                        $sslChecks[] = [
+                            'name' => 'SSL Certificate is valid',
+                            'passed' => false,
+                            'value' => 'Not using HTTPS',
+                        ];
+                    }
+
+                    // Section: Domain Checks
+                    $domainChecks = [];
+
+                    // Check if the site has a valid FQDN
+                    $fqdn = $_SERVER['HTTP_HOST'];
+                    $isValidFqdn = (bool) filter_var('http://' . $fqdn, FILTER_VALIDATE_URL) && preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/i', $fqdn);
+
+                    $domainChecks[] = [
+                        'name' => 'Site has a valid FQDN',
+                        'passed' => $isValidFqdn,
+                        'value' => $fqdn,
+                    ];
+
+                    // Section: File Permissions
+                    $filePermissions = [];
+
+                    // Check if web user has write access to webroot directory
+                    $webroot = $_SERVER['DOCUMENT_ROOT'];
+                    $writable = is_writable($webroot);
+                    $filePermissions[] = [
+                        'name' => 'Web user has write access to webroot directory',
+                        'passed' => $writable,
+                        'value' => $webroot,
+                    ];
+                    ?>
+
+                    <div class="card card-dark mb-3">
                         <div class="card-header">
-                            <h6 class="mt-1"><i class="fas fa-fw fa-checkmark mr-2"></i>Setup Checks</h6>
+                            <h3 class="card-title"><i class="fas fa-fw fa-check mr-2"></i>Setup Checks</h3>
                         </div>
                         <div class="card-body">
-                            <ul class="mb-4">
-                                <li>Upload is readable and writeable</li>
-                                <li>PHP 8.0+ Installed</li>
-                            </ul>
-                            <div style="text-align: center;"><a href="?database" class="btn btn-lg btn-primary text-bold mb-5">Install</a></div>
+                            <table class="table table-sm table-bordered">
+                                <tbody>
+                                    <!-- PHP Extensions Section -->
+                                    <tr class="bg-light">
+                                        <th colspan="3">PHP Extensions</th>
+                                    </tr>
+                                    <?php foreach ($phpExtensions as $check): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($check['name']); ?></td>
+                                            <td style="width: 50px; text-align: center;">
+                                                <?php if ($check['passed']): ?>
+                                                    <i class="fa fa-check" style="color:green"></i>
+                                                <?php else: ?>
+                                                    <i class="fa fa-times" style="color:red"></i>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= htmlspecialchars($check['value']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+
+                                    <!-- PHP Configuration Section -->
+                                    <tr class="bg-light">
+                                        <th colspan="3">PHP Configuration</th>
+                                    </tr>
+                                    <?php foreach ($phpConfig as $check): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($check['name']); ?></td>
+                                            <td style="width: 50px; text-align: center;">
+                                                <?php if ($check['passed']): ?>
+                                                    <i class="fa fa-check" style="color:green"></i>
+                                                <?php else: ?>
+                                                    <i class="fa fa-times" style="color:red"></i>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= htmlspecialchars($check['value']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+
+                                    <!-- Shell Commands Section -->
+                                    <tr class="bg-light">
+                                        <th colspan="3">Shell Commands</th>
+                                    </tr>
+                                    <?php foreach ($shellCommands as $check): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($check['name']); ?></td>
+                                            <td style="width: 50px; text-align: center;">
+                                                <?php if ($check['passed']): ?>
+                                                    <i class="fa fa-check" style="color:green"></i>
+                                                <?php else: ?>
+                                                    <i class="fa fa-times" style="color:red"></i>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= htmlspecialchars($check['value']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+
+                                    <!-- SSL Checks Section -->
+                                    <tr class="bg-light">
+                                        <th colspan="3">SSL Checks</th>
+                                    </tr>
+                                    <?php foreach ($sslChecks as $check): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($check['name']); ?></td>
+                                            <td style="width: 50px; text-align: center;">
+                                                <?php if ($check['passed']): ?>
+                                                    <i class="fa fa-check" style="color:green"></i>
+                                                <?php else: ?>
+                                                    <i class="fa fa-times" style="color:red"></i>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= htmlspecialchars($check['value']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+
+                                    <!-- Domain Checks Section -->
+                                    <tr class="bg-light">
+                                        <th colspan="3">Domain Checks</th>
+                                    </tr>
+                                    <?php foreach ($domainChecks as $check): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($check['name']); ?></td>
+                                            <td style="width: 50px; text-align: center;">
+                                                <?php if ($check['passed']): ?>
+                                                    <i class="fa fa-check" style="color:green"></i>
+                                                <?php else: ?>
+                                                    <i class="fa fa-times" style="color:red"></i>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= htmlspecialchars($check['value']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+
+                                    <!-- File Permissions Section -->
+                                    <tr class="bg-light">
+                                        <th colspan="3">File Permissions</th>
+                                    </tr>
+                                    <?php foreach ($filePermissions as $check): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($check['name']); ?></td>
+                                            <td style="width: 50px; text-align: center;">
+                                                <?php if ($check['passed']): ?>
+                                                    <i class="fa fa-check" style="color:green"></i>
+                                                <?php else: ?>
+                                                    <i class="fa fa-times" style="color:red"></i>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= htmlspecialchars($check['value']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                            
+                            <hr>
+
+                            <a href="?database" class="btn btn-primary text-bold">Next (Database)<i class="fa fa-fw fa-arrow-circle-right ml-2"></i></a>
                         </div>
                     </div>
 
-                <?php } ?>
-
-                <?php if (isset($_GET['database'])) { ?>
+                <?php } elseif (isset($_GET['database'])) { ?>
 
                     <div class="card card-dark">
                         <div class="card-header">
@@ -571,7 +893,7 @@ if (isset($_POST['add_telemetry'])) {
 
                                     <hr>
                                     <button type="submit" name="add_database" class="btn btn-primary text-bold">
-                                        Next<i class="fas fa-fw fa-arrow-circle-right ml-2"></i>
+                                        Next (First User)<i class="fas fa-fw fa-arrow-circle-right ml-2"></i>
                                     </button>
                                 </form>
                             <?php } ?>
@@ -627,7 +949,7 @@ if (isset($_POST['add_telemetry'])) {
 
                                 <hr>
 
-                                <button type="submit" name="add_user" class="btn btn-primary text-bold">Next <i class="fa fa-fw fa-arrow-circle-right"></i></button>
+                                <button type="submit" name="add_user" class="btn btn-primary text-bold">Next (Company details) <i class="fa fa-fw fa-arrow-circle-right"></i></button>
                             </form>
                         </div>
                     </div>
@@ -653,7 +975,7 @@ if (isset($_POST['add_telemetry'])) {
 
                                 <div class="form-group">
                                     <label>Logo</label>
-                                    <input type="file" class="form-control-file" name="file">
+                                    <input type="file" class="form-control-file" name="file" accept=".jpg, .jpeg, .png">
                                 </div>
 
                                 <div class="form-group">
@@ -741,7 +1063,24 @@ if (isset($_POST['add_telemetry'])) {
                                     </div>
                                 </div>
 
-                                <Legend>Localization</Legend>
+                                <hr>
+
+                                <button type="submit" name="add_company_settings" class="btn btn-primary text-bold">
+                                    Next (Localization)<i class="fas fa-fw fa-arrow-circle-right ml-2"></i>
+                                </button>
+
+                            </form>
+                        </div>
+                    </div>
+
+                <?php } elseif (isset($_GET['localization'])) { ?>
+
+                    <div class="card card-dark">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-fw fa-globe-americas mr-2"></i>Region and Language</h3>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" autocomplete="off">
 
                                 <div class="form-group">
                                     <label>Language <strong class="text-danger">*</strong></label>
@@ -788,10 +1127,23 @@ if (isset($_POST['add_telemetry'])) {
                                     </div>
                                 </div>
 
+                                <div class="form-group">
+                                    <label>Phone Mask</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text"><i class="fa fa-phone"></i></span>
+                                        </div>
+                                        <select class="form-control select2" name="phone_mask">
+                                            <option value="1">US Format - e.g. (412) 888-9999</option>
+                                            <option value="0">Non-US Format - e.g. 4128889999</option>
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <hr>
 
-                                <button type="submit" name="add_company_settings" class="btn btn-primary text-bold">
-                                    Next<i class="fas fa-fw fa-arrow-circle-right ml-2"></i>
+                                <button type="submit" name="add_localization_settings" class="btn btn-primary text-bold">
+                                    Next (Telemetry Settings)<i class="fas fa-fw fa-arrow-circle-right ml-2"></i>
                                 </button>
 
                             </form>
@@ -870,7 +1222,7 @@ if (isset($_POST['add_telemetry'])) {
                             ?>
                             <hr>
                             <div style="text-align: center;">
-                                <a href="?database" class="btn btn-primary text-bold">
+                                <a href="?checks" class="btn btn-primary text-bold">
                                     Begin Setup<i class="fas fa-fw fa-arrow-alt-circle-right ml-2"></i>
                                 </a>
                             </div>

@@ -1,6 +1,11 @@
 <?php
-require_once "inc_all.php";
 
+// If client_id is in URI then show client Side Bar and client header
+if (isset($_GET['client_id'])) {
+    require_once "inc_all_client.php";
+} else { 
+    require_once "inc_all.php";
+}
 
 if (isset($_GET['quote_id'])) {
 
@@ -102,12 +107,21 @@ if (isset($_GET['quote_id'])) {
 ?>
 
     <ol class="breadcrumb d-print-none">
+        <?php if (isset($_GET['client_id'])) { ?>
+        <li class="breadcrumb-item">
+            <a href="client_overview.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="client_quotes.php?client_id=<?php echo $client_id; ?>">Quotes</a>
+        </li>
+        <?php } else { ?>
         <li class="breadcrumb-item">
             <a href="quotes.php">Quotes</a>
         </li>
         <li class="breadcrumb-item">
             <a href="client_quotes.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
         </li>
+        <?php } ?>
         <li class="breadcrumb-item active"><?php echo "$quote_prefix$quote_number"; ?></li>
     </ol>
 

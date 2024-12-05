@@ -48,9 +48,9 @@ if (isset($_POST['edit_your_user_details'])) {
         $mail = addToMailQueue($mysqli, $data);
     }
 
-    // Check to see if a file is attached
-    if ($_FILES['avatar']['tmp_name'] != '') {
-        if ($new_file_name = checkFileUpload($_FILES['avatar'], array('jpg', 'jpeg', 'gif', 'png'))) {
+    // Photo
+    if (isset($_FILES['avatar']['tmp_name'])) {
+        if ($new_file_name = checkFileUpload($_FILES['avatar'], array('jpg', 'jpeg', 'gif', 'png', 'webp'))) {
 
             $file_tmp_path = $_FILES['avatar']['tmp_name'];
 
@@ -68,16 +68,13 @@ if (isset($_POST['edit_your_user_details'])) {
             // Extended Logging
             $extended_log_description .= ", avatar updated";
 
-        } else {
-            $_SESSION['alert_type'] = "error";
-            $_SESSION['alert_message'] = 'There was an error moving the file to upload directory. Please make sure the upload directory is writable by web server.';
         }
     }
 
     mysqli_query($mysqli,"UPDATE users SET user_name = '$name', user_email = '$email' WHERE user_id = $session_user_id");
 
     //Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'User Details', log_action = 'Modify', log_description = '$session_name modified their details $extended_log_description', log_ip = '$session_ip', log_user_agent = '$session_user_agent',  log_user_id = $session_user_id");
+    logAction("User Account", "Edit", "$session_name edited their account $extended_log_description");
 
     $_SESSION['alert_message'] = "User details updated";
 
@@ -93,6 +90,8 @@ if (isset($_GET['clear_your_user_avatar'])) {
     validateCSRFToken($_GET['csrf_token']);
 
     mysqli_query($mysqli,"UPDATE users SET user_avatar = NULL WHERE user_id = $session_user_id");
+
+    logAction("User Account", "Edit", "$session_name cleared their avatar");
 
     $_SESSION['alert_message'] = "Avatar cleared";
     header("Location: " . $_SERVER["HTTP_REFERER"]);
@@ -144,8 +143,8 @@ if (isset($_POST['edit_your_user_password'])) {
     $user_specific_encryption_ciphertext = encryptUserSpecificKey($_POST['new_password']);
     mysqli_query($mysqli,"UPDATE users SET user_password = '$new_password', user_specific_encryption_ciphertext = '$user_specific_encryption_ciphertext' WHERE user_id = $session_user_id");
 
-    //Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'User Preferences', log_action = 'Modify', log_description = '$session_name changed their password', log_ip = '$session_ip', log_user_agent = '$session_user_agent',  log_user_id = $session_user_id");
+    // Logging
+    logAction("User Account", "Edit", "$session_name changed their password");
 
     $_SESSION['alert_message'] = "Your password was updated";
 
@@ -181,8 +180,8 @@ if (isset($_POST['edit_your_user_preferences'])) {
         $extended_log_description .= "disabled browser extension access";
     }
 
-    //Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'User Preferences', log_action = 'Modify', log_description = '$session_name $extended_log_description', log_ip = '$session_ip', log_user_agent = '$session_user_agent',  log_user_id = $session_user_id");
+    // Logging
+    logAction("User Account", "Edit", "$session_name $extended_log_description");
 
     $_SESSION['alert_message'] = "User preferences updated";
 
@@ -207,24 +206,35 @@ if (isset($_POST['verify'])) {
 
 }
 
-if (isset($_POST['enable_2fa'])){
+if (isset($_POST['enable_2fa']) || isset($_GET['enable_2fa_force'])) {
 
     // CSRF Check
-    validateCSRFToken($_POST['csrf_token']);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        validateCSRFToken($_POST['csrf_token']);
 
-    $token = sanitizeInput($_POST['token']);
+        $extended_log_description = "";
+        $token = sanitizeInput($_POST['token']);
+    } else {
+        // If this is a GET request then we forced MFA as part of login
+        validateCSRFToken($_GET['csrf_token']);
+
+        $extended_log_description = "(forced)";
+        $token = sanitizeInput($_GET['token']);
+    }
+
+
 
     mysqli_query($mysqli,"UPDATE users SET user_token = '$token' WHERE user_id = $session_user_id");
 
     // Delete any existing 2FA tokens - these browsers should be re-validated
     mysqli_query($mysqli, "DELETE FROM remember_tokens WHERE remember_token_user_id = $session_user_id");
 
-    //Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'User Settings', log_action = 'Modify', log_description = '$session_name enabled 2FA on their account', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
+    // Logging
+    logAction("User Account", "Edit", "$session_name enabled MFA on their account $extended_log_description");
 
-    $_SESSION['alert_message'] = "Two-factor authentication enabled";
+    $_SESSION['alert_message'] = "Two-factor authentication enabled $extended_log_description";
 
-    header("Location: " . $_SERVER["HTTP_REFERER"]);
+    header("Location: user_security.php");
 
 }
 
@@ -234,9 +244,6 @@ if (isset($_POST['disable_2fa'])){
     validateCSRFToken($_POST['csrf_token']);
 
     mysqli_query($mysqli,"UPDATE users SET user_token = '' WHERE user_id = $session_user_id");
-
-    //Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'User Settings', log_action = 'Modify', log_description = '$session_name disabled 2FA on their account', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id");
 
     // Sanitize Config Vars from get_settings.php and Session Vars from check_login.php
     $config_mail_from_name = sanitizeInput($config_mail_from_name);
@@ -261,6 +268,9 @@ if (isset($_POST['disable_2fa'])){
         $mail = addToMailQueue($mysqli, $data);
     }
 
+    // Logging
+    logAction("User Account", "Edit", "$session_name disabled MFA on their account");
+
     $_SESSION['alert_type'] = "error";
     $_SESSION['alert_message'] = "Two-factor authentication disabled";
 
@@ -277,7 +287,7 @@ if (isset($_POST['revoke_your_2fa_remember_tokens'])) {
     mysqli_query($mysqli, "DELETE FROM remember_tokens WHERE remember_token_user_id = $session_user_id");
 
     //Logging
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'User Settings', log_action = 'Modify', log_description = '$session_name revoked all their remember-me tokens', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_user_id = $session_user_id, log_entity_id = $session_user_id");
+    logAction("User Account", "Edit", "$session_name revoked all their remember-me tokens");
 
     $_SESSION['alert_type'] = "error";
     $_SESSION['alert_message'] = "Remember me tokens revoked";

@@ -9,9 +9,6 @@ require_once "inc_all_admin.php";
         <div class="card-body">
             <form action="post.php" method="post" autocomplete="off">
                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
-                <input type="hidden" name="config_ticket_email_parse" value="0">
-                <input type="hidden" name="config_ticket_email_parse_unknown_senders" value="0">
-                <input type="hidden" name="config_ticket_default_billable" value="0">
 
                 <div class="form-group">
                     <label>Ticket Prefix</label>
@@ -72,7 +69,7 @@ require_once "inc_all_admin.php";
                         <div class="input-group-prepend">
                             <span class="input-group-text"><i class="fa fa-fw fa-bell"></i></span>
                         </div>
-                        <input type="email" class="form-control" name="config_ticket_new_ticket_notification_email" placeholder="Address to notify for new tickets, leave bank for none" value="<?php echo nullable_htmlentities($config_ticket_new_ticket_notification_email); ?>">
+                        <input type="email" class="form-control" name="config_ticket_new_ticket_notification_email" placeholder="Address to notify for new tickets, leave blank for none" value="<?php echo nullable_htmlentities($config_ticket_new_ticket_notification_email); ?>">
                     </div>
                 </div>
 

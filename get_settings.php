@@ -58,6 +58,7 @@ $config_quote_next_number = intval($row['config_quote_next_number']);
 $config_quote_footer = $row['config_quote_footer'];
 $config_quote_from_name = $row['config_quote_from_name'];
 $config_quote_from_email = $row['config_quote_from_email'];
+$config_quote_notification_email = $row['config_quote_notification_email'];
 
 // Projects
 $config_project_prefix = $row['config_project_prefix'];
@@ -297,3 +298,10 @@ $rack_type_select_array = array(
     "Other"
 );
 
+$note_types_array = array (
+    'Call'=>'fa-phone-alt',
+    'Email'=>'fa-envelope',
+    'Meeting'=>'fa-handshake',
+    'In Person'=>'fa-people-arrows',
+    'Note'=>'fa-sticky-note'
+);

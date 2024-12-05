@@ -98,9 +98,7 @@ if ( $argv[1] !== $config_cron_key ) {
  */
 
 //Logging
-mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Started', log_description = 'Cron Started'");
-
-
+logAction("Cron", "Start", "Cron Started");
 
 /*
  * ###############################################################################################################
@@ -118,7 +116,7 @@ mysqli_query($mysqli, "DELETE FROM shared_items WHERE item_views = item_view_lim
 mysqli_query($mysqli, "DELETE FROM shared_items WHERE item_expire_at < NOW()");
 
 // Invalidate any password reset links
-mysqli_query($mysqli, "UPDATE contacts SET contact_password_reset_token = NULL WHERE contact_archived_at IS NULL");
+mysqli_query($mysqli, "UPDATE users SET user_password_reset_token = NULL WHERE user_archived_at IS NULL");
 
 // Clean-up old dismissed notifications
 mysqli_query($mysqli, "DELETE FROM notifications WHERE notification_dismissed_at < CURDATE() - INTERVAL 90 DAY");
@@ -132,8 +130,8 @@ mysqli_query($mysqli, "DELETE FROM remember_tokens WHERE remember_token_created_
 // Cleanup old audit logs
 mysqli_query($mysqli, "DELETE FROM logs WHERE log_created_at < CURDATE() - INTERVAL $config_log_retention DAY");
 
-//Logging
-//mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron cleaned up old data'");
+// Logging
+// logAction("Cron", "Task", "Cron cleaned up old data");
 
 /*
  * ###############################################################################################################
@@ -144,7 +142,9 @@ mysqli_query($mysqli, "DELETE FROM logs WHERE log_created_at < CURDATE() - INTER
 // Whitelabel - Disable if expired/invalid
 if ($config_whitelabel_enabled && !validateWhitelabelKey($config_whitelabel_key)) {
     mysqli_query($mysqli, "UPDATE settings SET config_whitelabel_enabled = 0, config_whitelabel_key = '' WHERE company_id = 1");
-    mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Settings', notification = 'White-labelling was disabled due to expired/invalid key', notification_action = 'settings_modules.php'");
+    
+    appNotify("Settings", "White-labelling was disabled due to expired/invalid key", "settings_modules.php");
+
 }
 
 
@@ -173,13 +173,13 @@ if ($config_enable_alert_domain_expire == 1) {
             $client_id = intval($row['client_id']);
             $client_name = sanitizeInput($row['client_name']);
 
-            mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Domain Expiring', notification = 'Domain $domain_name for $client_name will expire in $day Days on $domain_expire', notification_action = 'client_domains.php?client_id=$client_id', notification_client_id = $client_id");
+            appNotify("Domain Expiring", "Domain $domain_name for $client_name will expire in $day Days on $domain_expire", "client_domains.php?client_id=$client_id", $client_id);
 
         }
 
     }
     // Logging
-    //mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron created notifications for domain expiring'");
+    // logAction("Cron", "Task", "Cron created notifications for domains expiring");
 }
 
 // CERTIFICATES EXPIRING
@@ -204,13 +204,13 @@ foreach ($certificateAlertArray as $day) {
         $client_id = intval($row['client_id']);
         $client_name = sanitizeInput($row['client_name']);
 
-        mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Certificate Expiring', notification = 'Certificate $certificate_name for $client_name will expire in $day Days on $certificate_expire', notification_action = 'client_certificates.php?client_id=$client_id', notification_client_id = $client_id");
+        appNotify("Certificate Expiring", "Certificate $certificate_name for $client_name will expire in $day Days on $certificate_expire", "client_certificates.php?client_id=$client_id", $client_id);
 
     }
 
 }
 // Logging
-//mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron created notifications for certificates expiring'");
+// logAction("Cron", "Task", "Cron created notifications for certificates expiring");
 
 // Asset Warranties Expiring
 
@@ -233,13 +233,13 @@ foreach ($warranty_alert_array as $day) {
         $client_id = intval($row['client_id']);
         $client_name = sanitizeInput($row['client_name']);
 
-        mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Asset Warranty Expiring', notification = 'Asset $asset_name warranty for $client_name will expire in $day Days on $asset_warranty_expire', notification_action = 'client_assets.php?client_id=$client_id', notification_client_id = $client_id");
+        appNotify("Asset Warranty Expiring", "Asset $asset_name warranty for $client_name will expire in $day Days on $asset_warranty_expire", "client_assets.php?client_id=$client_id", $client_id);
 
     }
 
 }
 // Logging
-//mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron created notifications for asset warranties expiring'");
+// logAction("Cron", "Task", "Cron created notifications for asset warranties expiring");
 
 // Notify of New Tickets
 // Get Ticket Pending Assignment
@@ -249,10 +249,10 @@ $tickets_pending_assignment = mysqli_num_rows($sql_tickets_pending_assignment);
 
 if ($tickets_pending_assignment > 0) {
 
-    mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Pending Tickets', notification = 'There are $tickets_pending_assignment new tickets pending assignment', notification_action = 'tickets.php?status=New'");
+    appNotify("Pending Tickets", "There are $tickets_pending_assignment new tickets pending assignment", "tickets.php?status=New");
 
     // Logging
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron created notifications for new tickets that are pending assignment'");
+    logAction("Cron", "Task", "Cron created notifications for new tickets that are pending assignment");
 }
 
 // Recurring (Scheduled) tickets
@@ -293,7 +293,7 @@ if (mysqli_num_rows($sql_scheduled_tickets) > 0) {
         $id = mysqli_insert_id($mysqli);
 
         // Logging
-        mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Ticket', log_action = 'Create', log_description = 'System created recurring scheduled $frequency ticket - $subject', log_client_id = $client_id, log_user_id = $created_id");
+        logAction("Ticket", "Create", "Cron created recurring scheduled $frequency ticket - $subject", $client_id, $id);
 
         customAction('ticket_create', $id);
 
@@ -389,7 +389,7 @@ if (mysqli_num_rows($sql_scheduled_tickets) > 0) {
 }
 
 // Logging
-//mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron created sent out recurring tickets'");
+// logAction("Cron", "Task", "Cron created sent out recurring tickets");
 
 
 // TICKET RESOLUTION/CLOSURE PROCESS
@@ -415,7 +415,7 @@ while ($row = mysqli_fetch_array($sql_resolved_tickets_to_close)) {
     mysqli_query($mysqli,"UPDATE tickets SET ticket_status = 5, ticket_closed_at = NOW(), ticket_closed_by = $ticket_assigned_to WHERE ticket_id = $ticket_id");
 
     //Logging
-    mysqli_query($mysqli,"INSERT INTO logs SET log_type = 'Ticket', log_action = 'Closed', log_description = '$ticket_prefix$ticket_number auto closed', log_entity_id = $ticket_id");
+    logAction("Ticket", "Closed", "$ticket_prefix$ticket_number auto closed", $client_id, $ticket_id);
 
     customAction('ticket_close', $ticket_id);
 
@@ -438,6 +438,7 @@ if ($config_send_invoice_reminders == 1) {
             WHERE invoice_status != 'Draft'
             AND invoice_status != 'Paid'
             AND invoice_status != 'Cancelled'
+            AND invoice_status != 'Non-Billable'
             AND DATE_ADD(invoice_due, INTERVAL $day DAY) = CURDATE()
             ORDER BY invoice_number DESC"
         );
@@ -472,11 +473,11 @@ if ($config_send_invoice_reminders == 1) {
 
                 mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Sent', history_description = 'Cron applied a late fee of $late_fee_amount', history_invoice_id = $invoice_id");
 
-                mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Invoice Late Charge', notification = 'Invoice $invoice_prefix$invoice_number for $client_name in the amount of $invoice_amount was charged a late fee of $late_fee_amount', notification_action = 'invoice.php?invoice_id=$invoice_id', notification_client_id = $client_id, notification_entity_id = $invoice_id");
+                appNotify("Invoice Late Charge", "Invoice $invoice_prefix$invoice_number for $client_name in the amount of $invoice_amount was charged a late fee of $late_fee_amount", "invoice.php?invoice_id=$invoice_id", $client_id);
 
             }
 
-            mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Invoice Overdue', notification = 'Invoice $invoice_prefix$invoice_number for $client_name in the amount of $invoice_amount is overdue by $day days', notification_action = 'invoice.php?invoice_id=$invoice_id', notification_client_id = $client_id, notification_entity_id = $invoice_id");
+            appNotify("Invoice Overdue", "Invoice $invoice_prefix$invoice_number for $client_name in the amount of $invoice_amount is overdue by $day days", "invoice.php?invoice_id=$invoice_id", $client_id);
 
             $subject = "Overdue Invoice $invoice_prefix$invoice_number";
             $body = "Hello $contact_name,<br><br>Our records indicate that we have not yet received payment for the invoice $invoice_prefix$invoice_number. We kindly request that you submit your payment as soon as possible. If you have any questions or concerns, please do not hesitate to contact us at $company_email or $company_phone.
@@ -499,8 +500,9 @@ if ($config_send_invoice_reminders == 1) {
             } else {
                 mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Sent', history_description = 'Cron Failed to send Overdue Invoice', history_invoice_id = $invoice_id");
 
-                mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Mail', notification = 'Failed to send email to $contact_email'");
-                mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Mail', log_action = 'Error', log_description = 'Failed to send email to $contact_email regarding $subject. $mail'");
+                appNotify("Mail", "Failed to send email to $contact_email");
+                
+                logAction("Mail", "Error", "Failed to send email to $contact_email regarding $subject. $mail");
             }
 
         }
@@ -508,7 +510,7 @@ if ($config_send_invoice_reminders == 1) {
     }
 }
 // Logging
-//mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron created notifications for past due invoices and sent out notifications to the primary contacts email'");
+// logAction("Cron", "Task", "Cron created notifications for past due invoices and sent out notifications to the primary and billing contacts email");
 
 // Send Recurring Invoices that match todays date and are active
 
@@ -571,7 +573,7 @@ while ($row = mysqli_fetch_array($sql_recurring)) {
 
     mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Sent', history_description = 'Invoice Generated from Recurring!', history_invoice_id = $new_invoice_id");
 
-    mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Recurring Sent', notification = 'Recurring Invoice $config_invoice_prefix$new_invoice_number for $client_name Sent', notification_action = 'invoice.php?invoice_id=$new_invoice_id', notification_client_id = $client_id, notification_entity_id = $new_invoice_id");
+    appNotify("Recurring Sent", "Recurring Invoice $config_invoice_prefix$new_invoice_number for $client_name Sent", "invoice.php?invoice_id=$new_invoice_id", $client_id);
 
     customAction('invoice_create', $new_invoice_id);
 
@@ -622,8 +624,10 @@ while ($row = mysqli_fetch_array($sql_recurring)) {
         } else {
             mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Draft', history_description = 'Cron Failed to send Invoice!', history_invoice_id = $new_invoice_id");
 
-            mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Mail', notification = 'Failed to send email to $contact_email'");
-            mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Mail', log_action = 'Error', log_description = 'Failed to send email to $contact_email regarding $subject. $mail'");
+            appNotify("Mail", "Failed to send email to $contact_email");
+
+            logAction("Mail", "Error", "Failed to send email to $contact_email regarding $subject. $mail");
+
         }
 
         // Send copies of the invoice to any additional billing contacts
@@ -653,8 +657,9 @@ while ($row = mysqli_fetch_array($sql_recurring)) {
 
     } //End if Autosend is on
 } //End Recurring Invoices Loop
+
 // Logging
-//mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron created invoices from recurring invoices and sent emails out'");
+// logAction("Cron", "Task", "Cron created invoices from recurring invoices and sent emails out");
 
 // Recurring Expenses
 // Loop through all recurring expenses that match today's date and is active
@@ -689,7 +694,7 @@ while ($row = mysqli_fetch_array($sql_recurring_expenses)) {
 
     $expense_id = mysqli_insert_id($mysqli);
 
-    mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Expense Created', notification = 'Expense $recurring_expense_description created from recurring expenses', notification_action = 'expenses.php', notification_client_id = $recurring_expense_client_id, notification_entity_id = $expense_id");
+    appNotify("Expense Created", "Expense $recurring_expense_description created from recurring expenses", "expenses.php", $recurring_expense_client_id);
 
     // Update recurring dates using calculated next billing date
 
@@ -697,8 +702,9 @@ while ($row = mysqli_fetch_array($sql_recurring_expenses)) {
 
 
 } //End Recurring Invoices Loop
+
 // Logging
-//mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Task', log_description = 'Cron created expenses from recurring expenses'");
+logAction("Cron", "Task", "Cron created expenses from recurring expenses");
 
 // TELEMETRY
 
@@ -945,7 +951,8 @@ if ($config_telemetry > 0 || $config_telemetry == 2) {
     $result = file_get_contents('https://telemetry.itflow.org', false, $context);
 
     // Logging
-    mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Telemetry', log_description = 'Cron sent telemetry results to ITFlow Developers'");
+    // logAction("Cron", "Task", "Cron sent telemetry results to ITFlow Developers");
+
 }
 
 
@@ -956,7 +963,7 @@ $update_message = $updates->update_message;
 
 if ($updates->current_version !== $updates->latest_version) {
     // Send Alert to inform Updates Available
-    mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Update', notification = '$update_message', notification_action = 'admin_update.php'");
+    appNotify("Update", "$update_message", "admin_update.php");
 }
 
 
@@ -968,7 +975,7 @@ if ($updates->current_version !== $updates->latest_version) {
  */
 
 // Send Alert to inform Cron was run
-mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Cron', notification = 'Cron successfully executed', notification_action = 'admin_audit_log.php'");
+appNotify("Cron", "Cron successfully executed", "admin_audit_log.php");
 
 // Logging
-mysqli_query($mysqli, "INSERT INTO logs SET log_type = 'Cron', log_action = 'Ended', log_description = 'Cron executed successfully'");
+logAction("Cron", "Ended", "Cron executed successfully");

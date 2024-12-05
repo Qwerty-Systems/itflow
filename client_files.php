@@ -43,8 +43,8 @@ if ($get_folder_id == 0 && isset($_GET["q"])) {
     $sql = mysqli_query(
         $mysqli,
         "SELECT SQL_CALC_FOUND_ROWS * FROM files
+        LEFT JOIN users ON file_created_by = user_id
         WHERE file_client_id = $client_id
-        
         AND file_archived_at IS NULL
         AND (file_name LIKE '%$q%' OR file_ext LIKE '%$q%' OR file_description LIKE '%$q%')
         $query_images
@@ -54,6 +54,7 @@ if ($get_folder_id == 0 && isset($_GET["q"])) {
     $sql = mysqli_query(
         $mysqli,
         "SELECT SQL_CALC_FOUND_ROWS * FROM files
+        LEFT JOIN users ON file_created_by = user_id
         WHERE file_client_id = $client_id
         AND file_folder_id = $folder_id
         AND file_archived_at IS NULL
@@ -67,6 +68,28 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
 $num_of_files = mysqli_num_rows($sql);
 
+// Breadcrumbs
+// Build the full folder path
+$folder_id = $get_folder_id;
+$folder_path = array();
+
+while ($folder_id > 0) {
+    $sql_folder = mysqli_query($mysqli, "SELECT folder_name, parent_folder FROM folders WHERE folder_id = $folder_id");
+    if ($row_folder = mysqli_fetch_assoc($sql_folder)) {
+        $folder_name = nullable_htmlentities($row_folder['folder_name']);
+        $parent_folder = intval($row_folder['parent_folder']);
+
+        // Prepend the folder to the beginning of the array
+        array_unshift($folder_path, array('folder_id' => $folder_id, 'folder_name' => $folder_name));
+
+        // Move up to the parent folder
+        $folder_id = $parent_folder;
+    } else {
+        // If the folder is not found, break the loop
+        break;
+    }
+}
+
 ?>
 
 <div class="card card-dark">
@@ -77,12 +100,12 @@ $num_of_files = mysqli_num_rows($sql);
         <div class="card-tools">
             <div class="btn-group">
                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#uploadFilesModal">
-                    <i class="fas fa-fw fa-cloud-upload-alt mr-2"></i>Upload
+                    <i class="fas fa-fw fa-cloud-upload-alt mr-2"></i>Upload File
                 </button>
                 <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
                 <div class="dropdown-menu">
                     <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#createFolderModal">
-                        <i class="fa fa-fw fa-folder-plus mr-2"></i>Create Folder
+                        <i class="fa fa-fw fa-folder-plus mr-2"></i>New Folder
                     </a>
                 </div>
             </div>
@@ -99,61 +122,117 @@ $num_of_files = mysqli_num_rows($sql);
                         <a class="nav-link <?php if ($get_folder_id == 0) { echo "active"; } ?>" href="?client_id=<?php echo $client_id; ?>&folder_id=0">/</a>
                     </li>
                     <?php
-                    $sql_folders = mysqli_query($mysqli, "SELECT * FROM folders WHERE folder_location = $folder_location AND folder_client_id = $client_id ORDER BY folder_name ASC");
-                    while ($row = mysqli_fetch_array($sql_folders)) {
-                        $folder_id = intval($row['folder_id']);
-                        $folder_name = nullable_htmlentities($row['folder_name']);
+                    // Function to check if a folder is an ancestor of the current folder
+                    function is_ancestor_folder($folder_id, $current_folder_id, $client_id) {
+                        global $mysqli;
 
-                        $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('file_id') AS num FROM files WHERE file_archived_at IS NULL AND file_folder_id = $folder_id"));
-                        $num_files = intval($row['num']);
+                        // Base case: if current_folder_id is 0 or equal to folder_id
+                        if ($current_folder_id == 0) {
+                            return false;
+                        }
+                        if ($current_folder_id == $folder_id) {
+                            return true;
+                        }
 
-                        ?>
+                        // Get the parent folder of the current folder
+                        $result = mysqli_query($mysqli, "SELECT parent_folder FROM folders WHERE folder_id = $current_folder_id AND folder_client_id = $client_id");
+                        if ($row = mysqli_fetch_assoc($result)) {
+                            $parent_folder_id = intval($row['parent_folder']);
+                            // Recursive call to check the parent folder
+                            return is_ancestor_folder($folder_id, $parent_folder_id, $client_id);
+                        } else {
+                            // Folder not found
+                            return false;
+                        }
+                    }
 
-                        <li class="nav-item">
-                            <div class="row">
-                                <div class="col-10">
-                                    <a class="nav-link <?php if ($get_folder_id == $folder_id) { echo "active"; } ?> " href="?client_id=<?php echo $client_id; ?>&folder_id=<?php echo $folder_id; ?>&view=<?php echo $view; ?>">
-                                        <?php
-                                        if ($get_folder_id == $folder_id) { ?>
-                                            <i class="fas fa-fw fa-folder-open"></i>
-                                        <?php } else { ?>
-                                            <i class="fas fa-fw fa-folder"></i>
-                                        <?php } ?>
+                    // Recursive function to display folders and subfolders
+                    function display_folders($parent_folder_id, $client_id, $indent = 0) {
+                        global $mysqli, $get_folder_id, $session_user_role;
 
-                                        <?php echo $folder_name; ?> <?php if ($num_files > 0) { echo "<span class='badge badge-pill badge-dark float-right mt-1'>$num_files</span>"; } ?>
+                        $sql_folders = mysqli_query($mysqli, "SELECT * FROM folders WHERE parent_folder = $parent_folder_id AND folder_location = 1 AND folder_client_id = $client_id ORDER BY folder_name ASC");
+                        while ($row = mysqli_fetch_array($sql_folders)) {
+                            $folder_id = intval($row['folder_id']);
+                            $folder_name = nullable_htmlentities($row['folder_name']);
+
+                            // Get the number of files in the folder
+                            $row2 = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('file_id') AS num FROM files WHERE file_folder_id = $folder_id AND file_archived_at IS NULL"));
+                            $num_files = intval($row2['num']);
+
+                            // Get the number of subfolders
+                            $subfolder_result = mysqli_query($mysqli, "SELECT COUNT(*) AS count FROM folders WHERE parent_folder = $folder_id AND folder_client_id = $client_id");
+                            $subfolder_count = intval(mysqli_fetch_assoc($subfolder_result)['count']);
+
+                            echo '<li class="nav-item">';
+                            echo '<div class="row">';
+                            echo '<div class="col-10">';
+                            echo '<a class="nav-link ';
+                            if ($get_folder_id == $folder_id) { echo "active"; }
+                            echo '" href="?client_id=' . $client_id . '&folder_id=' . $folder_id . '">';
+
+                            // Indentation for subfolders
+                            echo str_repeat('&nbsp;', $indent * 4);
+
+                            // Determine if the folder is open
+                            if ($get_folder_id == $folder_id || is_ancestor_folder($folder_id, $get_folder_id, $client_id)) {
+                                echo '<i class="fas fa-fw fa-folder-open"></i>';
+                            } else {
+                                echo '<i class="fas fa-fw fa-folder"></i>';
+                            }
+
+                            echo ' ' . $folder_name;
+
+                            if ($num_files > 0) {
+                                echo "<span class='badge badge-pill badge-dark float-right mt-1'>$num_files</span>";
+                            }
+
+                            echo '</a>';
+                            echo '</div>';
+                            echo '<div class="col-2">';
+                            ?>
+                            <div class="dropdown">
+                                <button class="btn btn-sm" type="button" data-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#renameFolderModal<?php echo $folder_id; ?>">
+                                        <i class="fas fa-fw fa-edit mr-2"></i>Rename
                                     </a>
-                                </div>
-                                <div class="col-2">
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm" type="button" data-toggle="dropdown">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <div class="dropdown-menu">
-                                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#renameFolderModal<?php echo $folder_id; ?>">
-                                                <i class="fas fa-fw fa-edit mr-2"></i>Rename
-                                            </a>
-                                            <?php if ($session_user_role == 3 && $num_files == 0) { ?>
-                                                <div class="dropdown-divider"></div>
-                                                <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?delete_folder=<?php echo $folder_id; ?>">
-                                                    <i class="fas fa-fw fa-trash mr-2"></i>Delete
-                                                </a>
-                                            <?php } ?>
-                                        </div>
-                                    </div>
+                                    <?php
+                                    // Only show delete option if user is admin, folder has no files, and no subfolders
+                                    if ($session_user_role == 3 && $num_files == 0 && $subfolder_count == 0) { ?>
+                                        <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?delete_folder=<?php echo $folder_id; ?>">
+                                            <i class="fas fa-fw fa-trash mr-2"></i>Delete
+                                        </a>
+                                    <?php } ?>
                                 </div>
                             </div>
-                        </li>
+                            <?php
+                            echo '</div>';
+                            echo '</div>';
 
-                        <?php
-                        require "folder_rename_modal.php";
+                            // Include the rename and create subfolder modals
+                            require "folder_rename_modal.php";
 
+                            if ($subfolder_count > 0) {
+                                // Display subfolders
+                                echo '<ul class="nav nav-pills flex-column bg-light">';
+                                display_folders($folder_id, $client_id, $indent + 1);
+                                echo '</ul>';
+                            }
 
+                            echo '</li>';
+                        }
                     }
+
+                    // Start displaying folders from the root (parent_folder = 0)
+                    display_folders(0, $client_id);
                     ?>
                 </ul>
-                <?php require_once "folder_create_modal.php";
- ?>
+                <?php require_once "folder_create_modal.php"; ?>
             </div>
+
 
             <div class="col-md-9">
 
@@ -162,15 +241,15 @@ $num_of_files = mysqli_num_rows($sql);
                     <input type="hidden" name="view" value="<?php echo $view; ?>">
                     <input type="hidden" name="folder_id" value="<?php echo $get_folder_id; ?>">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-5">
                             <div class="input-group mb-3 mb-md-0">
-                                <input type="search" class="form-control" name="q" value="<?php if (isset($q)) { echo stripslashes(nullable_htmlentities($q)); } ?>" placeholder="Search Files">
+                                <input type="search" class="form-control" name="q" value="<?php if (isset($q)) { echo stripslashes(nullable_htmlentities($q)); } ?>" placeholder="Search for files in <?php if($get_folder_id == 0) { echo "all folders"; } else { echo "current folder"; } ?>">
                                 <div class="input-group-append">
                                     <button class="btn btn-dark"><i class="fa fa-search"></i></button>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-7">
                             <div class="btn-group float-right">
                                 <a href="?<?php echo $url_query_strings_sort; ?>&view=0" class="btn <?php if($view == 0){ echo "btn-primary"; } else { echo "btn-outline-secondary"; } ?>"><i class="fas fa-list-ul"></i></a>
                                 <a href="?<?php echo $url_query_strings_sort; ?>&view=1" class="btn <?php if($view == 1){ echo "btn-primary"; } else { echo "btn-outline-secondary"; } ?>"><i class="fas fa-th-large"></i></a>
@@ -183,6 +262,11 @@ $num_of_files = mysqli_num_rows($sql);
                                         <a class="dropdown-item" href="#" data-toggle="modal" data-target="#bulkMoveFilesModal">
                                             <i class="fas fa-fw fa-exchange-alt mr-2"></i>Move
                                         </a>
+                                        <div class="dropdown-divider"></div>
+                                        <button class="dropdown-item text-danger text-bold"
+                                                type="submit" form="bulkActions" name="bulk_delete_files">
+                                            <i class="fas fa-fw fa-trash mr-2"></i>Delete
+                                        </button>
                                     </div>
                                 </div>
 
@@ -190,6 +274,31 @@ $num_of_files = mysqli_num_rows($sql);
                         </div>
                     </div>
                 </form>
+
+                <nav class="mt-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="?client_id=<?php echo $client_id; ?>&folder_id=0">
+                                <i class="fas fa-fw fa-folder mr-2"></i>Root
+                            </a>
+                        </li>
+                        <?php
+                        // Output breadcrumb items for each folder in the path
+                        foreach ($folder_path as $folder) {
+                            $bread_crumb_folder_id = $folder['folder_id']; // Already Sanitized before it was pushed into array
+                            $bread_crumb_folder_name = $folder['folder_name']; // Already Sanitized before it was pushed into array
+
+                            ?>
+                            <li class="breadcrumb-item">
+                                <a href="?client_id=<?php echo $client_id; ?>&folder_id=<?php echo $bread_crumb_folder_id; ?>">
+                                    <i class="fas fa-fw fa-folder-open mr-2"></i><?php echo $bread_crumb_folder_name; ?>
+                                </a>
+                            </li>
+                            <?php
+                        }
+                        ?>
+                    </ol>
+                </nav>
 
                 <hr>
 
@@ -211,6 +320,10 @@ $num_of_files = mysqli_num_rows($sql);
                         $file_name = nullable_htmlentities($row['file_name']);
                         $file_reference_name = nullable_htmlentities($row['file_reference_name']);
                         $file_ext = nullable_htmlentities($row['file_ext']);
+                        $file_size = intval($row['file_size']);
+                        $file_size_KB = number_format($file_size / 1024);
+                        $file_mime_type = nullable_htmlentities($row['file_mime_type']);
+                        $file_uploaded_by = nullable_htmlentities($row['user_name']);
 
                         ?>
 
@@ -261,6 +374,16 @@ $num_of_files = mysqli_num_rows($sql);
                                     </a>
                                 </th>
                                 <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=file_mime_type&order=<?php echo $disp; ?>">
+                                        Type <?php if ($sort == 'file_mime_type') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=file_size&order=<?php echo $disp; ?>">
+                                        Size <?php if ($sort == 'file_size') { echo $order_icon; } ?>
+                                    </a>
+                                </th>
+                                <th>
                                     <a class="text-secondary" href="?<?php echo $url_query_strings_sort; ?>&sort=file_created_at&order=<?php echo $disp; ?>">
                                         Uploaded <?php if ($sort == 'file_created_at') { echo $order_icon; } ?>
                                     </a>
@@ -302,7 +425,12 @@ $num_of_files = mysqli_num_rows($sql);
                                 } else {
                                     $file_icon = "file";
                                 }
+                                $file_size = intval($row['file_size']);
+                                $file_size_KB = number_format($file_size / 1024);
+                                $file_mime_type = nullable_htmlentities($row['file_mime_type']);
+                                $file_uploaded_by = nullable_htmlentities($row['user_name']);
                                 $file_created_at = nullable_htmlentities($row['file_created_at']);
+                                $file_folder_id = intval($row['file_folder_id']);
                                 
                                 // Check if shared
                                 $sql_shared = mysqli_query(
@@ -339,9 +467,9 @@ $num_of_files = mysqli_num_rows($sql);
                                         </div>
                                     </td>
                                     <td>
-                                        <a href="<?php echo "uploads/clients/$client_id/$file_reference_name"; ?>" target="_blank" class="text-secondary">
+                                        <a href="<?php echo "uploads/clients/$client_id/$file_reference_name"; ?>" target="_blank">
                                             <div class="media">
-                                                <i class="fa fa-fw fa-2x fa-<?php echo $file_icon; ?> mr-3"></i>
+                                                <i class="fa fa-fw fa-2x fa-<?php echo $file_icon; ?> text-dark mr-3"></i>
                                                 <div class="media-body">
                                                     <p>
                                                         <?php echo basename($file_name); ?>
@@ -352,7 +480,12 @@ $num_of_files = mysqli_num_rows($sql);
                                             </div>
                                         </a>
                                     </td>
-                                    <td><?php echo $file_created_at; ?></td>
+                                    <td><?php echo $file_mime_type; ?></td>
+                                    <td><?php echo $file_size_KB; ?> KB</td>
+                                    <td>
+                                        <?php echo $file_created_at; ?>
+                                        <div class="text-secondary mt-1"><?php echo $file_uploaded_by; ?></div>        
+                                    </td>
                                     <td>
                                         <?php if (mysqli_num_rows($sql_shared) > 0) { ?>
                                             <div class="media" title="Expires <?php echo $item_expire_at_human; ?>">
