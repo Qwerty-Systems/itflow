@@ -45,9 +45,8 @@ RUN echo "upload_max_filesize = 500M" >> /etc/php/8.3/apache2/php.ini && \
 
 # Add ITFlow from GitHub
 WORKDIR /var/www/html
-RUN rm -f index.html && \
-    git clone https://github.com/itflow-org/itflow.git . && \
-    chown -R www-data:www-data /var/www/html && \
+COPY . /var/www/html
+RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html
 
 # # Set the database for ITFlow
