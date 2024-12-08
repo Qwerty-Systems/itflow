@@ -6,12 +6,12 @@ RUN apt-get update && apt-get install -y \
     git \
     dnsutils \
     whois \
-    libmailparse-dev \
+    libmailutils-dev \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
     libicu-dev \
-    libmcrypt-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
     mysqli \
     intl \
@@ -20,7 +20,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && pecl install mailparse \
     && docker-php-ext-enable mailparse \
-    && a2enmod rewrite
+    && a2enmod rewrite \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Configure PHP settings
 RUN echo "upload_max_filesize=500M" >> /usr/local/etc/php/php.ini \
