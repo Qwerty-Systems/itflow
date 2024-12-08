@@ -1,59 +1,45 @@
-# Use the official Debian base image
-FROM debian:bullseye-slim
+# Use the official PHP 8.3 image with Apache
+FROM php:8.3-apache
 
-# Set environment variables for UTF-8 encoding
-ENV DEBIAN_FRONTEND=noninteractive \
-    LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8
-
-# Install required dependencies for adding repositories
-RUN apt-get update && \
-    apt-get install -y \
-    ca-certificates \
-    lsb-release \
-    apt-transport-https \
-    curl && \
-    apt-get clean
-
-# Add the Sury PHP repository
-RUN echo "deb https://packages.sury.org/php/ $(lsb_release -cs) main" | tee -a /etc/apt/sources.list.d/sury-php.list && \
-    curl -fsSL https://packages.sury.org/php/apt.gpg | tee /etc/apt/trusted.gpg.d/sury.asc && \
-    apt-get update
-
-# Install PHP 8.3 and Apache packages
-RUN apt-get install -y \
-    apache2 \
-    mariadb-server \
-    php8.3 \
-    php8.3-intl \
-    php8.3-imap \
-    php8.3-mailparse \
-    php8.3-mysqli \
-    php8.3-curl \
-    php8.3-gd \
-    php8.3-mbstring \
-    libapache2-mod-php8.3 \
+# Install required PHP extensions and other dependencies
+RUN apt-get update && apt-get install -y \
     git \
+    dnsutils \
     whois \
-    ufw && \
-    apt-get clean
+    libmailparse-dev \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libicu-dev \
+    libmcrypt-dev \
+    && docker-php-ext-install \
+    mysqli \
+    intl \
+    gd \
+    mbstring \
+    curl \
+    && pecl install mailparse \
+    && docker-php-ext-enable mailparse \
+    && a2enmod rewrite
 
-# Enable required Apache modules (SSL, PHP)
-RUN a2enmod ssl && \
-    a2enmod php8.3
+# Configure PHP settings
+RUN echo "upload_max_filesize=500M" >> /usr/local/etc/php/php.ini \
+    && echo "post_max_size=500M" >> /usr/local/etc/php/php.ini \
+    && echo "memory_limit=256M" >> /usr/local/etc/php/php.ini \
+    && echo "max_execution_time=300" >> /usr/local/etc/php/php.ini \
+    && echo "disable_functions=" >> /usr/local/etc/php/php.ini
 
-# Set PHP file upload limits
-RUN echo "upload_max_filesize = 500M" >> /etc/php/8.3/apache2/php.ini && \
-    echo "post_max_size = 500M" >> /etc/php/8.3/apache2/php.ini
+# Set working directory
+WORKDIR /app
 
-# Add ITFlow from GitHub
-WORKDIR /var/www/html
-COPY . /var/www/html
-RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 775 /var/www/html
+# Copy project files to the container
+COPY . /app
 
-# Expose ports
-EXPOSE 80 443
+# Set correct permissions
+RUN chown -R www-data:www-data /app && chmod -R 775 /app
 
-# Start Apache and MariaDB services
-CMD service apache2 start && service mysql start && tail -f /dev/null
+# Expose port 80
+EXPOSE 80
+
+# Start Apache
+CMD ["apache2-foreground"]
