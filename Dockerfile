@@ -1,5 +1,8 @@
 FROM php:8.3-apache
 
+# Set non-interactive environment
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install dependencies
 RUN apt-get update && apt-get install -y \
     git \
@@ -16,20 +19,17 @@ RUN apt-get update && apt-get install -y \
     gd \
     mbstring \
     curl \
-    && pecl install mailparse \
+    && pecl install -f mailparse \
     && docker-php-ext-enable mailparse \
     && a2enmod rewrite \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
-WORKDIR /app
+WORKDIR /var/www/html
 
-# Copy application code
-COPY . /app
-
-# Set permissions
-RUN chown -R www-data:www-data /app && chmod -R 775 /app
+# Copy application files
+COPY . .
 
 # Expose port
 EXPOSE 80
