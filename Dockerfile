@@ -1,11 +1,10 @@
 FROM php:8.3-apache
 
-# Install required packages and PHP extensions
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     git \
     dnsutils \
     whois \
-    libmailparse-dev \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
