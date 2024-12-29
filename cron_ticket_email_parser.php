@@ -57,12 +57,12 @@ if (file_exists($lock_file_path)) {
         unlink($lock_file_path);
 
         // Logging
-        logAction("Cron-Email-Parser", "Delete", "Cron Email Parser detected a lock file was present but was over 5 minutes old so it removed it.");
+        logApp("Cron-Email-Parser", "warning", "Cron Email Parser detected a lock file was present but was over 5 minutes old so it removed it.");
     
     } else {
        
         // Logging
-        logAction("Cron-Email-Parser", "Locked", "Cron Email Parser attempted to execute but was already executing, so instead it terminated.");
+        logApp("Cron-Email-Parser", "warning", "Lock file present. Cron Email Parser attempted to execute but was already executing, so instead it terminated.");
 
         exit("Script is already running. Exiting.");
     }
@@ -147,6 +147,11 @@ function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date
         }
     }
 
+    // Guest ticket watchers
+    if ($client_id == 0) {
+        mysqli_query($mysqli, "INSERT INTO ticket_watchers SET watcher_email = '$contact_email_esc', watcher_ticket_id = $id");
+    }
+
     $data = [];
     if ($config_ticket_client_general_notifications == 1) {
         $subject_email = "Ticket created - [$config_ticket_prefix$ticket_number] - $subject";
@@ -162,7 +167,7 @@ function addTicket($contact_id, $contact_name, $contact_email, $client_id, $date
     }
 
     if ($config_ticket_new_ticket_notification_email) {
-        if ($client_id == 0){
+        if ($client_id == 0) {
             $client_name = "Guest";
         } else {
             $client_sql = mysqli_query($mysqli, "SELECT client_name FROM clients WHERE client_id = $client_id");

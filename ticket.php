@@ -379,6 +379,12 @@ if (isset($_GET['ticket_id'])) {
                     <div class="card-tools d-print-none">
                     <div class="btn-toolbar">
 
+                        <?php if ($config_ai_enable == 1) { ?>
+                        <button class="btn btn-info btn-sm ml-3" data-toggle="modal" data-target="#summaryModal">
+                            <i class="fas fa-fw fa-lightbulb mr-2"></i>Summary
+                        </button>
+                        <?php } ?>
+
                         <?php if ($config_module_enable_accounting && $ticket_billable == 1 && empty($invoice_id) && lookupUserPermission("module_sales") >= 2) { ?>
                             <a href="#" class="btn btn-light btn-sm ml-3" href="#" data-toggle="modal" data-target="#addInvoiceFromTicketModal">
                                 <i class="fas fa-fw fa-file-invoice mr-2"></i>Invoice
@@ -889,7 +895,7 @@ if (isset($_GET['ticket_id'])) {
                 <!-- Tasks Card -->
                 <div class="card card-body">
 
-                    <?php if (empty($ticket_closed_at) && lookupUserPermission("module_support") >= 2) { ?>
+                    <?php if (empty($ticket_resolved_at) && lookupUserPermission("module_support") >= 2) { ?>
                         <form action="post.php" method="post" autocomplete="off">
                             <input type="hidden" name="ticket_id" value="<?php echo $ticket_id; ?>">
                             <div class="form-group">
@@ -928,7 +934,7 @@ if (isset($_GET['ticket_id'])) {
                                 <td><span class="text-secondary"><?php echo $task_completion_estimate; ?>m</span> - <?php echo $task_name; ?></td>
                                 <td>
                                     <div class="float-right">
-                                        <?php if (empty($ticket_closed_at) && lookupUserPermission("module_support") >= 2) { ?>
+                                        <?php if (empty($ticket_resolved_at) && lookupUserPermission("module_support") >= 2) { ?>
                                             <div class="dropdown dropleft text-center">
                                                 <button class="btn btn-link text-secondary btn-sm" type="button" data-toggle="dropdown">
                                                     <i class="fas fa-fw fa-ellipsis-v"></i>
@@ -1180,6 +1186,25 @@ require_once "footer.php";
 
 ?>
 
+<!-- Summary Modal -->
+<div class="modal fade" id="summaryModal" tabindex="-1" role="dialog" aria-labelledby="summaryModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content bg-dark">
+      <div class="modal-header">
+        <h5 class="modal-title" id="summaryModalTitle">Ticket Summary</h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body bg-white">
+        <div id="summaryContent" class="text-center">
+          <i class="fas fa-spinner fa-spin"></i> Generating summary...
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="js/show_modals.js"></script>
 
 <?php if (empty($ticket_closed_at)) { ?>
@@ -1191,3 +1216,20 @@ require_once "footer.php";
 <?php } ?>
 
 <script src="js/pretty_content.js"></script>
+
+<script>
+$('#summaryModal').on('shown.bs.modal', function (e) {
+    // Perform AJAX request to get the summary
+    $.ajax({
+        url: 'post.php?ai_ticket_summary',
+        method: 'POST',
+        data: { ticket_id: <?php echo $ticket_id; ?> },
+        success: function(response) {
+          $('#summaryContent').html(response);
+        },
+        error: function() {
+          $('#summaryContent').html('Error generating summary.');
+        }
+    });
+});
+</script>

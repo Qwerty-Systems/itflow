@@ -1,9 +1,12 @@
 <!-- Main Sidebar Container -->
 <aside class="main-sidebar sidebar-dark-<?php echo nullable_htmlentities($config_theme); ?> d-print-none">
 
-    <div class="brand-link brand-text">
-        <h3 class="text-light mb-0"><?php echo nullable_htmlentities($session_company_name); ?></h3>
-    </div>
+    <a class="brand-link" href="dashboard.php">
+        <div class="brand-image">
+            <i class="fas fa-building fa-2x"></i>
+        </div>
+        <span class="brand-text h5 ml-2"><?php echo nullable_htmlentities($session_company_name); ?></span>
+    </a>
 
     <!-- Sidebar -->
     <div class="sidebar">
@@ -77,7 +80,7 @@
                     </a>
                 </li>
                 <?php if ($config_module_enable_accounting == 1 && lookupUserPermission("module_sales") >= 1) { ?>
-                    <li class="nav-header mt-3">SALES</li>
+                    <li class="nav-header mt-3">BILLING</li>
                     <li class="nav-item">
                         <a href="quotes.php" class="nav-link <?php if (basename($_SERVER["PHP_SELF"]) == "quotes.php" || basename($_SERVER["PHP_SELF"]) == "quote.php") { echo "active"; } ?>">
                             <i class="nav-icon fas fa-comment-dollar"></i>

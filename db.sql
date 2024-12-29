@@ -57,6 +57,23 @@ CREATE TABLE `api_keys` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `app_logs`
+--
+
+DROP TABLE IF EXISTS `app_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `app_logs` (
+  `app_log_id` int(11) NOT NULL AUTO_INCREMENT,
+  `app_log_category` varchar(200) DEFAULT NULL,
+  `app_log_type` enum('info','warning','error','debug') NOT NULL DEFAULT 'info',
+  `app_log_details` varchar(1000) DEFAULT NULL,
+  `app_log_created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`app_log_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `asset_custom`
 --
 
@@ -676,22 +693,6 @@ CREATE TABLE `email_queue` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `error_logs`
---
-
-DROP TABLE IF EXISTS `error_logs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `error_logs` (
-  `error_log_id` int(11) NOT NULL AUTO_INCREMENT,
-  `error_log_type` varchar(200) NOT NULL,
-  `error_log_details` varchar(1000) DEFAULT NULL,
-  `error_log_created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`error_log_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Table structure for table `event_attendees`
 --
 
@@ -780,6 +781,8 @@ CREATE TABLE `files` (
   `file_size` bigint(20) unsigned NOT NULL DEFAULT 0,
   `file_hash` varchar(200) DEFAULT NULL,
   `file_mime_type` varchar(100) DEFAULT NULL,
+  `file_has_thumbnail` tinyint(1) NOT NULL DEFAULT 0,
+  `file_has_preview` tinyint(1) NOT NULL DEFAULT 0,
   `file_important` tinyint(1) NOT NULL DEFAULT 0,
   `file_created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `file_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
@@ -917,6 +920,7 @@ CREATE TABLE `locations` (
   `location_state` varchar(200) DEFAULT NULL,
   `location_zip` varchar(200) DEFAULT NULL,
   `location_phone` varchar(200) DEFAULT NULL,
+  `location_fax` varchar(200) DEFAULT NULL,
   `location_hours` varchar(200) DEFAULT NULL,
   `location_photo` varchar(200) DEFAULT NULL,
   `location_primary` tinyint(1) NOT NULL DEFAULT 0,
@@ -1377,6 +1381,27 @@ CREATE TABLE `recurring_expenses` (
   `recurring_expense_account_id` int(11) NOT NULL,
   PRIMARY KEY (`recurring_expense_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `recurring_payments`
+--
+
+DROP TABLE IF EXISTS `recurring_payments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `recurring_payments` (
+  `recurring_payment_id` int(11) NOT NULL AUTO_INCREMENT,
+  `recurring_payment_currency_code` varchar(10) NOT NULL,
+  `recurring_payment_method` varchar(200) NOT NULL,
+  `recurring_payment_created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `recurring_payment_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  `recurring_payment_archived_at` datetime DEFAULT NULL,
+  `recurring_payment_account_id` int(11) NOT NULL,
+  `recurring_payment_recurring_expense_id` int(11) NOT NULL DEFAULT 0,
+  `recurring_payment_recurring_invoice_id` int(11) NOT NULL,
+  PRIMARY KEY (`recurring_payment_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2262,4 +2287,4 @@ CREATE TABLE `vendors` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-11-24 15:03:10
+-- Dump completed on 2024-12-21 20:24:14

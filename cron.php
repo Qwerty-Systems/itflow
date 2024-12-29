@@ -98,7 +98,7 @@ if ( $argv[1] !== $config_cron_key ) {
  */
 
 //Logging
-logAction("Cron", "Start", "Cron Started");
+logApp("Cron", "info", "Cron Started");
 
 /*
  * ###############################################################################################################
@@ -252,7 +252,7 @@ if ($tickets_pending_assignment > 0) {
     appNotify("Pending Tickets", "There are $tickets_pending_assignment new tickets pending assignment", "tickets.php?status=New");
 
     // Logging
-    logAction("Cron", "Task", "Cron created notifications for new tickets that are pending assignment");
+    logApp("Cron", "info", "Cron created notifications for new tickets that are pending assignment");
 }
 
 // Recurring (Scheduled) tickets
@@ -502,7 +502,8 @@ if ($config_send_invoice_reminders == 1) {
 
                 appNotify("Mail", "Failed to send email to $contact_email");
                 
-                logAction("Mail", "Error", "Failed to send email to $contact_email regarding $subject. $mail");
+                // Logging
+                logApp("Mail", "error", "Failed to send email to $contact_email regarding $subject. $mail");
             }
 
         }
@@ -515,7 +516,12 @@ if ($config_send_invoice_reminders == 1) {
 // Send Recurring Invoices that match todays date and are active
 
 //Loop through all recurring that match today's date and is active
-$sql_recurring = mysqli_query($mysqli, "SELECT * FROM recurring LEFT JOIN clients ON client_id = recurring_client_id WHERE recurring_next_date = CURDATE() AND recurring_status = 1");
+$sql_recurring = mysqli_query($mysqli, "SELECT * FROM recurring
+    LEFT JOIN recurring_payments ON recurring_id = recurring_payment_recurring_invoice_id
+    LEFT JOIN clients ON client_id = recurring_client_id
+    WHERE recurring_next_date = CURDATE() 
+    AND recurring_status = 1
+");
 
 while ($row = mysqli_fetch_array($sql_recurring)) {
     $recurring_id = intval($row['recurring_id']);
@@ -533,7 +539,11 @@ while ($row = mysqli_fetch_array($sql_recurring)) {
     $client_id = intval($row['recurring_client_id']);
     $client_name = sanitizeInput($row['client_name']);
     $client_net_terms = intval($row['client_net_terms']);
-
+    
+    $recurring_payment_recurring_invoice_id = intval($row['recurring_payment_recurring_invoice_id']);
+    $recurring_payment_currency_code = sanitizeInput($row['recurring_payment_currency_code']);
+    $recurring_payment_method = sanitizeInput($row['recurring_payment_method']);
+    $recurring_payment_account_id = intval($row['recurring_payment_account_id']);
 
     // Get the last Invoice Number and add 1 for the new invoice number
     $sql_invoice_number = mysqli_query($mysqli, "SELECT * FROM settings WHERE company_id = 1");
@@ -626,7 +636,8 @@ while ($row = mysqli_fetch_array($sql_recurring)) {
 
             appNotify("Mail", "Failed to send email to $contact_email");
 
-            logAction("Mail", "Error", "Failed to send email to $contact_email regarding $subject. $mail");
+            // Logging
+            logApp("Mail", "error", "Failed to send email to $contact_email regarding $subject. $mail");
 
         }
 
@@ -656,6 +667,24 @@ while ($row = mysqli_fetch_array($sql_recurring)) {
         }
 
     } //End if Autosend is on
+
+    // Create Payment from Auto Payment
+    if ($recurring_payment_recurring_invoice_id) {
+       mysqli_query($mysqli,"INSERT INTO payments SET payment_date = CURDATE(), payment_amount = $recurring_amount, payment_currency_code = '$recurring_payment_currency_code', payment_account_id = $recurring_payment_account_id, payment_method = '$recurring_payment_method', payment_reference = 'Paid via AutoPay', payment_invoice_id = $new_invoice_id");
+
+        // Get Payment ID for reference
+        $payment_id = mysqli_insert_id($mysqli);
+
+        // Update Invoice Status
+        mysqli_query($mysqli,"UPDATE invoices SET invoice_status = 'Paid' WHERE invoice_id = $new_invoice_id");
+
+        //Add Payment to History
+        mysqli_query($mysqli,"INSERT INTO history SET history_status = 'Paid', history_description = 'Payment added via Auto Pay', history_invoice_id = $new_invoice_id");
+
+        // Logging
+        logAction("Invoice", "Payment", "Auto Payment amount of " . numfmt_format_currency($currency_format, $recurring_amount, $recurring_payment_currency_code) . " added to invoice $invoice_prefix$invoice_number", $client_id, $new_invoice_id);                     
+    } //End Auto Payment
+
 } //End Recurring Invoices Loop
 
 // Logging
@@ -704,7 +733,7 @@ while ($row = mysqli_fetch_array($sql_recurring_expenses)) {
 } //End Recurring Invoices Loop
 
 // Logging
-logAction("Cron", "Task", "Cron created expenses from recurring expenses");
+logApp("Cron", "info", "Cron created expenses from recurring expenses");
 
 // TELEMETRY
 
@@ -978,4 +1007,4 @@ if ($updates->current_version !== $updates->latest_version) {
 appNotify("Cron", "Cron successfully executed", "admin_audit_log.php");
 
 // Logging
-logAction("Cron", "Ended", "Cron executed successfully");
+logApp("Cron", "info", "Cron executed successfully");
