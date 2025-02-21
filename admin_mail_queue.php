@@ -4,7 +4,7 @@
 $sort = "email_id";
 $order = "DESC";
 
-require_once "inc_all_admin.php";
+require_once "includes/inc_all_admin.php";
 
 //Rebuild URL
 $url_query_strings_sort = http_build_query($get_copy);
@@ -103,11 +103,6 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 </div>
                             </td>
                             <th>
-                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_id&order=<?php echo $disp; ?>">
-                                    ID <?php if ($sort == 'email_id') { echo $order_icon; } ?>
-                                </a>
-                            </th>
-                            <th>
                                 <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=email_queued_at&order=<?php echo $disp; ?>">
                                     Queued <?php if ($sort == 'email_queued_at') { echo $order_icon; } ?>
                                 </a>
@@ -137,7 +132,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     Attempts <?php if ($sort == 'email_attempts') { echo $order_icon; } ?>
                                 </a>
                             </th>
-                            <th>Action</th>
+                            <th class="text-center">Action</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -175,14 +170,13 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     </div>
                                     <?php } ?>
                                 </td>
-                                <td><?php echo $email_id; ?></td>
                                 <td><?php echo $email_queued_at; ?></td>
                                 <td><?php echo "$email_from<br><small class='text-secondary'>$email_from_name</small>"?></td>
                                 <td><?php echo "$email_recipient<br><small class='text-secondary'>$email_recipient_name</small>"?></td>
                                 <td><?php echo $email_subject; ?></td>
                                 <td><?php echo $email_status_display; ?></td>
                                 <td><?php echo $email_attempts; ?></td>
-                                <td>
+                                <td class="text-center">
                                     <a class="btn btn-sm btn-secondary" href="admin_mail_queue_message_view.php?email_id=<?php echo $email_id; ?>">
                                         <i class="fas fa-fw fa-eye"></i>
                                     </a>
@@ -209,11 +203,11 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 </div>
             </form>
 
-            <?php require_once "pagination.php"; ?>
+            <?php require_once "includes/filter_footer.php"; ?>
         </div>
     </div>
 
 <script src="js/bulk_actions.js"></script>
 
 <?php
-require_once "footer.php";
+require_once "includes/footer.php";

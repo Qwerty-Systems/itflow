@@ -21,7 +21,7 @@ if ($config_https_only && (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] !== 'o
 
 require_once "functions.php";
 
-require_once "rfc6238.php";
+require_once "plugins/totp/totp.php";
 
 
 // IP & User Agent for logging
@@ -75,7 +75,7 @@ $config_login_remember_me_expire = intval($row['config_login_remember_me_expire'
 //  If no/incorrect 'key' is supplied, send to client portal instead
 if ($config_login_key_required) {
     if (!isset($_GET['key']) || $_GET['key'] !== $config_login_key_secret) {
-        header("Location: portal");
+        header("Location: client");
         exit();
     }
 }
@@ -145,7 +145,7 @@ if (isset($_POST['login'])) {
         // Validate MFA code
         if (!empty($current_code) && TokenAuth6238::verify($token, $current_code)) {
             $mfa_is_complete = true;
-            $extended_log = 'with 2FA';
+            $extended_log = 'with MFA';
         }
 
         if ($mfa_is_complete) {
@@ -185,7 +185,7 @@ if (isset($_POST['login'])) {
                         'body' => $body
                     ]
                 ];
-                addToMailQueue($mysqli, $data);
+                addToMailQueue($data);
             }
 
             // Logging
@@ -201,8 +201,7 @@ if (isset($_POST['login'])) {
 
             // Forcing MFA
             if ($force_mfa == 1 && $token == NULL) {
-                $secretMFA = key32gen();
-                $config_start_page = "post.php?enable_2fa_force&token=$secretMFA&csrf_token=$_SESSION[csrf_token]";
+                $config_start_page = "mfa_enforcement.php";
             }
 
             // Setup encryption session key
@@ -262,7 +261,7 @@ if (isset($_POST['login'])) {
                             'body' => $body
                         ]
                     ];
-                    $mail = addToMailQueue($mysqli, $data);
+                    $mail = addToMailQueue($data);
                 }
 
                 // HTML feedback for incorrect 2FA code
@@ -315,7 +314,7 @@ if (isset($_POST['login'])) {
     <?php } ?>
 
     <!-- Theme style -->
-    <link rel="stylesheet" href="dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="plugins/adminlte/css/adminlte.min.css">
 
 </head>
 <body class="hold-transition login-page">
@@ -325,7 +324,7 @@ if (isset($_POST['login'])) {
         <?php if (!empty($company_logo)) { ?>
             <img alt="<?=nullable_htmlentities($company_name)?> logo" height="110" width="380" class="img-fluid" src="<?php echo "uploads/settings/$company_logo"; ?>">
         <?php } else { ?>
-            <b>IT</b>Flow
+            <span class="text-primary text-bold"><i class="fas fa-paper-plane mr-2"></i>IT</span>Flow
         <?php } ?>
     </div>
 
@@ -333,7 +332,7 @@ if (isset($_POST['login'])) {
     <div class="card">
         <div class="card-body login-card-body">
 
-            <?php if(!empty($config_login_message)){ ?>
+            <?php if (!empty($config_login_message)){ ?>
             <p class="login-box-msg px-0"><?php echo nl2br($config_login_message); ?></p>
             <?php } ?>
 
@@ -383,7 +382,7 @@ if (isset($_POST['login'])) {
 
                 <?php if($config_client_portal_enable == 1){ ?>
                     <hr>
-                    <h5 class="text-center">Looking for the <a href="portal">Client Portal?<a/></h5>
+                    <h5 class="text-center">Looking for the <a href="client">Client Portal?<a/></h5>
                 <?php } ?>
 
             </form>
@@ -401,7 +400,7 @@ if (isset($_POST['login'])) {
 <script src="plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 
 <!-- AdminLTE App -->
-<script src="dist/js/adminlte.min.js"></script>
+<script src="plugins/adminlte/js/adminlte.min.js"></script>
 
 <!-- <script src="plugins/Show-Hide-Passwords-Bootstrap-4/bootstrap-show-password.min.js"></script> -->
 

@@ -1,6 +1,6 @@
 <?php
 
-require_once "inc_all_client.php";
+require_once "includes/inc_all_client.php";
 
 
 if (isset($_GET['contact_id'])) {
@@ -33,6 +33,9 @@ if (isset($_GET['contact_id'])) {
     $location_name = nullable_htmlentities($row['location_name']);
     $auth_method = nullable_htmlentities($row['user_auth_method']);
     $contact_client_id = intval($row['contact_client_id']);
+
+    // Override Tab Title // No Sanitizing needed as this var will opnly be used in the tab title
+    $page_title = $row['contact_name'];
 
     // Check to see if Contact belongs to client
     if($contact_client_id !== $client_id) {
@@ -210,7 +213,7 @@ if (isset($_GET['contact_id'])) {
                     <?php } ?>
                     <div class="mt-2"><i class="fa fa-fw fa-clock text-secondary mr-2"></i><?php echo date('Y-m-d', strtotime($contact_created_at)); ?></div>
 
-                    <?php require_once "client_contact_edit_modal.php";
+                    <?php require_once "modals/client_contact_edit_modal.php";
  ?>
 
                 </div>
@@ -414,9 +417,9 @@ if (isset($_GET['contact_id'])) {
 
                                 <?php
 
-                                require "client_asset_edit_modal.php";
+                                require "modals/client_asset_edit_modal.php";
 
-                                require "client_asset_copy_modal.php";
+                                require "modals/client_asset_copy_modal.php";
 
 
                             }
@@ -474,7 +477,7 @@ if (isset($_GET['contact_id'])) {
                                 if (empty($login_otp_secret)) {
                                     $otp_display = "-";
                                 } else {
-                                    $otp_display = "<span onmouseenter='showOTP($login_id_with_secret)'><i class='far fa-clock'></i> <span id='otp_$login_id'><i>Hover..</i></span></span>";
+                                    $otp_display = "<span onmouseenter='showOTPViaLoginID($login_id)'><i class='far fa-clock'></i> <span id='otp_$login_id'><i>Hover..</i></span></span>";
                                 }
                                 $login_note = nullable_htmlentities($row['login_note']);
                                 $login_important = intval($row['login_important']);
@@ -551,7 +554,7 @@ if (isset($_GET['contact_id'])) {
 
                                 <?php
 
-                                require "client_login_edit_modal.php";
+                                require "modals/client_login_edit_modal.php";
 
                             }
 
@@ -689,6 +692,10 @@ if (isset($_GET['contact_id'])) {
                                                 <a class="dropdown-item" href="#" data-toggle="modal"
                                                    data-target="#editRecurringTicketModal" onclick="populateRecurringTicketEditModal(<?php echo $client_id, ',', $scheduled_ticket_id ?>)">
                                                     <i class="fas fa-fw fa-edit mr-2"></i>Edit
+                                                </a>
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item" href="post.php?force_recurring_ticket=<?php echo $scheduled_ticket_id; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?>">
+                                                    <i class="fa fa-fw fa-paper-plane text-secondary mr-2"></i>Force Reoccur
                                                 </a>
                                                 <?php
                                                 if ($session_user_role == 3) { ?>
@@ -1063,7 +1070,7 @@ if (isset($_GET['contact_id'])) {
 
     <?php
 
-    require_once "share_modal.php";
+    require_once "modals/share_modal.php";
 
     ?>
 
@@ -1122,19 +1129,21 @@ if (isset($_GET['contact_id'])) {
     </script>
 
     <script src="js/recurring_tickets_edit_modal.js"></script>
+    <!-- Include script to get TOTP code via the login ID -->
+    <script src="js/logins_show_otp_via_id.js"></script>
 
 <?php
 
-require_once "client_contact_create_note_modal.php";
-require_once "ticket_add_modal.php";
-require_once "client_contact_link_asset_modal.php";
-require_once "client_contact_link_software_modal.php";
-require_once "client_contact_link_credential_modal.php";
-require_once "client_contact_link_service_modal.php";
-require_once "client_contact_link_document_modal.php";
-require_once "client_contact_link_file_modal.php";
+require_once "modals/client_contact_create_note_modal.php";
+require_once "modals/ticket_add_modal.php";
+require_once "modals/client_contact_link_asset_modal.php";
+require_once "modals/client_contact_link_software_modal.php";
+require_once "modals/client_contact_link_credential_modal.php";
+require_once "modals/client_contact_link_service_modal.php";
+require_once "modals/client_contact_link_document_modal.php";
+require_once "modals/client_contact_link_file_modal.php";
 
-require_once "recurring_ticket_add_modal.php";
-require_once "recurring_ticket_edit_modal.php";
+require_once "modals/recurring_ticket_add_modal.php";
+require_once "modals/recurring_ticket_edit_modal.php";
 
-require_once "footer.php";
+require_once "includes/footer.php";

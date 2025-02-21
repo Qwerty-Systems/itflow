@@ -5,7 +5,7 @@
 $sort = "ticket_number";
 $order = "DESC";
 
-require_once "inc_all.php";
+require_once "includes/inc_all.php";
 
 // Perms
 enforceUserPermission('module_support');
@@ -280,7 +280,7 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                                     <option value="unassigned" <?php if ($ticket_assigned_filter_id == "0") { echo "selected"; } ?>>Unassigned</option>
 
                                     <?php
-                                    $sql_assign_to = mysqli_query($mysqli, "SELECT * FROM users WHERE user_archived_at IS NULL ORDER BY user_name ASC");
+                                    $sql_assign_to = mysqli_query($mysqli, "SELECT * FROM users WHERE user_type = 1 AND user_archived_at IS NULL ORDER BY user_name ASC");
                                     while ($row = mysqli_fetch_array($sql_assign_to)) {
                                         $user_id = intval($row['user_id']);
                                         $user_name = nullable_htmlentities($row['user_name']);
@@ -316,12 +316,12 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                             </th>
                             <th>
                                 <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=ticket_subject&order=<?php echo $disp; ?>">
-                                    Subject / Tasks <?php if ($sort == 'ticket_subject') { echo $order_icon; } ?>
+                                    Subject <?php if ($sort == 'ticket_subject') { echo $order_icon; } ?>
                                 </a>
                             </th>
                             <th>
                                 <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">
-                                    Client / Contact <?php if ($sort == 'client_name') { echo $order_icon; } ?>
+                                    Client / <span class="text-secondary">Contact</span> <?php if ($sort == 'client_name') { echo $order_icon; } ?>
                                 </a>
                             </th>
                             
@@ -418,7 +418,7 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                             if (empty($contact_name)) {
                                 $contact_display = "-";
                             } else {
-                                $contact_display = "$contact_name<br><small class='text-secondary'>$contact_email</small>";
+                                $contact_display = "$contact_name";
                             }
 
                             // Get who last updated the ticket - to be shown in the last Response column
@@ -559,12 +559,12 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                             // Edit actions, for open tickets
                             if (empty($ticket_closed_at)) {
 
-                                require "ticket_assign_modal.php";
+                                require "modals/ticket_assign_modal.php";
 
-                                require "ticket_edit_priority_modal.php";
+                                require "modals/ticket_edit_priority_modal.php";
 
                                 if ($config_module_enable_accounting) {
-                                    require "ticket_edit_billable_modal.php";
+                                    require "modals/ticket_edit_billable_modal.php";
                                 }
                             }
                         }
@@ -574,20 +574,20 @@ $user_active_assigned_tickets = intval($row['total_tickets_assigned']);
                         </tbody>
                     </table>
                 </div>
-                <?php require_once "ticket_bulk_assign_modal.php"; ?>
-                <?php require_once "ticket_bulk_edit_priority_modal.php"; ?>
-                <?php require_once "ticket_bulk_add_project_modal.php"; ?>
-                <?php require_once "ticket_bulk_reply_modal.php"; ?>
-                <?php require_once "ticket_bulk_merge_modal.php"; ?>
-                <?php require_once "ticket_bulk_resolve_modal.php"; ?>
+                <?php require_once "modals/ticket_bulk_assign_modal.php"; ?>
+                <?php require_once "modals/ticket_bulk_edit_priority_modal.php"; ?>
+                <?php require_once "modals/ticket_bulk_add_project_modal.php"; ?>
+                <?php require_once "modals/ticket_bulk_reply_modal.php"; ?>
+                <?php require_once "modals/ticket_bulk_merge_modal.php"; ?>
+                <?php require_once "modals/ticket_bulk_resolve_modal.php"; ?>
             </form>
-            <?php require_once "pagination.php"; ?>
+            <?php require_once "includes/filter_footer.php"; ?>
         </div>
     </div>
 
     <script src="js/bulk_actions.js"></script>
 
 <?php
-require_once "ticket_add_modal.php";
+require_once "modals/ticket_add_modal.php";
 
-require_once "footer.php";
+require_once "includes/footer.php";
