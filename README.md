@@ -119,3 +119,13 @@ ITFlow is distributed "as is" under the GPL License, WITHOUT WARRANTY OF ANY KIN
 [product-screenshot]: .github/readme.gif
 
 <!-- https://github.com/othneildrew/Best-README-Template -->
+
+
+
+pwd && chown -R 1000:1000 /app && chmod -R 755 /app && ls -ld /app
+If write access is still restricted, try:
+
+sh
+Copy
+Edit
+pwd && sudo chown -R www-data:www-data /app && sudo chmod -R 777 /app && ls -ld /app
