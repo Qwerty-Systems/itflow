@@ -293,7 +293,7 @@ if (isset($_POST['edit_ticket_contact'])) {
 
     $ticket_id = intval($_POST['ticket_id']);
     $contact_id = intval($_POST['contact']);
-    $notify = intval($_POST['contact_notify']);
+    $notify = intval($_POST['contact_notify']) ?? 0;
 
     // Get Original contact, and ticket details
     $sql = mysqli_query($mysqli, "SELECT 
@@ -822,6 +822,54 @@ if (isset($_POST['bulk_edit_ticket_priority'])) {
         logAction("Ticket", " Bulk Edit", "$session_name updated the priority on $ticket_count");
 
         $_SESSION['alert_message'] = "You updated the priority for <strong>$ticket_count</strong> Tickets to <strong>$priority</strong>";
+    }
+
+    header("Location: " . $_SERVER["HTTP_REFERER"]);
+}
+
+if (isset($_POST['bulk_edit_ticket_category'])) {
+
+    enforceUserPermission('module_support', 2);
+
+    // POST variables
+    $category_id = intval($_POST['bulk_category']);
+
+    // Assign Tech to Selected Tickets
+    if (isset($_POST['ticket_ids'])) {
+
+        // Get a Ticket Count
+        $ticket_count = count($_POST['ticket_ids']);
+
+        foreach ($_POST['ticket_ids'] as $ticket_id) {
+            $ticket_id = intval($ticket_id);
+
+            $sql = mysqli_query($mysqli, "SELECT ticket_prefix, ticket_number, ticket_subject, category_name, ticket_client_id FROM tickets LEFT JOIN categories ON ticket_category = category_id WHERE ticket_id = $ticket_id");
+            $row = mysqli_fetch_array($sql);
+
+            $ticket_prefix = sanitizeInput($row['ticket_prefix']);
+            $ticket_number = intval($row['ticket_number']);
+            $ticket_subject = sanitizeInput($row['ticket_subject']);
+            $previous_ticket_category_name = sanitizeInput($row['category_name']);
+            $client_id = intval($row['ticket_client_id']);
+
+            // Get Category Name
+            $sql = mysqli_query($mysqli, "SELECT category_name FROM categories WHERE category_id = $category_id");
+            $row = mysqli_fetch_array($sql);
+            $category_name = sanitizeInput($row['category_name']);
+        
+            // Update ticket
+            mysqli_query($mysqli, "UPDATE tickets SET ticket_category = '$category_id' WHERE ticket_id = $ticket_id");
+
+            // Logging
+            logAction("Ticket", "Edit", "$session_name updated the category on ticket $ticket_prefix$ticket_number - $ticket_subject from $previous_category_name to $category_name", $client_id, $ticket_id);
+
+            customAction('ticket_update', $ticket_id);
+        } // End For Each Ticket ID Loop
+
+        // Logging
+        logAction("Ticket", " Bulk Edit", "$session_name updated the category to $category_name on $ticket_count");
+
+        $_SESSION['alert_message'] = "Category set to $category_name for <strong>$ticket_count</strong> Tickets";
     }
 
     header("Location: " . $_SERVER["HTTP_REFERER"]);
@@ -1922,28 +1970,27 @@ if (isset($_POST['add_invoice_from_ticket'])) {
     header("Location: invoice.php?invoice_id=$invoice_id");
 }
 
-if (isset($_POST['export_client_tickets_csv'])) {
+if (isset($_POST['export_tickets_csv'])) {
 
     enforceUserPermission('module_support', 2);
 
-    $client_id = intval($_POST['client_id']);
-
-    //get records from database
-    $sql = mysqli_query($mysqli, "SELECT * FROM clients WHERE client_id = $client_id");
-    $row = mysqli_fetch_array($sql);
-
-    $client_name = $row['client_name'];
+    if (isset($_POST['client_id'])) {
+        $client_id = intval($_POST['client_id']);
+        $client_query = "WHERE ticket_client_id = $client_id";
+    } else {
+        $client_query = '';
+    }
 
     $sql = mysqli_query(
         $mysqli,
         "SELECT * FROM tickets
         LEFT JOIN ticket_statuses ON ticket_status = ticket_status_id
-        WHERE ticket_client_id = $client_id ORDER BY ticket_number ASC"
+        $client_query ORDER BY ticket_number ASC"
     );
 
     if ($sql->num_rows > 0) {
         $delimiter = ",";
-        $filename = $client_name . "-Tickets-" . date('Y-m-d') . ".csv";
+        $filename = "Tickets-" . date('Y-m-d') . ".csv";
 
         //create a file pointer
         $f = fopen('php://memory', 'w');
@@ -2291,7 +2338,7 @@ if (isset($_POST['edit_ticket_schedule'])) {
             'recipient' => $user_email,
             'recipient_name' => $user_name,
             'subject' => "Ticket Scheduled - [$ticket_prefix$ticket_number] - $ticket_subject",
-            'body' => "Hello, " . $user_name . "<br><br>The ticket regarding $ticket_subject has been scheduled for $email_datetime.<br><br>--------------------------------<br><a href=\"https://$config_base_url/ticket.php?id=$ticket_id\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/ticket.php?id=$ticket_id<br><br>~<br>$session_company_name<br>Support Department<br>$config_ticket_from_email",
+            'body' => "Hello, " . $user_name . "<br><br>The ticket regarding $ticket_subject has been scheduled for $email_datetime.<br><br>--------------------------------<br><a href=\"https://$config_base_url/ticket.php?ticket_id=$ticket_id\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/ticket.php?ticket_id=$ticket_id<br><br>~<br>$session_company_name<br>Support Department<br>$config_ticket_from_email",
             'cal_str' => $cal_str
         ];
 
@@ -2383,7 +2430,7 @@ if (isset($_POST['edit_ticket_schedule'])) {
     } else {
         $_SESSION['alert_type'] = "error";
         $_SESSION['alert_message'] = "Ticket scheduled for $email_datetime. Yet there are conflicting tickets scheduled for the same time: <br>" . implode(", <br>", $conflicting_tickets);
-        header("Location: calendar_events.php");
+        header("Location: calendar.php");
     }
 
 }
@@ -2444,7 +2491,7 @@ if (isset($_GET['cancel_ticket_schedule'])) {
             'recipient' => $user_email,
             'recipient_name' => $user_name,
             'subject' => "Ticket Schedule Cancelled - [$ticket_prefix$ticket_number] - $ticket_subject",
-            'body' => "Hello, " . $user_name . "<br><br>Scheduled work for the ticket regarding $ticket_subject has been cancelled.<br><br>--------------------------------<br><a href=\"https://$config_base_url/ticket.php?id=$ticket_id\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/ticket.php?id=$ticket_id<br><br>~<br>$session_company_name<br>Support Department<br>$config_ticket_from_email",
+            'body' => "Hello, " . $user_name . "<br><br>Scheduled work for the ticket regarding $ticket_subject has been cancelled.<br><br>--------------------------------<br><a href=\"https://$config_base_url/ticket.php?ticket_id=$ticket_id\">$ticket_link</a><br>--------------------------------<br><br>Please do not reply to this email. <br><br>Ticket: $ticket_prefix$ticket_number<br>Subject: $ticket_subject<br>Portal: https://$config_base_url/ticket.php?id=$ticket_id<br><br>~<br>$session_company_name<br>Support Department<br>$config_ticket_from_email",
             'cal_str' => $cal_str
         ];
 

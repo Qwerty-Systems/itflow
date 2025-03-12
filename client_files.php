@@ -195,7 +195,11 @@ while ($folder_id > 0) {
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#renameFolderModal<?php echo $folder_id; ?>">
+                                    <a class="dropdown-item" href="#"
+                                        data-toggle="ajax-modal"
+                                        data-ajax-url="ajax/ajax_folder_rename.php"
+                                        data-ajax-id="<?php echo $folder_id; ?>"
+                                        >
                                         <i class="fas fa-fw fa-edit mr-2"></i>Rename
                                     </a>
                                     <?php
@@ -211,9 +215,6 @@ while ($folder_id > 0) {
                             <?php
                             echo '</div>';
                             echo '</div>';
-
-                            // Include the rename and create subfolder modals
-                            require "modals/folder_rename_modal.php";
 
                             if ($subfolder_count > 0) {
                                 // Display subfolders
@@ -344,7 +345,7 @@ while ($folder_id > 0) {
                         <div class="col-xl-2 col-lg-2 col-md-6 col-sm-6 mb-3 text-center">
                         
                             <a href="#" onclick="openModal(<?php echo count($files)-1; ?>)"><!-- passing the index -->
-                                <img class="img-thumbnail" src="<?php echo "uploads/clients/$client_id/$file_reference_name"; ?>" alt="<?php echo $file_reference_name ?>">
+                                <img class="img-thumbnail" src="<?php echo "uploads/clients/$client_id/$file_thumbnail_source"; ?>" alt="<?php echo $file_reference_name ?>">
                             </a>
                             
                             <div>
@@ -355,15 +356,33 @@ while ($folder_id > 0) {
                                     </button>
                                     <div class="dropdown-menu">
                                         <a class="dropdown-item" href="<?php echo "uploads/clients/$client_id/$file_reference_name"; ?>" download="<?php echo $file_name; ?>">
-                                            <i class="fas fa-fw fa-cloud-download-alt mr-2"></i>Download
+                                            <i class="fas fa-fw fa-cloud-download-alt mr-2"></i>Download Original
                                         </a>
+                                        <?php if ($file_has_preview) { ?>
+                                        <a class="dropdown-item" href="<?php echo "uploads/clients/$client_id/preview_$file_reference_name"; ?>" download="preview_<?php echo $file_name; ?>">
+                                            <i class="fas fa-fw fa-cloud-download-alt mr-2"></i>Download Optimized
+                                        </a>
+                                        <?php } ?>
+                                        <?php if ($file_has_thumbnail) { ?>
+                                        <a class="dropdown-item" href="<?php echo "uploads/clients/$client_id/thumbnail_$file_reference_name"; ?>" download="thumbnail_<?php echo $file_name; ?>">
+                                            <i class="fas fa-fw fa-cloud-download-alt mr-2"></i>Download Thumbnail
+                                        </a>
+                                        <?php } ?>
                                         <a class="dropdown-item" href="#" data-toggle="modal" data-target="#shareModal" onclick="populateShareModal(<?php echo "$client_id, 'File', $file_id"; ?>)">
                                             <i class="fas fa-fw fa-share mr-2"></i>Share
                                         </a>
-                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#renameFileModal<?php echo $file_id; ?>">
+                                        <a class="dropdown-item" href="#"
+                                            data-toggle="ajax-modal"
+                                            data-ajax-url="ajax/ajax_file_rename.php"
+                                            data-ajax-id="<?php echo $file_id; ?>"
+                                            >
                                             <i class="fas fa-fw fa-edit mr-2"></i>Rename
                                         </a>
-                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#moveFileModal<?php echo $file_id; ?>">
+                                        <a class="dropdown-item" href="#"
+                                            data-toggle="ajax-modal"
+                                            data-ajax-url="ajax/ajax_file_move.php"
+                                            data-ajax-id="<?php echo $file_id; ?>"
+                                            >
                                             <i class="fas fa-fw fa-exchange-alt mr-2"></i>Move
                                         </a>
                                         <a class="dropdown-item" href="#" data-toggle="modal" data-target="#linkAssetToFileModal<?php echo $file_id; ?>">
@@ -554,15 +573,33 @@ while ($folder_id > 0) {
                                             </button>
                                             <div class="dropdown-menu">
                                                 <a class="dropdown-item" href="<?php echo "uploads/clients/$client_id/$file_reference_name"; ?>" download="<?php echo $file_name; ?>">
-                                                    <i class="fas fa-fw fa-cloud-download-alt mr-2"></i>Download
+                                                    <i class="fas fa-fw fa-cloud-download-alt mr-2"></i>Download Original
                                                 </a>
+                                                <?php if ($file_has_preview) { ?>
+                                                <a class="dropdown-item" href="<?php echo "uploads/clients/$client_id/preview_$file_reference_name"; ?>" download="preview_<?php echo $file_name; ?>">
+                                                    <i class="fas fa-fw fa-cloud-download-alt mr-2"></i>Download Optimized
+                                                </a>
+                                                <?php } ?>
+                                                <?php if ($file_has_thumbnail) { ?>
+                                                <a class="dropdown-item" href="<?php echo "uploads/clients/$client_id/thumbnail_$file_reference_name"; ?>" download="thumbnail_<?php echo $file_name; ?>">
+                                                    <i class="fas fa-fw fa-cloud-download-alt mr-2"></i>Download Thumbnail
+                                                </a>
+                                                <?php } ?>
                                                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#shareModal" onclick="populateShareModal(<?php echo "$client_id, 'File', $file_id"; ?>)">
                                                     <i class="fas fa-fw fa-share mr-2"></i>Share
                                                 </a>
-                                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#renameFileModal<?php echo $file_id; ?>">
+                                                <a class="dropdown-item" href="#"
+                                                    data-toggle="ajax-modal"
+                                                    data-ajax-url="ajax/ajax_file_rename.php"
+                                                    data-ajax-id="<?php echo $file_id; ?>"
+                                                    >
                                                     <i class="fas fa-fw fa-edit mr-2"></i>Rename
                                                 </a>
-                                                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#moveFileModal<?php echo $file_id; ?>">
+                                                <a class="dropdown-item" href="#"
+                                                    data-toggle="ajax-modal"
+                                                    data-ajax-url="ajax/ajax_file_move.php"
+                                                    data-ajax-id="<?php echo $file_id; ?>"
+                                                    >
                                                     <i class="fas fa-fw fa-exchange-alt mr-2"></i>Move
                                                 </a>
                                                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#linkAssetToFileModal<?php echo $file_id; ?>">
@@ -583,8 +620,6 @@ while ($folder_id > 0) {
                                     </td>
                                 </tr>
                                 <?php
-                                require "modals/client_file_rename_modal.php";
-                                require "modals/client_file_move_modal.php";
                                 require "modals/client_file_link_asset_modal.php";
 
                             }

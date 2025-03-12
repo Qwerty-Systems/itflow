@@ -67,8 +67,8 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             </div>
                         </div>
                     </div>
-                    <div class="col-sm-2">
-                        <div class="form-group">
+                    <div class="col-sm-3">
+                        <div class="input-group">
                             <select class="form-control select2" name="category" onchange="this.form.submit()">
                                 <option value="">- All Categories -</option>
 
@@ -84,9 +84,17 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                 ?>
 
                             </select>
+                            <div class="input-group-append">
+                                <button class="btn btn-secondary" type="button"
+                                    data-toggle="ajax-modal"
+                                    data-modal-size="sm"
+                                    data-ajax-url="ajax/ajax_category_add.php?category=Income">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-5">
                         <div class="btn-group float-right">
                             <a href="?<?php echo $url_query_strings_sort ?>&archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>" 
                                 class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
@@ -205,7 +213,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                         <input class="form-check-input bulk-select" type="checkbox" name="product_ids[]" value="<?php echo $product_id ?>">
                                     </div>
                                 </td>
-                                <th><a class="text-dark" href="#" data-toggle="modal" data-target="#editProductModal<?php echo $product_id; ?>"><?php echo $product_name; ?></a></th>
+                                <td>
+                                    <a class="text-dark text-bold" href="#"
+                                        data-toggle="ajax-modal"
+                                        data-ajax-url="ajax/ajax_product_edit.php"
+                                        data-ajax-id="<?php echo $product_id; ?>"
+                                        >
+                                        <?php echo $product_name; ?>   
+                                    </a>
+                                </td>
                                 <td><?php echo $category_name; ?></td>
                                 <td><?php echo $product_description_display; ?></td>
                                 <td><?php echo $tax_name_display; ?></td>
@@ -218,7 +234,11 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                             <i class="fas fa-ellipsis-h"></i>
                                         </button>
                                         <div class="dropdown-menu">
-                                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editProductModal<?php echo $product_id; ?>">
+                                            <a class="dropdown-item" href="#"
+                                                data-toggle="ajax-modal"
+                                                data-ajax-url="ajax/ajax_product_edit.php"
+                                                data-ajax-id="<?php echo $product_id; ?>"
+                                                >
                                                 <i class="fas fa-fw fa-edit mr-2"></i>Edit
                                             </a>
                                             <?php if ($session_user_role == 3) { ?>
@@ -246,9 +266,6 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             </tr>
 
                             <?php
-
-                            require "modals/product_edit_modal.php";
-
 
                         }
 

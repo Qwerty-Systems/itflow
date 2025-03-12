@@ -28,6 +28,7 @@ tinymce.init({
     toolbar: [
       { name: 'styles', items: [ 'styles' ] },
       { name: 'formatting', items: [ 'bold', 'italic', 'forecolor' ] },
+      { name: 'link', items: [ 'link'] },
       { name: 'lists', items: [ 'bullist', 'numlist' ] },
       { name: 'alignment', items: [ 'alignleft', 'aligncenter', 'alignright', 'alignjustify' ] },
       { name: 'indentation', items: [ 'outdent', 'indent' ] },
@@ -39,6 +40,7 @@ tinymce.init({
         plugins: 'autosave lists autolink',
         toolbar: 'bold italic styles'
     },
+    convert_urls: false,
     plugins: 'link image lists table code codesample fullscreen autoresize',
     license_key: 'gpl'
 });
@@ -58,6 +60,7 @@ tinymce.init({
     toolbar: [
       { name: 'styles', items: [ 'styles' ] },
       { name: 'formatting', items: [ 'bold', 'italic', 'forecolor' ] },
+      { name: 'link', items: [ 'link'] },
       { name: 'lists', items: [ 'bullist', 'numlist' ] },
       { name: 'alignment', items: [ 'alignleft', 'aligncenter', 'alignright', 'alignjustify' ] },
       { name: 'indentation', items: [ 'outdent', 'indent' ] },
@@ -70,6 +73,7 @@ tinymce.init({
         plugins: 'autosave lists autolink',
         toolbar: 'bold italic styles'
     },
+    convert_urls: false,
     plugins: 'link image lists table code codesample fullscreen autoresize',
     license_key: 'gpl',
     setup: function(editor) {
@@ -168,6 +172,7 @@ tinymce.init({
         plugins: 'autosave lists autolink',
         toolbar: 'bold italic styles'
     },
+    convert_urls: false,
     plugins: 'link image lists table code fullscreen autoresize',
     license_key: 'gpl'
 });
@@ -196,6 +201,7 @@ tinymce.init({
         menubar: false,
         toolbar: 'bold italic styles'
     },
+    convert_urls: false,
     plugins: 'link image lists table code codesample fullscreen autoresize',
     license_key: 'gpl',
     setup: function(editor) {
@@ -269,20 +275,6 @@ tinymce.init({
             }
         });
     }
-});
-
-// Initialize TinyMCE
-tinymce.init({
-    selector: '.tinymcePreview',
-    resize: false,
-    promotion: false,
-    branding: false,
-    menubar: false,
-    toolbar: false,
-    statusbar: false,
-    readonly: false,
-    plugins: 'autoresize',
-    license_key: 'gpl',
 });
 
 // DateTime

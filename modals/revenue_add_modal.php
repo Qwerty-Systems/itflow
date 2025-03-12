@@ -23,21 +23,6 @@
                         </div>
 
                         <div class="form-group col-md">
-                            <label>Currency <strong class="text-danger">*</strong></label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text"><i class="fa fa-fw fa-money-bill"></i></span>
-                                </div>
-                                <select class="form-control select2" name="currency_code" required>
-                                    <option value="">- Currency -</option>
-                                    <?php foreach($currencies_array as $currency_code => $currency_name) { ?>
-                                        <option <?php if ($session_company_currency == $currency_code) { echo "selected"; } ?> value="<?php echo $currency_code; ?>"><?php echo "$currency_code - $currency_name"; ?></option>
-                                    <?php } ?>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group col-md">
                             <label>Amount <strong class="text-danger">*</strong></label>
                             <div class="input-group">
                                 <div class="input-group-prepend">
@@ -114,7 +99,12 @@
                                     ?>
                                 </select>
                                 <div class="input-group-append">
-                                    <a class="btn btn-secondary" href="admin_category.php?category=Income" target="_blank"><i class="fas fa-fw fa-plus"></i></a>
+                                    <button class="btn btn-secondary" type="button"
+                                        data-toggle="ajax-modal"
+                                        data-modal-size="sm"
+                                        data-ajax-url="ajax/ajax_category_add.php?category=Income">
+                                        <i class="fas fa-fw fa-plus"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>

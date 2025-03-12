@@ -167,11 +167,12 @@ DROP TABLE IF EXISTS `asset_interfaces`;
 CREATE TABLE `asset_interfaces` (
   `interface_id` int(11) NOT NULL AUTO_INCREMENT,
   `interface_name` varchar(200) NOT NULL,
+  `interface_description` varchar(200) DEFAULT NULL,
+  `interface_type` varchar(50) DEFAULT NULL,
   `interface_mac` varchar(200) DEFAULT NULL,
   `interface_ip` varchar(200) DEFAULT NULL,
   `interface_nat_ip` varchar(200) DEFAULT NULL,
   `interface_ipv6` varchar(200) DEFAULT NULL,
-  `interface_port` varchar(200) DEFAULT NULL,
   `interface_notes` text DEFAULT NULL,
   `interface_primary` tinyint(1) DEFAULT 0,
   `interface_created_at` datetime NOT NULL DEFAULT current_timestamp(),
@@ -222,6 +223,7 @@ CREATE TABLE `assets` (
   `asset_uri` varchar(500) DEFAULT NULL,
   `asset_uri_2` varchar(500) DEFAULT NULL,
   `asset_status` varchar(200) DEFAULT NULL,
+  `asset_purchase_reference` varchar(200) DEFAULT NULL,
   `asset_purchase_date` date DEFAULT NULL,
   `asset_warranty_expire` date DEFAULT NULL,
   `asset_install_date` date DEFAULT NULL,
@@ -317,6 +319,24 @@ CREATE TABLE `categories` (
   `category_archived_at` datetime DEFAULT NULL,
   PRIMARY KEY (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `certificate_history`
+--
+
+DROP TABLE IF EXISTS `certificate_history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `certificate_history` (
+ `certificate_history_id` int(11) NOT NULL AUTO_INCREMENT,
+ `certificate_history_column` varchar(200) NOT NULL,
+ `certificate_history_old_value` text NOT NULL,
+ `certificate_history_new_value` text NOT NULL,
+ `certificate_history_certificate_id` int(11) NOT NULL,
+ `certificate_history_modified_at` datetime NOT NULL DEFAULT current_timestamp(),
+ PRIMARY KEY (`certificate_history_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1031,9 +1051,7 @@ CREATE TABLE `logins` (
   `login_password_changed_at` datetime DEFAULT current_timestamp(),
   `login_folder_id` int(11) NOT NULL DEFAULT 0,
   `login_contact_id` int(11) NOT NULL DEFAULT 0,
-  `login_vendor_id` int(11) NOT NULL DEFAULT 0,
   `login_asset_id` int(11) NOT NULL DEFAULT 0,
-  `login_software_id` int(11) NOT NULL DEFAULT 0,
   `login_client_id` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`login_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -1276,6 +1294,20 @@ CREATE TABLE `projects` (
   `project_client_id` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`project_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `quote_files`
+--
+
+DROP TABLE IF EXISTS `quote_files`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `quote_files` (
+  `quote_id` int(11) NOT NULL,
+  `file_id` int(11) NOT NULL,
+  PRIMARY KEY (`quote_id`,`file_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1740,6 +1772,9 @@ CREATE TABLE `settings` (
   `config_phone_mask` tinyint(1) NOT NULL DEFAULT 1,
   `config_whitelabel_enabled` int(11) NOT NULL DEFAULT 0,
   `config_whitelabel_key` text DEFAULT NULL,
+  `config_ticket_default_view` tinyint(1) NOT NULL DEFAULT 0,
+  `config_ticket_ordering` tinyint(1) NOT NULL DEFAULT 0,
+  `config_ticket_moving_columns` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`company_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1786,6 +1821,7 @@ CREATE TABLE `software` (
   `software_license_type` varchar(200) DEFAULT NULL,
   `software_key` varchar(200) DEFAULT NULL,
   `software_seats` int(11) DEFAULT NULL,
+  `software_purchase_reference` varchar(200) DEFAULT NULL,
   `software_purchase` date DEFAULT NULL,
   `software_expire` date DEFAULT NULL,
   `software_notes` text DEFAULT NULL,
@@ -1794,7 +1830,7 @@ CREATE TABLE `software` (
   `software_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
   `software_archived_at` datetime DEFAULT NULL,
   `software_accessed_at` datetime DEFAULT NULL,
-  `software_login_id` int(11) NOT NULL DEFAULT 0,
+  `software_vendor_id` int(11) DEFAULT 0,
   `software_client_id` int(11) NOT NULL,
   `software_template_id` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`software_id`)
@@ -2019,6 +2055,7 @@ CREATE TABLE `ticket_statuses` (
   `ticket_status_name` varchar(200) NOT NULL,
   `ticket_status_color` varchar(200) NOT NULL,
   `ticket_status_active` tinyint(1) NOT NULL DEFAULT 1,
+  `ticket_status_order` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`ticket_status_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2113,6 +2150,7 @@ CREATE TABLE `tickets` (
   `ticket_asset_id` int(11) NOT NULL DEFAULT 0,
   `ticket_invoice_id` int(11) NOT NULL DEFAULT 0,
   `ticket_project_id` int(11) NOT NULL DEFAULT 0,
+  `ticket_order` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`ticket_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2342,4 +2380,4 @@ CREATE TABLE `vendors` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-25 21:47:06
+-- Dump completed on 2025-02-26 12:58:39

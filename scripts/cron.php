@@ -179,7 +179,7 @@ if ($config_whitelabel_enabled && !validateWhitelabelKey($config_whitelabel_key)
 
 if ($config_enable_alert_domain_expire == 1) {
 
-    $domainAlertArray = [1,7,14,30,90];
+    $domainAlertArray = [1,7,45];
 
     foreach ($domainAlertArray as $day) {
 
@@ -198,7 +198,7 @@ if ($config_enable_alert_domain_expire == 1) {
             $client_id = intval($row['client_id']);
             $client_name = sanitizeInput($row['client_name']);
 
-            appNotify("Domain Expiring", "Domain $domain_name for $client_name will expire in $day Days on $domain_expire", "client_domains.php?client_id=$client_id", $client_id);
+            appNotify("Domain Expiring", "Domain $domain_name for $client_name will expire in $day Days on $domain_expire", "domains.php?client_id=$client_id", $client_id);
 
         }
 
@@ -209,7 +209,7 @@ if ($config_enable_alert_domain_expire == 1) {
 
 // CERTIFICATES EXPIRING
 
-$certificateAlertArray = [1,7,14,30,90];
+$certificateAlertArray = [1,7,45];
 
 foreach ($certificateAlertArray as $day) {
 
@@ -229,7 +229,7 @@ foreach ($certificateAlertArray as $day) {
         $client_id = intval($row['client_id']);
         $client_name = sanitizeInput($row['client_name']);
 
-        appNotify("Certificate Expiring", "Certificate $certificate_name for $client_name will expire in $day Days on $certificate_expire", "client_certificates.php?client_id=$client_id", $client_id);
+        appNotify("Certificate Expiring", "Certificate $certificate_name for $client_name will expire in $day Days on $certificate_expire", "certificates.php?client_id=$client_id", $client_id);
 
     }
 
@@ -239,7 +239,7 @@ foreach ($certificateAlertArray as $day) {
 
 // Asset Warranties Expiring
 
-$warranty_alert_array = [1,7,14,30,90];
+$warranty_alert_array = [1,7,45];
 
 foreach ($warranty_alert_array as $day) {
 
@@ -258,7 +258,7 @@ foreach ($warranty_alert_array as $day) {
         $client_id = intval($row['client_id']);
         $client_name = sanitizeInput($row['client_name']);
 
-        appNotify("Asset Warranty Expiring", "Asset $asset_name warranty for $client_name will expire in $day Days on $asset_warranty_expire", "client_assets.php?client_id=$client_id", $client_id);
+        appNotify("Asset Warranty Expiring", "Asset $asset_name warranty for $client_name will expire in $day Days on $asset_warranty_expire", "assets.php?client_id=$client_id", $client_id);
 
     }
 
