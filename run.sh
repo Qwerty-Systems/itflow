@@ -3,10 +3,10 @@ set -e  # Exit on error
 
 # Install PHP mailparse via PECL
 apt-get update
-apt-get install -y php8.3-dev php-pear
-pecl install mailparse
-echo "extension=mailparse.so" > /etc/php/8.3/mods-available/mailparse.ini
-phpenmod mailparse
+# apt-get install -y php8.3-dev php-pear
+# pecl install mailparse
+# echo "extension=mailparse.so" > /etc/php/8.3/mods-available/mailparse.ini
+# phpenmod mailparse
 
 # Configure PHP
 PHP_INI=$(php --ini | awk -F': ' '/Loaded Configuration File/{print $2}')
