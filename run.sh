@@ -16,7 +16,7 @@ WEB_USER="www-data"
 
 # Set ownership and base permissions
 chown -R $WEB_USER:$WEB_USER "$APP_DIR"
-find "$APP_DIR" -type d -exec chmod 755 {} \;
+find "$APP_DIR" -type d -exec chmod 777 {} \;
 find "$APP_DIR" -type f -exec chmod 644 {} \;
 
 # Specific write permissions for required directories
@@ -50,7 +50,7 @@ fi
 
 # Final permissions cleanup
 chown -R $WEB_USER:$WEB_USER "$APP_DIR/.git"
-find "$APP_DIR/.git" -type d -exec chmod 755 {} \;
+find "$APP_DIR/.git" -type d -exec chmod 777 {} \;
 find "$APP_DIR/.git" -type f -exec chmod 644 {} \;
 
 # Restart PHP-FPM (container-safe)
