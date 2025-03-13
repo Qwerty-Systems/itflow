@@ -1,8 +1,8 @@
 #!/bin/bash
-set -e  # Exit on error
+#set -e  # Exit on error
 
 # Install PHP mailparse via PECL
-apt-get update
+#apt-get update
 # apt-get install -y php8.3-dev php-pear
 # pecl install mailparse
 # echo "extension=mailparse.so" > /etc/php/8.3/mods-available/mailparse.ini
@@ -19,12 +19,12 @@ sed -i "s/^\(upload_max_filesize\s*=\s*\).*\$/\1500M/" "$PHP_INI"
 sed -i "s/^\(post_max_size\s*=\s*\).*\$/\1500M/" "$PHP_INI"
 
 # Apache Configuration
-a2enmod ssl rewrite
-a2ensite default-ssl
-systemctl restart apache2
+# a2enmod ssl rewrite
+# a2ensite default-ssl
+# systemctl restart apache2
 
 # Git Configuration
-git config --global init.defaultBranch main
+git config --global init.defaultBranch master
 git config --global --add safe.directory /app
 
 # Repository Setup
@@ -33,8 +33,8 @@ if [[ ! -d "$APP_DIR/.git" ]]; then
     cd "$APP_DIR"
     git init
     git remote add origin https://github.com/Qwerty-Systems/itflow
-    git fetch --depth=1 origin main  # Ensure 'main' exists in repo
-    git checkout -f main
+    git fetch --depth=1 origin master  # Ensure 'main' exists in repo
+    git checkout -f master
 fi
 
 # Set Permissions
