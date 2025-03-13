@@ -1,21 +1,28 @@
 #!/bin/bash
 set -e  # Exit on error
 
-
 # Install PHP mailparse via PECL
-#apt-get install -y php8.3-dev php-pear
-# pecl install mailparse
-# echo "extension=mailparse.so" > /etc/php/8.3/mods-available/mailparse.ini
-# phpenmod mailparse
+apt-get update
+apt-get install -y php8.3-dev php-pear
+pecl install mailparse
+echo "extension=mailparse.so" > /etc/php/8.3/mods-available/mailparse.ini
+phpenmod mailparse
 
 # Configure PHP
-PHP_INI="/etc/php/8.3/apache2/php.ini"
+PHP_INI=$(php --ini | awk -F': ' '/Loaded Configuration File/{print $2}')
+if [[ -z "$PHP_INI" || "$PHP_INI" == "(none)" ]]; then
+    echo "Error: PHP configuration file not found!"
+    exit 1
+fi
+
 sed -i "s/^\(upload_max_filesize\s*=\s*\).*\$/\1500M/" "$PHP_INI"
 sed -i "s/^\(post_max_size\s*=\s*\).*\$/\1500M/" "$PHP_INI"
 
 # Apache Configuration
 a2enmod ssl rewrite
 a2ensite default-ssl
+systemctl restart apache2
+
 # Git Configuration
 git config --global init.defaultBranch main
 git config --global --add safe.directory /app
@@ -26,9 +33,9 @@ if [[ ! -d "$APP_DIR/.git" ]]; then
     cd "$APP_DIR"
     git init
     git remote add origin https://github.com/Qwerty-Systems/itflow
-    git fetch --depth=1 origin master  # Changed from main to master
+    git fetch --depth=1 origin main  # Ensure 'main' exists in repo
+    git checkout -f main
 fi
-
 
 # Set Permissions
 chown -R www-data:www-data "$APP_DIR"
@@ -49,11 +56,10 @@ for dir in "${WRITABLE_DIRS[@]}"; do
     chown -R www-data:www-data "$full_path"
 done
 
-# Final Permissions
-git config --global --add safe.directory "$APP_DIR"
-chmod 640 "${APP_DIR}/config.php"
+# Secure config.php
+chmod 644 "${APP_DIR}/config.php"
 
 # Restart Services
-systemctl restart apache2 php8.3-fpm
+systemctl restart apache2
 
 echo "Installation completed successfully!"
