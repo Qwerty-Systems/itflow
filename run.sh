@@ -1,14 +1,6 @@
 #!/bin/bash
 set -e  # Exit on error
 
-# Install Dependencies
-apt-get update && apt-get install -y \
-    apache2 \
-    mariadb-server \
-    php8.3 php8.3-intl php8.3-imap php8.3-mysqli php8.3-curl php8.3-gd php8.3-mbstring \
-    libapache2-mod-php8.3 \
-    git whois dnsutils \
-    certbot python3-certbot-apache
 
 # Install PHP mailparse via PECL
 apt-get install -y php8.3-dev php-pear
@@ -35,8 +27,6 @@ if [[ ! -d "$APP_DIR/.git" ]]; then
     git init
     git remote add origin https://github.com/Qwerty-Systems/itflow
     git fetch --depth=1 origin master  # Changed from main to master
-    git reset --hard origin/master
-    git branch -m master main  # Rename branch to main
 fi
 
 
