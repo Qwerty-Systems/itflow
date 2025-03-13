@@ -4,7 +4,7 @@ FROM php:8.2-apache
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install required packages
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     mariadb-client \
     git \
@@ -19,19 +19,15 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libmcrypt-dev \
-    php-pear \
-    php8.2-intl \
-    php8.2-imap \
-    php8.2-mailparse \
-    php8.2-mysqli \
-    php8.2-curl \
-    php8.2-gd \
-    php8.2-mbstring \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd zip mysqli pdo pdo_mysql intl mbstring xml \
-    && pecl install mailparse \
-    && echo "extension=mailparse.so" > /usr/local/etc/php/conf.d/mailparse.ini \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-install gd zip mysqli pdo pdo_mysql intl mbstring xml
+
+# Install missing PHP extensions
+RUN docker-php-ext-install opcache
+
+# Install PECL extensions
+RUN pecl install mailparse \
+    && echo "extension=mailparse.so" > /usr/local/etc/php/conf.d/mailparse.ini
 
 # Enable Apache modules
 RUN a2enmod rewrite ssl
