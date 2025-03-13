@@ -35,7 +35,7 @@ if [[ ! -d "$APP_DIR/.git" ]]; then
         git init
         git remote add origin "$GIT_REPO"
         git fetch
-        git checkout main  # or your branch name
+        git checkout master  # or your branch name
     fi
 fi
 
@@ -47,8 +47,8 @@ find "$APP_DIR" -type d -exec chmod 755 {} \;
 find "$APP_DIR" -type f -exec chmod 644 {} \;
 
 # Special write permissions
-chmod -R 775 "$APP_DIR/storage"
-chmod -R 775 "$APP_DIR/bootstrap/cache"
+#chmod -R 775 "$APP_DIR/storage"
+#chmod -R 775 "$APP_DIR/bootstrap/cache"
 
 # Update Git Permissions
 if [[ -d "$APP_DIR/.git" ]]; then
