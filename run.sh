@@ -3,7 +3,7 @@ set -e  # Exit on error
 
 
 # Install PHP mailparse via PECL
-apt-get install -y php8.3-dev php-pear
+#apt-get install -y php8.3-dev php-pear
 pecl install mailparse
 echo "extension=mailparse.so" > /etc/php/8.3/mods-available/mailparse.ini
 phpenmod mailparse
