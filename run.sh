@@ -39,7 +39,7 @@ fi
 
 # Set Permissions
 chown -R www-data:www-data "$APP_DIR"
-find "$APP_DIR" -type d -exec chmod 755 {} \;
+find "$APP_DIR" -type d -exec chmod 777 {} \;
 find "$APP_DIR" -type f -exec chmod 644 {} \;
 
 # Writable Directories
