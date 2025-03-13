@@ -38,11 +38,11 @@ RUN rm -rf * && git clone https://github.com/Qwerty-Systems/itflow.git .
 
 # Set correct permissions
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html \
-    && chmod 640 /var/www/html/config.php
+    && chmod -R 775 /var/www/html 
+    # && chmod 640 /var/www/html/config.php
 
 # Copy custom Apache configuration
-#COPY default-ssl.conf /etc/apache2/sites-available/default-ssl.conf
+# COPY default-ssl.conf /etc/apache2/sites-available/default-ssl.conf
 
 # Enable SSL site
 RUN a2ensite default-ssl && systemctl reload apache2
