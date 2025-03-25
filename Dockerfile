@@ -41,7 +41,7 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html 
 
 # Enable SSL site
-RUN a2ensite default-ssl
+# RUN a2ensite default-ssl
 
 # Expose ports
 EXPOSE 80 443
