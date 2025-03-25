@@ -40,6 +40,10 @@ RUN rm -rf * && git clone https://github.com/Qwerty-Systems/itflow.git .
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html 
 
+# Update PHP configuration for upload size
+ RUN echo "upload_max_filesize = 500M" >> /usr/local/etc/php/conf.d/uploads.ini \
+     && echo "post_max_size = 500M" >> /usr/local/etc/php/conf.d/uploads.ini
+
 # Enable SSL site
 #RUN a2ensite default-ssl
 
