@@ -21,9 +21,14 @@ RUN apt-get update && apt-get install -y \
     libmcrypt-dev \
     dnsutils  # Installing dig
 
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd zip mysqli pdo pdo_mysql intl mbstring xml imap  # Install PHP IMAP extension
+# Install necessary libraries for GD and IMAP
+RUN apt-get install -y libicu-dev libxslt-dev
+
+# Install PHP extensions (GD and IMAP separately to ensure proper installation)
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install gd
+
+RUN docker-php-ext-install zip mysqli pdo pdo_mysql intl mbstring xml imap
 
 # Install missing PHP extensions
 RUN docker-php-ext-install opcache
