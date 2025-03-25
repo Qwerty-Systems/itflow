@@ -19,9 +19,9 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libmcrypt-dev \
-    dnsutils \  # Installing dig
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd zip mysqli pdo pdo_mysql intl mbstring xml imap  # Install PHP IMAP extension
+    dnsutils && \  # Installing dig
+    docker-php-ext-configure gd --with-freetype --with-jpeg && \  # Configuring gd extension
+    docker-php-ext-install gd zip mysqli pdo pdo_mysql intl mbstring xml imap  # Install PHP IMAP extension
 
 # Install missing PHP extensions
 RUN docker-php-ext-install opcache
@@ -46,7 +46,7 @@ RUN echo "upload_max_filesize = 500M" >> /usr/local/etc/php/conf.d/uploads.ini \
     && echo "post_max_size = 500M" >> /usr/local/etc/php/conf.d/uploads.ini
 
 # Enable SSL site
-# RUN a2ensite default-ssl
+RUN a2ensite default-ssl
 
 # Expose ports
 EXPOSE 80 443
