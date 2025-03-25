@@ -18,10 +18,9 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libonig-dev \
     libxml2-dev \
-    dnsutils \
     libmcrypt-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd zip mysqli pdo pdo_mysql intl mbstring xml imap
+    && docker-php-ext-install gd zip mysqli pdo pdo_mysql intl mbstring xml
 
 # Install missing PHP extensions
 RUN docker-php-ext-install opcache
@@ -41,12 +40,8 @@ RUN rm -rf * && git clone https://github.com/Qwerty-Systems/itflow.git .
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html 
 
-# Update PHP configuration for upload size
-RUN echo "upload_max_filesize = 500M" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "post_max_size = 500M" >> /usr/local/etc/php/conf.d/uploads.ini
-
 # Enable SSL site
-# RUN a2ensite default-ssl
+#RUN a2ensite default-ssl
 
 # Expose ports
 EXPOSE 80 443
