@@ -18,8 +18,8 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libonig-dev \
     libxml2-dev \
+    dnsutils \
     libmcrypt-dev \
-    dnsutils \  
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd zip mysqli pdo pdo_mysql intl mbstring xml imap
 
