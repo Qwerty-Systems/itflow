@@ -19,20 +19,9 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libmcrypt-dev \
-    libc-client-dev \
-    libssl-dev \
-    dnsutils  # Installing dig
-
-# Install PHP extensions (GD and IMAP separately to ensure proper installation)
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
-    docker-php-ext-install gd
-
-# Install necessary extensions (using pecl for imap)
-RUN apt-get install -y libc-client-dev libssl-dev && \
-    pecl install imap && \
-    echo "extension=imap.so" > /usr/local/etc/php/conf.d/imap.ini
-
-RUN docker-php-ext-install zip mysqli pdo pdo_mysql intl mbstring xml
+    dnsutils \  
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd zip mysqli pdo pdo_mysql intl mbstring xml imap
 
 # Install missing PHP extensions
 RUN docker-php-ext-install opcache
