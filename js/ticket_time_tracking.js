@@ -8,8 +8,6 @@
         var ticketID = getCurrentTicketID();
         var elapsedSecs = getElapsedSeconds();
 
-        updateRunningTicketsCount();
-
         function getCurrentTicketID() {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get('ticket_id');
@@ -54,8 +52,7 @@
             }
             timerInterval = setInterval(countTime, 1000);
             isPaused = false;
-            document.getElementById("startStopTimer").innerText = "Pause";
-            updateRunningTicketsCount();
+            document.getElementById("startStopTimer").innerHTML = "<i class='fas fa-pause'></i>";
             localStorage.setItem("ticket-timer-running-" + ticketID, "true");
 
         }
@@ -69,8 +66,7 @@
             localStorage.setItem(getLocalStorageKey("pausedTime"), currentElapsed.toString());
             localStorage.removeItem(getLocalStorageKey("startTime"));
             isPaused = true;
-            document.getElementById("startStopTimer").innerText = "Start";
-            updateRunningTicketsCount();
+            document.getElementById("startStopTimer").innerHTML = "<i class='fas fa-play'></i>";
             localStorage.setItem("ticket-timer-running-" + ticketID, "false");
 
         }
@@ -88,10 +84,9 @@
                 elapsedSecs = 0;
                 clearTimeStorage();
                 displayTime();
-                document.getElementById("startStopTimer").innerText = "Start";
+                document.getElementById("startStopTimer").innerHTML = "<i class='fas fa-play'></i>";
             }
             localStorage.setItem("ticket-timer-running-" + ticketID, "false");
-            updateRunningTicketsCount();
         }
 
         function forceResetTimer() {
@@ -100,9 +95,9 @@
             elapsedSecs = 0;
             clearTimeStorage();
             displayTime();
-            document.getElementById("startStopTimer").innerText = "Start";
+            document.getElementById("startStopTimer").innerHTML = "<i class='fas fa-play'></i>";
         }
-        
+
         function handleInputFocus() {
             if (!isPaused) {
                 pauseTimer();
@@ -114,7 +109,7 @@
             const minutes = parseInt(document.getElementById("minutes").value, 10) || 0;
             const seconds = parseInt(document.getElementById("seconds").value, 10) || 0;
             elapsedSecs = (hours * 3600) + (minutes * 60) + seconds;
-            
+
             // Update local storage so the manually entered time is retained even if the page is reloaded.
             if (!timerInterval) {
                 localStorage.setItem(getLocalStorageKey("pausedTime"), elapsedSecs.toString());
@@ -124,18 +119,6 @@
                 localStorage.removeItem(getLocalStorageKey("pausedTime"));
             }
         }
-
-        function updateRunningTicketsCount() {
-            let runningTickets = parseInt(document.getElementById('runningTicketsCount').innerText, 10);
-
-            if (!isPaused && timerInterval) {
-                runningTickets += 1;
-            } else {
-                runningTickets = Math.max(0, runningTickets - 1);
-            }
-
-            document.getElementById('runningTicketsCount').innerText = runningTickets.toString();
-        }   
 
         // Function to check status and pause timer
         function checkStatusAndPauseTimer() {
@@ -148,7 +131,7 @@
         document.getElementById("hours").addEventListener('change', updateTimeFromInput);
         document.getElementById("minutes").addEventListener('change', updateTimeFromInput);
         document.getElementById("seconds").addEventListener('change', updateTimeFromInput);
-        
+
         document.getElementById("hours").addEventListener('focus', handleInputFocus);
         document.getElementById("minutes").addEventListener('focus', handleInputFocus);
         document.getElementById("seconds").addEventListener('focus', handleInputFocus);
@@ -184,7 +167,7 @@
             } else if (localStorage.getItem(getLocalStorageKey("startTime"))) {
                 startTimer();
             }
-    
+
             // Check and pause timer if status is pending
             checkStatusAndPauseTimer();
         } catch (error) {

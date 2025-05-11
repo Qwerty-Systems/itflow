@@ -1,7 +1,14 @@
 <?php
 
-require_once "inc_all.php";
+// If client_id is in URI then show client Side Bar and client header
+if (isset($_GET['client_id'])) {
+    require_once "includes/inc_all_client.php";
+} else {
+    require_once "includes/inc_all.php";
+}
 
+// Perms
+enforceUserPermission('module_sales');
 
 if (isset($_GET['invoice_id'])) {
 
@@ -13,12 +20,14 @@ if (isset($_GET['invoice_id'])) {
         LEFT JOIN clients ON invoice_client_id = client_id
         LEFT JOIN contacts ON clients.client_id = contacts.contact_client_id AND contact_primary = 1
         LEFT JOIN locations ON clients.client_id = locations.location_client_id AND location_primary = 1
-        WHERE invoice_id = $invoice_id"
+        WHERE invoice_id = $invoice_id
+        $access_permission_query
+        LIMIT 1"
     );
 
     if (mysqli_num_rows($sql) == 0) {
         echo '<h1 class="text-secondary mt-5" style="text-align: center">Nothing to see here</h1>';
-        require_once "footer.php";
+        require_once "includes/footer.php";
 
         exit();
     }
@@ -45,15 +54,21 @@ if (isset($_GET['invoice_id'])) {
     $location_state = nullable_htmlentities($row['location_state']);
     $location_zip = nullable_htmlentities($row['location_zip']);
     $contact_email = nullable_htmlentities($row['contact_email']);
-    $contact_phone = formatPhoneNumber($row['contact_phone']);
+    $contact_phone_country_code = nullable_htmlentities($row['contact_phone_country_code']);
+    $contact_phone = nullable_htmlentities(formatPhoneNumber($row['contact_phone'], $contact_phone_country_code));
     $contact_extension = nullable_htmlentities($row['contact_extension']);
-    $contact_mobile = formatPhoneNumber($row['contact_mobile']);
+    $contact_mobile_country_code = nullable_htmlentities($row['contact_mobile_country_code']);
+    $contact_mobile = nullable_htmlentities(formatPhoneNumber($row['contact_mobile'], $contact_mobile_country_code));
     $client_website = nullable_htmlentities($row['client_website']);
     $client_currency_code = nullable_htmlentities($row['client_currency_code']);
     $client_net_terms = intval($row['client_net_terms']);
     if ($client_net_terms == 0) {
         $client_net_terms = $config_default_net_terms;
     }
+
+    // Override Tab Title // No Sanitizing needed as this var will opnly be used in the tab title
+    $tab_title = $row['client_name'];
+    $page_title = "{$row['invoice_prefix']}{$row['invoice_number']}";
 
     $sql = mysqli_query($mysqli, "SELECT * FROM companies WHERE company_id = 1");
     $row = mysqli_fetch_array($sql);
@@ -64,7 +79,8 @@ if (isset($_GET['invoice_id'])) {
     $company_city = nullable_htmlentities($row['company_city']);
     $company_state = nullable_htmlentities($row['company_state']);
     $company_zip = nullable_htmlentities($row['company_zip']);
-    $company_phone = formatPhoneNumber($row['company_phone']);
+    $company_phone_country_code = nullable_htmlentities($row['company_phone_country_code']);
+    $company_phone = nullable_htmlentities(formatPhoneNumber($row['company_phone'], $company_phone_country_code));
     $company_email = nullable_htmlentities($row['company_email']);
     $company_website = nullable_htmlentities($row['company_website']);
     $company_logo = nullable_htmlentities($row['company_logo']);
@@ -105,7 +121,7 @@ if (isset($_GET['invoice_id'])) {
         AND
             ticket_invoice_id = 0
         AND
-            ticket_status LIKE '%close%';
+            ticket_status = 5;
     ");
 
 
@@ -137,15 +153,35 @@ if (isset($_GET['invoice_id'])) {
         $json_products = json_encode($products);
     }
 
+    // Payment with saved card (auto-pay)
+    if ($config_stripe_enable) {
+        $stripe_client_details = mysqli_fetch_array(mysqli_query($mysqli, "SELECT * FROM client_stripe WHERE client_id = $client_id LIMIT 1"));
+        if ($stripe_client_details) {
+            $stripe_id = sanitizeInput($stripe_client_details['stripe_id']);
+            $stripe_pm = sanitizeInput($stripe_client_details['stripe_pm']);
+        }
+    }
+
+
+
     ?>
 
     <ol class="breadcrumb d-print-none">
+        <?php if (isset($_GET['client_id'])) { ?>
+        <li class="breadcrumb-item">
+            <a href="client_overview.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="invoices.php?client_id=<?php echo $client_id; ?>">Invoices</a>
+        </li>
+        <?php } else { ?>
         <li class="breadcrumb-item">
             <a href="invoices.php">Invoices</a>
         </li>
         <li class="breadcrumb-item">
-            <a href="client_invoices.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
+            <a href="invoices.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a>
         </li>
+        <?php } ?>
         <li class="breadcrumb-item active"><?php echo "$invoice_prefix$invoice_number"; ?></li>
         <?php if (isset($invoice_overdue)) { ?>
             <span class="p-2 ml-2 badge badge-danger"><?php echo $invoice_overdue; ?></span>
@@ -176,11 +212,23 @@ if (isset($_GET['invoice_id'])) {
                         </div>
                     <?php } ?>
 
-                    <?php if ($invoice_status !== 'Paid' && $invoice_status !== 'Cancelled' && $invoice_status !== 'Draft') { ?>
+                    <?php if ($invoice_status !== 'Paid' && $invoice_status !== 'Cancelled' && $invoice_status !== 'Draft' && $invoice_amount != 0) { ?>
                         <a class="btn btn-success" href="#" data-toggle="modal" data-target="#addPaymentModal">
                             <i class="fa fa-fw fa-credit-card mr-2"></i>Add Payment
                         </a>
+                        <?php if ($invoice_status !== 'Partial' && $config_stripe_enable && $stripe_id && $stripe_pm) { ?>
+                            <a class="btn btn-primary confirm-link" href="post.php?add_payment_stripe&invoice_id=<?php echo $invoice_id; ?>&csrf_token=<?php echo $_SESSION['csrf_token']; ?>">
+                                <i class="fa fa-fw fa-credit-card mr-2"></i>Pay via saved card
+                            </a>
+                        <?php } ?>
                     <?php } ?>
+
+                    <?php if (($invoice_status == 'Sent' || $invoice_status == 'Viewed') && $invoice_amount == 0 && $invoice_status !== 'Non-Billable') { ?>
+                        <a class="btn btn-dark" href="post.php?mark_invoice_non-billable=<?php echo $invoice_id; ?>">
+                            Mark Non-Billable
+                        </a>
+                    <?php } ?>
+
                 </div>
 
                 <div class="col-4">
@@ -190,10 +238,18 @@ if (isset($_GET['invoice_id'])) {
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editInvoiceModal<?php echo $invoice_id; ?>">
+                            <a class="dropdown-item" href="#"
+                                data-toggle = "ajax-modal"
+                                data-ajax-url = "ajax/ajax_invoice_edit.php"
+                                data-ajax-id = "<?php echo $invoice_id; ?>"
+                                >
                                 <i class="fa fa-fw fa-edit text-secondary mr-2"></i>Edit
                             </a>
-                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#addInvoiceCopyModal<?php echo $invoice_id; ?>">
+                            <a class="dropdown-item" href="#"
+                                data-toggle = "ajax-modal"
+                                data-ajax-url = "ajax/ajax_invoice_copy.php"
+                                data-ajax-id = "<?php echo $invoice_id; ?>"
+                                >
                                 <i class="fa fa-fw fa-copy text-secondary mr-2"></i>Copy
                             </a>
                             <a class="dropdown-item" href="#" data-toggle="modal" data-target="#addInvoiceRecurringModal<?php echo $invoice_id; ?>">
@@ -211,7 +267,7 @@ if (isset($_GET['invoice_id'])) {
                                     <i class="fa fa-fw fa-paper-plane text-secondary mr-2"></i>Send Email
                                 </a>
                             <?php } ?>
-                            <a class="dropdown-item" target="_blank" href="guest_view_invoice.php?invoice_id=<?php echo "$invoice_id&url_key=$invoice_url_key"; ?>">
+                            <a class="dropdown-item" target="_blank" href="guest/guest_view_invoice.php?invoice_id=<?php echo "$invoice_id&url_key=$invoice_url_key"; ?>">
                                 <i class="fa fa-fw fa-link text-secondary mr-2"></i>Guest URL
                             </a>
                             <?php if ($invoice_status !== 'Cancelled' && $invoice_status !== 'Paid') { ?>
@@ -238,7 +294,7 @@ if (isset($_GET['invoice_id'])) {
                 <div class="col-sm-10">
                     <div class="ribbon-wrapper">
                         <div class="ribbon bg-<?php echo $invoice_badge_color; ?>">
-                            <?php echo $invoice_status; ?>
+                            <?php echo "$invoice_status"; ?>
                         </div>
                     </div>
                     <h3 class="text-right mt-5"><strong>Invoice</strong><br><small class="text-secondary"><?php echo "$invoice_prefix$invoice_number"; ?></small></h3>
@@ -290,7 +346,7 @@ if (isset($_GET['invoice_id'])) {
                 <div class="col-md-12">
                     <div class="card">
                         <div class="table-responsive">
-                            <table class="table">
+                            <table class="table" id="items">
                                 <thead>
                                 <tr>
                                     <th class="d-print-none"></th>
@@ -320,42 +376,35 @@ if (isset($_GET['invoice_id'])) {
                                     $tax_id = intval($row['item_tax_id']);
                                     $total_tax = $item_tax + $total_tax;
                                     $sub_total = $item_price * $item_quantity + $sub_total;
-                                    $item_order = intval($row['item_order']);
-                                    // Logic to check if top or bottom arrow should be hidden
-                                    if ($item_order == 1) {
-                                        $up_hidden = "hidden";
-                                    } else {
-                                        $up_hidden = "";
-                                    }
-                                    if ($item_order == mysqli_num_rows($sql_invoice_items)) {
-                                        $down_hidden = "hidden";
-                                    } else {
-                                        $down_hidden = "";
-                                    }
                                     ?>
-                                    <tr>
+                                    <tr data-item-id="<?php echo $item_id; ?>">
                                         <td class="d-print-none">
                                             <?php if ($invoice_status !== "Paid" && $invoice_status !== "Cancelled") { ?>
-                                                <div class="dropdown">
-                                                    <button class="btn btn-sm btn-light" type="button" data-toggle="dropdown">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </button>
-                                                    <div class="dropdown-menu">
-                                                        <form action="post.php" method="post">
-                                                            <input type="hidden" name="item_invoice_id" value="<?php echo $invoice_id; ?>">
-                                                            <input type="hidden" name="item_id" value="<?php echo $item_id; ?>">
-                                                            <input type="hidden" name="item_order" value="<?php echo $item_order; ?>">
-                                                            <button class="dropdown-item" type="submit" name="update_invoice_item_order" value="up" <?php echo $up_hidden; ?>><i class="fas fa-fw fa-arrow-up mr-2"></i>Move Up</button>
-                                                            <?php if ($up_hidden == "" && $down_hidden == "") { echo '<div class="dropdown-divider"></div>'; }?>
-                                                            <button class="dropdown-item" type="submit" name="update_invoice_item_order" value="down" <?php echo $down_hidden; ?>><i class="fas fa-fw fa-arrow-down mr-2"></i>Move down</button>
-                                                        </form>
-                                                        <div class="dropdown-divider"></div>
-                                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editItemModal<?php echo $item_id; ?>"><i class="fa fa-fw fa-edit mr-2"></i>Edit</a>
-                                                        <div class="dropdown-divider"></div>
-                                                        <a class="dropdown-item text-danger confirm-link" href="post.php?delete_invoice_item=<?php echo $item_id; ?>"><i class="fa fa-fw fa-trash mr-2"></i>Delete</a>
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <button type="button" class="btn btn-sm btn-light drag-handle">
+                                                            <i class="fas fa-bars text-muted"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="col">
+                                                        <div class="dropdown">
+                                                            <button class="btn btn-sm btn-light" type="button" data-toggle="dropdown">
+                                                                <i class="fas fa-ellipsis-v"></i>
+                                                            </button>
+                                                            <div class="dropdown-menu">
+                                                                <a class="dropdown-item" href="#"
+                                                                    data-toggle="ajax-modal"
+                                                                    data-ajax-url="ajax/ajax_item_edit.php"
+                                                                    data-ajax-id="<?php echo $item_id; ?>"
+                                                                    >
+                                                                    <i class="fa fa-fw fa-edit mr-2"></i>Edit
+                                                                </a>
+                                                                <div class="dropdown-divider"></div>
+                                                                <a class="dropdown-item text-danger confirm-link" href="post.php?delete_invoice_item=<?php echo $item_id; ?>"><i class="fa fa-fw fa-trash mr-2"></i>Delete</a>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-
                                             <?php } ?>
                                         </td>
                                         <td><?php echo $item_name; ?></td>
@@ -366,9 +415,6 @@ if (isset($_GET['invoice_id'])) {
                                         <td class="text-right"><?php echo numfmt_format_currency($currency_format, $item_total, $invoice_currency_code); ?></td>
                                     </tr>
                                     <?php
-                                    if ($invoice_status !== "Paid" && $invoice_status !== "Cancelled") {
-                                        require "item_edit_modal.php";
-                                    }
                                 }
                                 ?>
                                 <tr class="d-print-none" <?php if ($invoice_status == "Paid" || $invoice_status == "Cancelled") { echo "hidden"; } ?>>
@@ -583,10 +629,8 @@ if (isset($_GET['invoice_id'])) {
         <div class="col-sm d-print-none">
             <div class="card">
                 <div class="card-header text-bold">
-                    <i class="fa fa-cog mr-2"></i>Tickets
+                    <i class="fa fa-life-ring mr-2"></i>Tickets
                     <div class="card-tools">
-
-
                         <?php if (mysqli_num_rows($sql_tickets_billable) > 0) { ?>
                         <a class="btn btn-tool" href="#" data-toggle="modal" data-target="#addTicketModal">
                             <i class="fas fa-plus"></i>
@@ -605,8 +649,7 @@ if (isset($_GET['invoice_id'])) {
                             <i class="fas fa-times"></i>
 
                         </button>
-
-
+                    </div>
                 </div>
 
                 <div class="card-body">
@@ -616,9 +659,6 @@ if (isset($_GET['invoice_id'])) {
                                 <tr>
                                     <th>Date</th>
                                     <th>Subject</th>
-                                    <th>Status</th>
-                                    <th>Priority</th>
-                                    <th>Assigned To</th>
                                     <th class="text-right">Time Worked</th>
                                 </tr>
                             </thead>
@@ -629,24 +669,13 @@ if (isset($_GET['invoice_id'])) {
                                 $ticket_id = intval($row['ticket_id']);
                                 $ticket_created_at = nullable_htmlentities($row['ticket_created_at']);
                                 $ticket_subject = nullable_htmlentities($row['ticket_subject']);
-                                $ticket_status = nullable_htmlentities($row['ticket_status']);
-                                $ticket_priority = nullable_htmlentities($row['ticket_priority']);
-                                $ticket_assigned_to_id = intval($row['ticket_assigned_to']);
                                 $ticket_total_time_worked = floatval($row['total_time_worked']);
-
-                                $sql_assigned_to = mysqli_query($mysqli, "SELECT * FROM users WHERE user_id = $ticket_assigned_to_id");
-                                $row = mysqli_fetch_array($sql_assigned_to);
-                                $ticket_assigned_to = nullable_htmlentities($row['user_name']);
 
                                 ?>
                                 <tr>
                                     <td><?php echo $ticket_created_at; ?></td>
                                     <td><?php echo $ticket_subject; ?></td>
-                                    <td><?php echo $ticket_status; ?></td>
-                                    <td><?php echo $ticket_priority; ?></td>
-                                    <td><?php echo $ticket_assigned_to; ?></td>
                                     <td class="text-right"><?php echo $ticket_total_time_worked; ?></td>
-
                                 </tr>
                                 <?php
                             }
@@ -654,25 +683,17 @@ if (isset($_GET['invoice_id'])) {
                             </tbody>
                         </table>
                     </div>
-        </div>
-    </div>
+                </div>
+            </div>
     <?php
-    include_once "invoice_add_ticket_modal.php";
-
-    include_once "invoice_payment_add_modal.php";
-
-    include_once "invoice_copy_modal.php";
-
-    include_once "invoice_recurring_add_modal.php";
-
-    include_once "invoice_edit_modal.php";
-
-    include_once "invoice_note_modal.php";
+    include_once "modals/invoice_add_ticket_modal.php";
+    include_once "modals/invoice_payment_add_modal.php";
+    include_once "modals/invoice_recurring_add_modal.php";
+    include_once "modals/invoice_note_modal.php";
 
 }
 
-require_once "footer.php";
-
+require_once "includes/footer.php";
 
 ?>
 
@@ -681,7 +702,7 @@ require_once "footer.php";
 <script src="plugins/jquery-ui/jquery-ui.min.js"></script>
 <script>
     $(function() {
-        var availableProducts = <?php echo $json_products?>;
+        var availableProducts = <?php echo $json_products ?? '""'?>;
 
         $("#name").autocomplete({
             source: availableProducts,
@@ -731,6 +752,13 @@ require_once "footer.php";
                             style: 'invoiceNumber',
                             width: '*'
                         },
+                        <?php if ($invoice_status == "Paid") { ?>
+                        {
+                            text: 'PAID',
+                            style: 'invoicePaid',
+                            width: '*'
+                        },
+                        <?php } ?>
                     ],
                 ],
             },
@@ -1020,6 +1048,14 @@ require_once "footer.php";
                 fontSize: 14,
                 alignment: 'right'
             },
+            // Invoice Paid
+            invoicePaid: {
+                fontSize: 13,
+                bold: true,
+                margin: [0,5,0,0],
+                alignment: 'right',
+                color: 'green'
+            },
             // Billing Headers
             invoiceBillingTitle: {
                 fontSize: 14,
@@ -1147,4 +1183,25 @@ require_once "footer.php";
             columnGap: 20
         }
     }
+</script>
+
+<script src="plugins/SortableJS/Sortable.min.js"></script>
+<script>
+new Sortable(document.querySelector('table#items tbody'), {
+    handle: '.drag-handle',
+    animation: 150,
+    onEnd: function (evt) {
+        const rows = document.querySelectorAll('table#items tbody tr');
+        const positions = Array.from(rows).map((row, index) => ({
+            id: row.dataset.itemId,
+            order: index
+        }));
+
+        $.post('ajax.php', {
+            update_invoice_items_order: true,
+            invoice_id: <?php echo $invoice_id; ?>,
+            positions: positions
+        });
+    }
+});
 </script>

@@ -1,17 +1,18 @@
 <?php
 
-require_once "inc_all_admin.php";
+require_once "includes/inc_all_admin.php";
 
 
 //Initialize the HTML Purifier to prevent XSS
 require "plugins/htmlpurifier/HTMLPurifier.standalone.php";
 
 $purifier_config = HTMLPurifier_Config::createDefault();
+$purifier_config->set('Cache.DefinitionImpl', null); // Disable cache by setting a non-existent directory or an invalid one
 $purifier_config->set('URI.AllowedSchemes', ['data' => true, 'src' => true, 'http' => true, 'https' => true]);
 $purifier = new HTMLPurifier($purifier_config);
 
 if (isset($_GET['document_id'])) {
-	$document_id = intval($_GET['document_id']);
+    $document_id = intval($_GET['document_id']);
 }
 
 $sql_document = mysqli_query($mysqli, "SELECT * FROM documents WHERE document_template = 1 AND document_id = $document_id");
@@ -27,39 +28,40 @@ $document_updated_at = nullable_htmlentities($row['document_updated_at']);
 ?>
 
 <ol class="breadcrumb d-print-none">
-  <li class="breadcrumb-item">
-    <a href="clients.php">Home</a>
-  </li>
-  <li class="breadcrumb-item">
-    <a href="admin_users.php">Admin</a>
-  </li>
-  <li class="breadcrumb-item">
-    <a href="admin_document_templates.php">Document Templates</a>
-  </li>
-  <li class="breadcrumb-item active"><i class="fas fa-file mr-2"></i><?php echo $document_name; ?></li>
+    <li class="breadcrumb-item">
+        <a href="clients.php">Home</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="admin_user.php">Admin</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="admin_document_template.php">Document Templates</a>
+    </li>
+    <li class="breadcrumb-item active"><i class="fas fa-file mr-2"></i><?php echo $document_name; ?></li>
 </ol>
 
 <div class="card card-dark">
-  <div class="card-header">
+    <div class="card-header py-2">
 
-    <h3 class="card-title mt-2"><i class="fa fa-fw fa-file mr-2"></i><?php echo $document_name; ?></h3>
+        <h3 class="card-title mt-2"><i class="fa fa-fw fa-file mr-2"></i><?php echo $document_name; ?></h3>
 
-    <div class="card-tools">
-      <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#editDocumentTemplateModal<?php echo $document_id; ?>">
-        <i class="fas fa-edit mr-2"></i>Edit
-      </button>
+        <div class="card-tools">
+            <button type="button" class="btn btn-primary"
+                data-toggle="ajax-modal"
+                data-modal-size="xl"
+                data-ajax-url="ajax/ajax_document_template_edit.php"
+                data-ajax-id="<?php echo $document_id; ?>"
+                >
+                <i class="fas fa-edit mr-2"></i>Edit
+            </button>
+        </div>
     </div>
-  </div>
-  <div class="card-body prettyContent">
-    <?php echo $document_content; ?>
-  </div>
+    <div class="card-body prettyContent">
+        <?php echo $document_content; ?>
+    </div>
 </div>
 
 <script src="js/pretty_content.js"></script>
 
 <?php
-
-require_once "admin_document_template_edit_modal.php";
-
-require_once "footer.php";
-
+require_once "includes/footer.php";

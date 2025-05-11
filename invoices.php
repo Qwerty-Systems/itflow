@@ -4,71 +4,82 @@
 $sort = "invoice_number";
 $order = "DESC";
 
-require_once "inc_all.php";
+// If client_id is in URI then show client Side Bar and client header
+if (isset($_GET['client_id'])) {
+    require_once "includes/inc_all_client.php";
+    $client_query = "AND invoice_client_id = $client_id";
+    $client_url = "client_id=$client_id&";
+} else {
+    require_once "includes/inc_all.php";
+    $client_query = '';
+    $client_url = '';
+}
 
-$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('recurring_id') AS num FROM recurring WHERE recurring_archived_at IS NULL"));
-$recurring_invoice_count = $row['num'];
+// Perms
+enforceUserPermission('module_sales');
 
-$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Sent'"));
+$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Sent' $client_query"));
 $sent_count = $row['num'];
 
-$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Viewed'"));
+$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Viewed' $client_query"));
 $viewed_count = $row['num'];
 
-$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Partial'"));
+$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Partial' $client_query"));
 $partial_count = $row['num'];
 
-$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Draft'"));
+$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Draft' $client_query"));
 $draft_count = $row['num'];
 
-$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Cancelled'"));
+$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status = 'Cancelled' $client_query"));
 $cancelled_count = $row['num'];
 
-$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_due > CURDATE()"));
+$row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT COUNT('invoice_id') AS num FROM invoices WHERE invoice_status NOT LIKE 'Draft' AND invoice_status NOT LIKE 'Paid' AND invoice_status NOT LIKE 'Cancelled' AND invoice_status NOT LIKE 'Non-Billable' AND invoice_due < CURDATE() $client_query"));
 $overdue_count = $row['num'];
 
-$sql_total_draft = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_draft FROM invoices WHERE invoice_status = 'Draft'");
-$row = mysqli_fetch_array($sql_total_draft);
-$total_draft = floatval($row['total_draft']);
+$sql_total_draft_amount = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_draft_amount FROM invoices WHERE invoice_status = 'Draft' $client_query");
+$row = mysqli_fetch_array($sql_total_draft_amount);
+$total_draft_amount = floatval($row['total_draft_amount']);
 
-$sql_total_sent = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_sent FROM invoices WHERE invoice_status = 'Sent'");
-$row = mysqli_fetch_array($sql_total_sent);
-$total_sent = floatval($row['total_sent']);
+$sql_total_sent_amount = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_sent_amount FROM invoices WHERE invoice_status = 'Sent' $client_query");
+$row = mysqli_fetch_array($sql_total_sent_amount);
+$total_sent_amount = floatval($row['total_sent_amount']);
 
-$sql_total_viewed = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_viewed FROM invoices WHERE invoice_status = 'Viewed'");
-$row = mysqli_fetch_array($sql_total_viewed);
-$total_viewed = floatval($row['total_viewed']);
+$sql_total_viewed_amount = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_viewed_amount FROM invoices WHERE invoice_status = 'Viewed' $client_query");
+$row = mysqli_fetch_array($sql_total_viewed_amount);
+$total_viewed_amount = floatval($row['total_viewed_amount']);
 
-$sql_total_cancelled = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_cancelled FROM invoices WHERE invoice_status = 'Cancelled'");
-$row = mysqli_fetch_array($sql_total_cancelled);
-$total_cancelled = floatval($row['total_cancelled']);
+$sql_total_cancelled_amount = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_cancelled_amount FROM invoices WHERE invoice_status = 'Cancelled' $client_query");
+$row = mysqli_fetch_array($sql_total_cancelled_amount);
+$total_cancelled_amount = floatval($row['total_cancelled_amount']);
 
-$sql_total_partial = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_partial FROM payments, invoices WHERE payment_invoice_id = invoice_id AND invoice_status = 'Partial'");
-$row = mysqli_fetch_array($sql_total_partial);
-$total_partial = floatval($row['total_partial']);
-$total_partial_count = mysqli_num_rows($sql_total_partial);
+$sql_total_partial_amount = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_partial_amount FROM payments, invoices WHERE payment_invoice_id = invoice_id AND invoice_status = 'Partial' $client_query");
+$row = mysqli_fetch_array($sql_total_partial_amount);
+$total_partial_amount = floatval($row['total_partial_amount']);
+$total_partial_count = mysqli_num_rows($sql_total_partial_amount);
 
-$sql_total_overdue_partial = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS total_overdue_partial FROM payments, invoices WHERE payment_invoice_id = invoice_id AND invoice_status = 'Partial' AND invoice_due < CURDATE()");
-$row = mysqli_fetch_array($sql_total_overdue_partial);
-$total_overdue_partial = floatval($row['total_overdue_partial']);
+$sql_total_overdue_partial_amount = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS total_overdue_partial_amount FROM payments, invoices WHERE payment_invoice_id = invoice_id AND invoice_status = 'Partial' AND invoice_due < CURDATE() $client_query");
+$row = mysqli_fetch_array($sql_total_overdue_partial_amount);
+$total_overdue_partial_amount = floatval($row['total_overdue_partial_amount']);
 
-$sql_total_overdue = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_overdue FROM invoices WHERE invoice_status NOT LIKE 'Draft' AND invoice_status NOT LIKE 'Paid' AND invoice_due < CURDATE()");
-$row = mysqli_fetch_array($sql_total_overdue);
-$total_overdue = floatval($row['total_overdue']);
+$sql_total_overdue_amount = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS total_overdue_amount FROM invoices WHERE invoice_status NOT LIKE 'Draft' AND invoice_status NOT LIKE 'Paid' AND invoice_status NOT LIKE 'Cancelled' AND invoice_due < CURDATE() $client_query");
+$row = mysqli_fetch_array($sql_total_overdue_amount);
+$total_overdue_amount = floatval($row['total_overdue_amount']);
 
-$real_overdue_amount = $total_overdue - $total_overdue_partial;
+$real_overdue_amount = $total_overdue_amount - $total_overdue_partial_amount;
+$total_unpaid_amount = $total_sent_amount + $total_viewed_amount + $total_partial_amount;
+$unpaid_count = $sent_count + $viewed_count + $partial_count;
 
+$overdue_query = '';
 //Invoice status from GET
 if (isset($_GET['status']) && ($_GET['status']) == 'Draft') {
-    $status_query = 'Draft';
-} elseif (isset($_GET['status']) && ($_GET['status']) == 'Sent') {
-    $status_query = 'Sent';
-} elseif (isset($_GET['status']) && ($_GET['status']) == 'Viewed') {
-    $status_query = 'Viewed';
-} elseif (isset($_GET['status']) && ($_GET['status']) == 'Partial') {
-    $status_query = 'Partial';
+    $status_query = "invoice_status = 'Draft'";
+} elseif (isset($_GET['status']) && ($_GET['status']) == 'Unpaid') {
+    $status_query = "invoice_status = 'Sent' OR invoice_status = 'Viewed' OR invoice_status = 'Partial'";
+} elseif (isset($_GET['status']) && ($_GET['status']) == 'Overdue') {
+    $status_query = "invoice_status = 'Sent' OR invoice_status = 'Viewed' OR invoice_status = 'Partial'";
+    $overdue_query = "AND (invoice_due < CURDATE())";
 } else {
-    $status_query = '%';
+    $status_query = "invoice_status LIKE '%'";
 }
 
 //Rebuild URL
@@ -79,9 +90,12 @@ $sql = mysqli_query(
     "SELECT SQL_CALC_FOUND_ROWS * FROM invoices
     LEFT JOIN clients ON invoice_client_id = client_id
     LEFT JOIN categories ON invoice_category_id = category_id
-    WHERE (invoice_status LIKE '$status_query')
+    WHERE ($status_query)
+    $overdue_query
     AND DATE(invoice_date) BETWEEN '$dtf' AND '$dtt'
     AND (CONCAT(invoice_prefix,invoice_number) LIKE '%$q%' OR invoice_scope LIKE '%$q%' OR client_name LIKE '%$q%' OR invoice_status LIKE '%$q%' OR invoice_amount LIKE '%$q%' OR category_name LIKE '%$q%')
+    $access_permission_query
+    $client_query
     ORDER BY $sort $order LIMIT $record_from, $record_to"
 );
 
@@ -90,11 +104,11 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 ?>
 
     <div class="row">
-        <div class="col-lg-3">
+        <div class="col-lg-4">
             <!-- small box -->
             <a href="?<?php echo $url_query_strings_sort; ?>&status=Draft" class="small-box bg-secondary">
                 <div class="inner">
-                    <h3><?php echo numfmt_format_currency($currency_format, $total_draft, $session_company_currency); ?></h3>
+                    <h3><?php echo numfmt_format_currency($currency_format, $total_draft_amount, $session_company_currency); ?></h3>
                     <p><?php echo $draft_count; ?> Draft</p>
                 </div>
                 <div class="icon">
@@ -104,43 +118,29 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
         </div>
         <!-- ./col -->
 
-        <div class="col-lg-3">
+        <div class="col-lg-4">
             <!-- small box -->
-            <a href="?<?php echo $url_query_strings_sort; ?>&status=Sent" class="small-box bg-warning">
+            <a href="?<?php echo $url_query_strings_sort; ?>&status=Unpaid" class="small-box bg-info">
                 <div class="inner text-white">
-                    <h3><?php echo numfmt_format_currency($currency_format, $total_sent, $session_company_currency); ?></h3>
-                    <p><?php echo $sent_count; ?> Sent</p>
+                    <h3><?php echo numfmt_format_currency($currency_format, $total_unpaid_amount, $session_company_currency); ?></h3>
+                    <p><?php echo $unpaid_count; ?> Unpaid</p>
                 </div>
                 <div class="icon">
-                    <i class="fa fa-paper-plane"></i>
+                    <i class="fa fa-hand-holding-usd"></i>
                 </div>
             </a>
         </div>
         <!-- ./col -->
 
-        <div class="col-lg-3">
+        <div class="col-lg-4">
             <!-- small box -->
-            <a href="?<?php echo $url_query_strings_sort; ?>&status=Viewed" class="small-box bg-info">
+            <a href="?<?php echo $url_query_strings_sort; ?>&status=Overdue" class="small-box bg-danger">
                 <div class="inner">
-                    <h3><?php echo numfmt_format_currency($currency_format, $total_viewed, $session_company_currency); ?></h3>
-                    <p><?php echo $viewed_count; ?> Viewed</p>
+                    <h3><?php echo numfmt_format_currency($currency_format, $real_overdue_amount, $session_company_currency); ?></h3>
+                    <p><?php echo $overdue_count; ?> Overdue</p>
                 </div>
                 <div class="icon">
-                    <i class="fa fa-eye"></i>
-                </div>
-            </a>
-        </div>
-        <!-- ./col -->
-
-        <div class="col-lg-3">
-            <!-- small box -->
-            <a href="?<?php echo $url_query_strings_sort; ?>&status=Partial" class="small-box bg-primary">
-                <div class="inner">
-                    <h3><?php echo numfmt_format_currency($currency_format, $total_partial, $session_company_currency); ?></h3>
-                    <p><?php echo $partial_count; ?> Partial</p>
-                </div>
-                <div class="icon">
-                    <i class="fa fa-wine-glass-alt"></i>
+                    <i class="fa fa-exclamation-triangle"></i>
                 </div>
             </a>
         </div>
@@ -152,13 +152,24 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
         <div class="card-header py-2">
             <h3 class="card-title mt-2"><i class="fa fa-fw fa-file-invoice mr-2"></i>Invoices</h3>
             <div class="card-tools">
-                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addInvoiceModal"><i class="fas fa-plus mr-2"></i>New Invoice</button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addInvoiceModal"><i class="fas fa-plus mr-2"></i>New Invoice</button>
+                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportInvoicesModal">
+                            <i class="fa fa-fw fa-download mr-2"></i>Export
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="card-body">
             <form class="mb-4" autocomplete="off">
                 <input type="hidden" name="status" value="<?php if (isset($_GET['status'])) { echo nullable_htmlentities($_GET['status']); } ?>">
+                <?php if ($client_url) { ?>
+                    <input type="hidden" name="client_id" value="<?php echo $client_id; ?>">
+                <?php } ?>
                 <div class="row">
                     <div class="col-sm-4">
                         <div class="input-group">
@@ -169,10 +180,16 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             </div>
                         </div>
                     </div>
-                    <div class="col-sm-8">
-                        <div class="btn-group float-right">
-                            <a href="recurring_invoices.php" class="btn btn-outline-primary"><i class="fa fa-fw fa-redo-alt mr-2"></i>Recurring | <b><?php echo $recurring_invoice_count; ?></b></a>
+                    <div class="col-md-8">
+                        <?php if ($client_url) { ?>
+                        <div class="float-right">
+                            <div class="btn-group float-right">
+                                <?php if ($balance > 0) { ?>
+                                    <button type="button" class="btn btn-default" data-toggle="modal" data-target="#addBulkPaymentModal"><i class="fa fa-credit-card mr-2"></i>Batch Payment</button>
+                                <?php } ?>
+                            </div>
                         </div>
+                        <?php } ?>
                     </div>
                 </div>
                 <div class="collapse mt-3 <?php if (!empty($_GET['dtf']) || $_GET['canned_date'] !== "custom" ) { echo "show"; } ?>" id="advancedFilter">
@@ -180,7 +197,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         <div class="col-md-2">
                             <div class="form-group">
                                 <label>Canned Date</label>
-                                <select class="form-control select2" name="canned_date">
+                                <select onchange="this.form.submit()" class="form-control select2" name="canned_date">
                                     <option <?php if ($_GET['canned_date'] == "custom") { echo "selected"; } ?> value="custom">Custom</option>
                                     <option <?php if ($_GET['canned_date'] == "today") { echo "selected"; } ?> value="today">Today</option>
                                     <option <?php if ($_GET['canned_date'] == "yesterday") { echo "selected"; } ?> value="yesterday">Yesterday</option>
@@ -196,13 +213,13 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         <div class="col-md-2">
                             <div class="form-group">
                                 <label>Date From</label>
-                                <input type="date" class="form-control" name="dtf" max="2999-12-31" value="<?php echo $dtf; ?>">
+                                <input onchange="this.form.submit()" type="date" class="form-control" name="dtf" max="2999-12-31" value="<?php echo $dtf; ?>">
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="form-group">
                                 <label>Date To</label>
-                                <input type="date" class="form-control" name="dtt" max="2999-12-31" value="<?php echo $dtt; ?>">
+                                <input onchange="this.form.submit()" type="date" class="form-control" name="dtt" max="2999-12-31" value="<?php echo $dtt; ?>">
                             </div>
                         </div>
                     </div>
@@ -213,14 +230,48 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <table class="table table-striped table-borderless table-hover">
                     <thead class="text-dark <?php if ($num_rows[0] == 0) { echo "d-none"; } ?>">
                         <tr>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_number&order=<?php echo $disp; ?>">Number</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_scope&order=<?php echo $disp; ?>">Scope</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">Client</a></th>
-                            <th class="text-right"><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_amount&order=<?php echo $disp; ?>">Amount</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_date&order=<?php echo $disp; ?>">Date</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_due&order=<?php echo $disp; ?>">Due</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=category_name&order=<?php echo $disp; ?>">Category</a></th>
-                            <th><a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_status&order=<?php echo $disp; ?>">Status</a></th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_number&order=<?php echo $disp ?>">
+                                    Number <?php if ($sort == 'invoice_number') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_scope&order=<?php echo $disp; ?>">
+                                    Scope <?php if ($sort == 'invoice_scope') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <?php if (!$client_url) { ?>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=client_name&order=<?php echo $disp; ?>">
+                                    Client <?php if ($sort == 'client_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <?php } ?>
+                            <th class="text-right">
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_amount&order=<?php echo $disp; ?>">
+                                    Amount <?php if ($sort == 'invoice_amount') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_date&order=<?php echo $disp; ?>">
+                                    Date <?php if ($sort == 'invoice_date') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_due&order=<?php echo $disp; ?>">
+                                    Due <?php if ($sort == 'invoice_due') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=category_name&order=<?php echo $disp; ?>">
+                                    Category <?php if ($sort == 'category_name') { echo $order_icon; } ?>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="text-dark" href="?<?php echo $url_query_strings_sort; ?>&sort=invoice_status&order=<?php echo $disp; ?>">
+                                    Status <?php if ($sort == 'invoice_status') { echo $order_icon; } ?>
+                                </a>
+                            </th>
                             <th class="text-center">Action</th>
                         </tr>
                     </thead>
@@ -267,9 +318,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         ?>
 
                         <tr>
-                            <td class="text-bold"><a href="invoice.php?invoice_id=<?php echo $invoice_id; ?>"><?php echo "$invoice_prefix$invoice_number"; ?></a></td>
+                            <td class="text-bold">
+                                <a href="invoice.php?<?php echo $client_url; ?>invoice_id=<?php echo $invoice_id; ?>">
+                                <?php echo "$invoice_prefix$invoice_number"; ?>
+                                </a>
+                            </td>
                             <td><?php echo $invoice_scope_display; ?></td>
-                            <td class="text-bold"><a href="client_invoices.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a></td>
+                            <?php if (!$client_url) { ?>
+                            <td class="text-bold"><a href="invoices.php?client_id=<?php echo $client_id; ?>"><?php echo $client_name; ?></a></td>
+                            <?php } ?>
                             <td class="text-bold text-right"><?php echo numfmt_format_currency($currency_format, $invoice_amount, $invoice_currency_code); ?></td>
                             <td><?php echo $invoice_date; ?></td>
                             <td class="<?php echo $overdue_color; ?>"><?php echo $invoice_due; ?></td>
@@ -285,10 +342,18 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                         <i class="fas fa-ellipsis-h"></i>
                                     </button>
                                     <div class="dropdown-menu">
-                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editInvoiceModal<?php echo $invoice_id; ?>">
+                                        <a class="dropdown-item" href="#"
+                                            data-toggle = "ajax-modal"
+                                            data-ajax-url = "ajax/ajax_invoice_edit.php"
+                                            data-ajax-id = "<?php echo $invoice_id; ?>"
+                                            >
                                             <i class="fas fa-fw fa-edit mr-2"></i>Edit
                                         </a>
-                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#addInvoiceCopyModal<?php echo $invoice_id; ?>">
+                                        <a class="dropdown-item" href="#"
+                                            data-toggle = "ajax-modal"
+                                            data-ajax-url = "ajax/ajax_invoice_copy.php"
+                                            data-ajax-id = "<?php echo $invoice_id; ?>"
+                                            >
                                             <i class="fas fa-fw fa-copy mr-2"></i>Copy
                                         </a>
                                         <div class="dropdown-divider"></div>
@@ -308,12 +373,6 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                         <?php
 
-
-                        require "invoice_edit_modal.php";
-
-                        require "invoice_copy_modal.php";
-
-
                     }
 
                     ?>
@@ -321,13 +380,13 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     </tbody>
                 </table>
             </div>
-            <?php require_once "pagination.php";
+            <?php require_once "includes/filter_footer.php";
  ?>
         </div>
     </div>
 
 <?php
-require_once "invoice_add_modal.php";
-
-require_once "footer.php";
-
+require_once "modals/invoice_add_modal.php";
+if ($client_url) { require_once "modals/invoice_payment_add_bulk_modal.php"; }
+require_once "modals/invoice_export_modal.php";
+require_once "includes/footer.php";
