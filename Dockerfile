@@ -1,11 +1,7 @@
-# Use PHP 8.2 with Apache
-FROM php:8.2-apache
-
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
+# Use PHP 8.2 with Apache on Debian Bullseye (keeps IMAP working)
+FROM php:8.2-apache-bullseye
 
 # Install system dependencies
-# NOTE: libc-client2007e-dev is replaced with libc-client-dev
 RUN apt-get update && apt-get install -y \
     mariadb-client \
     git \
@@ -19,10 +15,12 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libonig-dev \
     libxml2-dev \
-    libmcrypt-dev \
-    libc-client-dev \  # <-- CHANGED THIS LINE (NOTE THE BACKSLASH!)
-    libkrb5-dev \      # <-- This line must also end with a backslash
+    libc-client2007e-dev \
+    libkrb5-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Enable Apache mods
+RUN a2enmod rewrite headers
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -39,34 +37,24 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         opcache \
         imap
 
-# Install PECL extensions
-RUN pecl install mailparse \
-    && docker-php-ext-enable mailparse
+# Install Composer globally
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Enable Apache modules
-RUN a2enmod rewrite ssl
-
-# Set up ITFlow
+# Set working directory
 WORKDIR /var/www/html
-RUN rm -rf * && git clone https://github.com/Qwerty-Systems/itflow.git .
 
-# Set correct permissions
+# Copy project files
+COPY . /var/www/html
+
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader
+
+# Set correct permissions for storage & bootstrap cache (Laravel style)
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html 
+    && chmod -R 775 storage bootstrap/cache
 
-# Update PHP configuration
-RUN { \
-    echo "upload_max_filesize = 500M"; \
-    echo "post_max_size = 500M"; \
-    echo "memory_limit = 512M"; \
-    echo "max_execution_time = 300"; \
-} > /usr/local/etc/php/conf.d/uploads.ini
+# Expose Apache port
+EXPOSE 80
 
-# Clean up
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Expose ports
-EXPOSE 80 443
-
-# Start Apache
+# Start Apache in foreground
 CMD ["apache2-foreground"]
