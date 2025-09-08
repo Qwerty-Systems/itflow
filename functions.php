@@ -77,17 +77,21 @@ function getUserAgent() {
 }
 
 function getIP() {
-    if (defined("CONST_GET_IP_METHOD")) {
-        if (CONST_GET_IP_METHOD == "HTTP_X_FORWARDED_FOR") {
-            $ip = getenv('HTTP_X_FORWARDED_FOR');
-        } else {
-            $ip = $_SERVER["HTTP_CF_CONNECTING_IP"] ?? $_SERVER['REMOTE_ADDR'];
-        }
-    } else {
+
+    // Default way to get IP
+    $ip = $_SERVER['REMOTE_ADDR'];
+
+    // Allow overrides via config.php in-case we use a proxy - https://docs.itflow.org/config_php
+    if (defined("CONST_GET_IP_METHOD") && CONST_GET_IP_METHOD == "HTTP_X_FORWARDED_FOR") {
+        $ip = explode(',', getenv('HTTP_X_FORWARDED_FOR'))[0] ?? $_SERVER['REMOTE_ADDR'];
+    } elseif (defined("CONST_GET_IP_METHOD") && CONST_GET_IP_METHOD == "HTTP_CF_CONNECTING_IP") {
         $ip = $_SERVER["HTTP_CF_CONNECTING_IP"] ?? $_SERVER['REMOTE_ADDR'];
     }
 
+    // Abort if something isn't right
     if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+        error_log("ITFlow - Could not validate remote IP address");
+        error_log("ITFlow - IP was [$ip] using method " . CONST_GET_IP_METHOD);
         exit("Potential Security Violation");
     }
 
@@ -195,7 +199,7 @@ function truncate($text, $chars) {
 
 function formatPhoneNumber($phoneNumber, $country_code = '', $show_country_code = false) {
     // Remove all non-digit characters
-    $digits = preg_replace('/\D/', '', $phoneNumber);
+    $digits = preg_replace('/\D/', '', $phoneNumber ?? '');
     $formatted = '';
 
     // If no digits at all, fallback early
@@ -705,7 +709,17 @@ function sendSingleEmail($config_smtp_host, $config_smtp_username, $config_smtp_
         $mail->SMTPAuth   = $smtp_auth;                             // Enable SMTP authentication
         $mail->Username   = $config_smtp_username;                  // SMTP username
         $mail->Password   = $config_smtp_password;                  // SMTP password
-        $mail->SMTPSecure = $config_smtp_encryption;                // Enable TLS encryption, `ssl` also accepted
+        if ($config_smtp_encryption == 'None') {
+            $mail->SMTPOptions = array(
+                'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ));
+            $mail->SMTPSecure = false;
+            $mail->SMTPAutoTLS = false;
+        } else {
+            $mail->SMTPSecure = $config_smtp_encryption;            // Enable TLS encryption, `ssl` also accepted
+        }
         $mail->Port       = $config_smtp_port;                      // TCP port to connect to
 
         //Recipients
@@ -884,30 +898,26 @@ function checkFileUpload($file, $allowed_extensions)
     return $secureFilename;
 }
 
-function sanitizeInput($input)
-{
+function sanitizeInput($input) {
     global $mysqli;
 
     if (!empty($input)) {
-        // Detect encoding
-        $encoding = mb_detect_encoding($input, ['UTF-8', 'ISO-8859-1', 'Windows-1252', 'ISO-8859-15'], true);
-
-        // If not UTF-8, convert to UTF8 (primarily Windows-1252 is problematic)
-        if ($encoding !== 'UTF-8') {
-            $input = mb_convert_encoding($input, 'UTF-8', $encoding);
+        // Only convert encoding if it's NOT valid UTF-8
+        if (!mb_check_encoding($input, 'UTF-8')) {
+            // Try converting from Windows-1252 as a safe default fallback
+            $input = mb_convert_encoding($input, 'UTF-8', 'Windows-1252');
         }
     }
 
     // Remove HTML and PHP tags
     $input = strip_tags((string) $input);
 
-    // Remove white space from beginning and end of input
+    // Trim white space
     $input = trim($input);
 
-    // Escape special characters
+    // Escape for SQL
     $input = mysqli_real_escape_string($mysqli, $input);
 
-    // Return sanitized input
     return $input;
 }
 
@@ -1472,8 +1482,8 @@ function enforceAdminPermission() {
 
 function customAction($trigger, $entity) {
     chdir(dirname(__FILE__));
-    if (file_exists(__DIR__ . "/xcustom/xcustom_action_handler.php")) {
-        include_once __DIR__ . "/xcustom/xcustom_action_handler.php";
+    if (file_exists(__DIR__ . "/custom/custom_action_handler.php")) {
+        include_once __DIR__ . "/custom/custom_action_handler.php";
     }
 }
 
@@ -1487,7 +1497,7 @@ function appNotify($type, $details, $action = null, $client_id = 0, $entity_id =
     $sql = mysqli_query($mysqli, "SELECT user_id FROM users 
         WHERE user_type = 1 AND user_status = 1 AND user_archived_at IS NULL
     ");
-    
+
     while ($row = mysqli_fetch_array($sql)) {
         $user_id = intval($row['user_id']);
 
@@ -1535,7 +1545,7 @@ function getFallback($data) {
  * @param int    $id            The record's id.
  * @param string $field         The field (column) to retrieve.
  * @param string $escape_method The escape method: 'sql' (default, auto-detects int), 'html', 'json', or 'int'.
- * 
+ *
  * @return mixed The escaped field value, or null if not found or invalid input.
  */
 function getFieldById($table, $id, $field, $escape_method = 'sql') {
@@ -1631,7 +1641,7 @@ function display_folder_options($parent_folder_id, $client_id, $folder_location 
 
         // Check if this folder is selected
         $selected = '';
-        if ((isset($_GET['folder_id']) && intval($_GET['folder_id']) === $folder_id) || 
+        if ((isset($_GET['folder_id']) && intval($_GET['folder_id']) === $folder_id) ||
             (isset($_POST['folder']) && intval($_POST['folder']) === $folder_id)) {
             $selected = 'selected';
         }
@@ -1641,4 +1651,47 @@ function display_folder_options($parent_folder_id, $client_id, $folder_location 
         // Recursively display subfolders
         display_folder_options($folder_id, $client_id, $folder_location, $indent + 1);
     }
+}
+
+function sanitize_url($url) {
+    $allowed = ['http', 'https', 'file', 'ftp', 'ftps', 'sftp', 'dav', 'webdav', 'caldav', 'carddav',  'ssh', 'telnet', 'smb', 'rdp', 'vnc', 'rustdesk', 'anydesk', 'connectwise', 'splashtop', 'sip', 'sips', 'ldap', 'ldaps'];
+    $parts = parse_url($url ?? '');
+    if (isset($parts['scheme']) && !in_array(strtolower($parts['scheme']), $allowed)) {
+        // Remove the scheme and colon
+        $pos = strpos($url, ':');
+        $without_scheme = $url;
+        if ($pos !== false) {
+            $without_scheme = substr($url, $pos + 1); // This keeps slashes (e.g. //pizza.com)
+        }
+        // Prepend 'unsupported://' (strip any leading slashes from $without_scheme to avoid triple slashes)
+        $unsupported = 'unsupported://' . ltrim($without_scheme, '/');
+        return htmlspecialchars($unsupported, ENT_QUOTES, 'UTF-8');
+    }
+
+    // Safe schemes: return escaped original URL
+    return htmlspecialchars($url ?? '', ENT_QUOTES, 'UTF-8');
+}
+
+// Redirect Function
+function redirect($url = null, $permanent = false) {
+    // Use referer if no URL is provided
+    if (!$url) {
+        $url = $_SERVER['HTTP_REFERER'] ?? 'index.php';
+    }
+
+    if (!headers_sent()) {
+        header('Location: ' . $url, true, $permanent ? 301 : 302);
+        exit;
+    } else {
+        // Fallback for headers already sent
+        echo "<script>window.location.href = '" . addslashes($url) . "';</script>";
+        echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($url) . '"></noscript>';
+        exit;
+    }
+}
+
+//Flash Alert Function
+function flash_alert(string $message, string $type = 'success'): void {
+    $_SESSION['alert_type'] = $type;
+    $_SESSION['alert_message'] = $message;
 }

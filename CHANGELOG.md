@@ -2,6 +2,196 @@
 
 This file documents all notable changes made to ITFlow.
 
+## [25.09.1]
+
+### Fixes
+- **Web Installer**: Resolved issue with broken installer caused by incorrect database schema file name.
+- Hide the "Add Credit" button as the feature is not fully implemented yet.
+- Corrected long invoice/quote notes that were overlapping with the footer in PDF exports.
+- Fixed AI settings not appearing in the Admin Menu when the Billing module was disabled.
+- Enabled wrapping of client tags when they are too long.
+- Fixed an issue where AI was not functioning correctly.
+- Removed extra spacing between the contact name and icon in the Ticket Details contact card.
+
+### Features
+- Redesigned **AI Ticket Summary**, now divided into 3 sections: Main Issue, Actions Taken, and Resolution/Next Steps.
+- Updated the **AI Ticket Summary** prompt to include ticket status, reply author, source, category, and priority.
+
+---
+
+## [25.09]
+
+***BACK UP*** before updating.
+
+---
+
+### Breaking Changes and Notes
+- We strongly recommend updating from the command line, however if performed via the webui and after performed it will return a 404. thats normal as the directory structure has changed, just close your browser then log back in then go back to update to perform the many database updates. 
+- This is a major release with significant changes. While the community has done a great job identifying bugs, some may still remain — continued testing is encouraged.
+- All AI settings will be **reset** and must be reconfigured using the new AI provider backend.
+- The `xcustom` directory has been renamed to `custom`. All custom libraries and post-processing scripts should now be placed here.
+
+---
+
+### Added / Changed
+- Numerous UI improvements and refinements across the application.
+- Enhanced visual clarity by thickening the left border on ticket comments to help identify comment types.
+- Ticket details UI redesigned to use less space at the top of the screen.
+- Introduced tracking for the **first response date/time** on tickets.
+- New reporting feature: **Average time to first response** on tickets.
+- Stripe integration rebuilt using the new **payment provider backend**.
+- Clients can now save and manage **multiple payment methods**.
+- Support for selecting saved cards for **recurring invoices** in both the client and agent portals.
+- Initial database structure and logic added for **credit management** (feature not yet enabled).
+- Major **backend directory restructuring**.
+- Introduced **stock/inventory management**, including a stock ledger backend.
+- Stock quantities now update automatically when invoice items are added or removed.
+- Invoice autocomplete now includes: **name, description, price, tax, stock levels**, and links `product_id` to `item_id`.
+- Added a **category filter** to invoices.
+- Linked stock to related expenses.
+- New product fields: **location, code, and type**.
+- Products now separated into two types: **Service** and **Product**.
+- **Dark mode** introduced.
+- Projects: Now support linking **closed tickets**.
+- Clients: Added bulk actions for tags, referral source, industry, hourly rate, email, archive, and restore.
+- Invoices: Bulk action added to **assign categories**.
+- Assets: New `client_uri` field, visible in both the agent and client portals.
+- Client Portal: Clients can now **select an asset** during ticket creation.
+- Client Portal: Company logo now **displays in the header**.
+- Client Portal: Dashboard cards are now **clickable** for more detail.
+- Assets: Option added to include **MAC Address** in additional columns.
+- Asset Interface: Bulk actions added — set DHCP, network type, and delete.
+- API:
+  - Added `/location` endpoint.
+  - Ticket content now supports **HTML formatting**.
+- New option to filter and display **500 records per page** in the footer.
+- Payment methods are now treated as a **separate entity** instead of being grouped under categories.
+- Updated libraries:
+  - **TinyMCE**
+  - **Chart.js** (major upgrade)
+  - **DataTables**
+  - **Bootstrap**
+  - **FullCalendar**
+  - **php-stripe**
+
+---
+
+### Fixed
+- Several security vulnerabilities patched.
+- Ticket status is no longer updated when scheduling.
+- Client Portal: Tech contacts can no longer edit their own details.
+- Fixed overlapping logo issue in Invoice/Quote PDF exports.
+- Refactored `check_login.php` into multiple files for modular login functionality.
+- Removed redundant logging comments for redirects.
+- Renamed `get_settings.php` to `load_global_settings.php`.
+- Simplified syntax for `ajax-modal` and updated usage throughout the app.
+- Fixed issue where primary contact text wasn’t displaying.
+- Corrected client **Net Terms** display.
+- Fixed logic for recurring expense **next run date**.
+- Resolved broken **IMAP test button**.
+- Archived clients can no longer log into the portal.
+- Searching closed tickets no longer reverts to open tickets.
+- Fixed project search filter not showing completed projects.
+- Fixed issue where company logo was not being removed correctly.
+- Resolved API bugs:
+  - Default rate and net terms.
+  - Contact location.
+  - Document endpoint.
+
+---
+
+### Developer Updates
+- Replaced legacy code with newer functions like `redirect()`, `getFieldById()`, and `flash_alert()`.
+- Significantly improved performance of queries used for filter selection boxes.
+
+
+## [25.06.1]
+
+### Fixed
+- Fixed a regression in setup causing it to crash and never complete, due to missing default for currency.
+
+## [25.06]
+
+### Breaking CHANGES
+- Old Document Verions will be deleted due to the major backend rewrite how document versions work.
+
+### Added / Changed
+- Improved function for retrieving remote IP address for logging purposes.
+- Ticket categories are now sorted alphabetically.
+- Visiting a deleted invoice or recurring invoice now redirects to the listing page; delete option added to invoice details page.
+- Added "Mark as Sent" and "Make Payment" actions directly on the invoice listing page.
+- Introduced Ticket Category UI for recurring tickets.
+- In Project Details, bulk actions and sorting are now available for tickets.
+- Updated ticket details UI to use full card stacks with edit icons for stackable items (e.g., asset, watchers, contact).
+- Added a new setting to toggle AutoStart Timer in ticket details (disabled by default).
+- Applied gray accent theme in the client section to visually distinguish from the global view.
+- Introduced Ticket Due Date functionality (currently supports add/edit only; more updates coming next release).
+- Added settings option to display Company Tax ID on invoices.
+- Client overview now displays badge counts for all entities.
+- Overhauled UI for Invoice, Quote, and Recurring Invoice details; switched PDF generation to TCPDF PHP from PDFMake JS.
+- Document versioning has been moved to a separate backend table to resolve permanent link issues -- SEE Breaking CHANGES.
+- Migrated Document Templates, Vendor Templates, and Software/License Templates to dedicated tables.
+- Added functionality to mark all tasks in a ticket as complete or incomplete.
+- Asset CSV import now supports a purchase date field.
+- Recurring Payments have been restructured to auto-charge on the invoice due date instead of at generation time.
+- Added "Base Template" label for vendor templates when available.
+- Backup and restore processes now use a temporary directory; files are cleaned up automatically if operations fail.
+- Added confirmation prompt when accepting or declining a quote.
+- Other minor code UI/UX cleanups and refactoring throughout the app.
+
+### Fixed
+- Resolved issue with enabling MFA.
+- Fixed UI regression where ticket listing columns would misalign.
+- Non-billable invoices are no longer included in calculations.
+- Addressed multiple minor reported security vulnerabilities.
+- Tickets with open tasks are no longer resolved in bulk; a warning is shown along with a count of affected tickets.
+
+
+## [25.05.1]
+
+### Added / Changed
+- Added Domain Expiring Card to Client Portal Dashboard for Primary and Technical Users.
+- Added Balance and Monthly Recurring Amount to Client Portal Dahboard for Primary and Technical Users.
+- Added Archive Searching to network and certificates also added unarchive capabilities to them as well.
+
+### Fixed
+- Add Payment not showing in Invoice.
+- Updated Client Overview Entities to not show archived client's Entities even though the entity may not be archived.
+
+
+## [25.05]
+
+### Added / Changed
+- Expanded file upload allow-list to include .bat and .stk file types.
+- Added full backup/restore functionality. Backup downloads a zip that includes the SQL dump and uploads folder, setup now has option to restore from zip backup.
+- Migrated Asset and Contact Links to modals to resolve variable overlap issue.
+- Added Pagination to Notification Modal.
+- Removed 500 Records Per Page option.
+- Removed unused old DB checks in the top nav.
+- Clients can now use the portal to setup Stripe automatic payments themselves for recurring invoices
+- Automatic payments are now disabled for all recurring invoices if the saved payment method is removed
+- Added Card Details and Payment added to Client Stripe.
+- UI / UX updates to guest pay Make use of cards.
+- Don't show Checkbox columns when ticket is closed, compact ticket list now matches round pills for status and priority.
+- Ticket UI/UX update allow the ticket toolbar to be a little more mobile-friendly
+- UI / UX Updates to Expenses - Combine Category and Description into 1 column.
+- Country information is now displayed in Invoices, Quotes, Recurring Invoices, Clients, Locations, and the client top header.
+- Added country-based search filters in Locations and Clients sections.
+- Changed the settings name from Integrations to Identity Providers to make room for future iDPs (e.g. Google).
+- Bump FullCalendar from 6.1.15 to 6.1.17.
+- Bump DataTables from 2.2.2 to 2.3.1.
+- Bump TCPDF from 6.8.2 to 6.9.4.
+- Bump tinyMCE from 7.7.1 to 7.9.0.
+- Bump phpMailer from 6.9.2 to 6.10.0.
+- Bump stripe-php from 16.4.0 to 17.2.1.
+
+
+### Fixed
+- "None" option for SMTP encryption now functions correctly.
+- Debug table row counts now reflect actual counts instead of relying on SHOW TABLE STATUS.
+- Archived Categories now display properly.
+- Stripe saved payment methods are now limited to credit/debit cards only.
+
 ## [25.03.6]
 
 ### Fixed

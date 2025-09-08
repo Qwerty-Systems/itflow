@@ -2,6 +2,7 @@
 
 require_once "../config.php";
 require_once "../functions.php";
+require_once "../includes/load_global_settings.php";
 
 session_start();
 

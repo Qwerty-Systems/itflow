@@ -10,26 +10,32 @@ if (isset($_GET['ai_reword'])) {
 
     header('Content-Type: application/json');
 
+    $sql = mysqli_query($mysqli, "SELECT * FROM ai_models LEFT JOIN ai_providers ON ai_model_ai_provider_id = ai_provider_id WHERE ai_model_use_case = 'General' LIMIT 1");
+
+    $row = mysqli_fetch_array($sql);
+    $model_name = $row['ai_model_name'];
+    $promptText = $row['ai_model_prompt'];
+    $url = $row['ai_provider_api_url'];
+    $key = $row['ai_provider_api_key'];
+
     // Collecting the input data from the AJAX request.
     $inputJSON = file_get_contents('php://input');
     $input = json_decode($inputJSON, TRUE); // Convert JSON into array.
-
-    $promptText = "Rephrase this ticket response to be clear, professional, and polite. Maintain the original meaning without adding or omitting information. Do not invent details. Keep the tone neutral and professional. Avoid technical jargon unless necessary. Please return only the reworded text as clean, properly formatted HTML, without any code block markers, backticks, or the word 'html'. Do not include any other commentary or explanations.";
 
     $userText = $input['text'];
 
     // Preparing the data for the OpenAI Chat API request.
     $data = [
-        "model" => "$config_ai_model", // Specify the model
+        "model" => "$model_name", // Specify the model
         "messages" => [
             ["role" => "system", "content" => $promptText],
             ["role" => "user", "content" => $userText],
         ],
-        "temperature" => 0.7
+        "temperature" => 0.5
     ];
 
     // Initialize cURL session to the OpenAI Chat API.
-    $ch = curl_init("$config_ai_url");
+    $ch = curl_init("$url");
 
     // Set cURL options for the request.
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -37,7 +43,7 @@ if (isset($_GET['ai_reword'])) {
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'Authorization: Bearer ' . $config_ai_api_key,
+        'Authorization: Bearer ' . $key,
     ]);
 
     // Execute the cURL session and capture the response.
@@ -51,13 +57,13 @@ if (isset($_GET['ai_reword'])) {
     if (isset($responseData['choices'][0]['message']['content'])) {
         // Get the response content.
         $content = $responseData['choices'][0]['message']['content'];
-        
+
         // Clean any leading "html" word or other unwanted text at the beginning.
         $content = preg_replace('/^html/i', '', $content);  // Remove any occurrence of 'html' at the start
 
         // Clean the response content to remove backticks or code block markers.
         $cleanedContent = str_replace('```', '', $content); // Remove backticks if they exist.
-        
+
         // Trim any leading/trailing whitespace.
         $cleanedContent = trim($cleanedContent);
 
@@ -65,32 +71,47 @@ if (isset($_GET['ai_reword'])) {
         echo json_encode(['rewordedText' => $cleanedContent]);
     } else {
         // Handle errors or unexpected response structure.
-        echo json_encode(['rewordedText' => 'Failed to get a response from the OpenAI API.']);
+        echo json_encode(['rewordedText' => 'Failed to get a response from the AI API.']);
     }
 
 }
 
 if (isset($_GET['ai_ticket_summary'])) {
 
+    header('Content-Type: text/html; charset=UTF-8');
+
+    $sql = mysqli_query($mysqli, "SELECT * FROM ai_models LEFT JOIN ai_providers ON ai_model_ai_provider_id = ai_provider_id WHERE ai_model_use_case = 'General' LIMIT 1");
+
+    $row = mysqli_fetch_array($sql);
+    $model_name = $row['ai_model_name'];
+    $url = $row['ai_provider_api_url'];
+    $key = $row['ai_provider_api_key'];
+
     // Retrieve the ticket_id from POST
     $ticket_id = intval($_POST['ticket_id']);
 
     // Query the database for ticket details
-    // (You can reuse code from ticket.php or write a simplified query here)
     $sql = mysqli_query($mysqli, "
-        SELECT ticket_subject, ticket_details
+        SELECT ticket_subject, ticket_details, ticket_source, ticket_priority, ticket_status_name, category_name
         FROM tickets
+        LEFT JOIN ticket_statuses ON ticket_status = ticket_status_id
+        LEFT JOIN categories ON ticket_category = category_id
         WHERE ticket_id = $ticket_id
         LIMIT 1
     ");
     $row = mysqli_fetch_assoc($sql);
     $ticket_subject = $row['ticket_subject'];
     $ticket_details = strip_tags($row['ticket_details']); // strip HTML for cleaner prompt
+    $ticket_status = $row['ticket_status_name'];
+    $ticket_category = $row['category_name'];
+    $ticket_source = $row['ticket_source'];
+    $ticket_priority = $row['ticket_priority'];
 
     // Get ticket replies
     $sql_replies = mysqli_query($mysqli, "
-        SELECT ticket_reply, ticket_reply_type
+        SELECT ticket_reply, ticket_reply_type, user_name
         FROM ticket_replies
+        LEFT JOIN users ON ticket_reply_by = user_id
         WHERE ticket_reply_ticket_id = $ticket_id
         AND ticket_reply_archived_at IS NULL
         ORDER BY ticket_reply_id ASC
@@ -100,29 +121,61 @@ if (isset($_GET['ai_ticket_summary'])) {
     while ($reply = mysqli_fetch_assoc($sql_replies)) {
         $reply_type = $reply['ticket_reply_type'];
         $reply_text = strip_tags($reply['ticket_reply']);
-        $all_replies_text .= "\n[$reply_type]: $reply_text";
+        $reply_by = $reply['user_name'];
+        $all_replies_text .= "\nReply Type: $reply_type Reply By: $reply_by: Reply Text: $reply_text";
     }
 
-    // Craft a prompt for ChatGPT
-    $prompt = "Based on the language detection (case not detected use default English), dont show \"Language Detected\", and Summarize using this language, the following ticket and its responses in a concise and clear way. The summary should be short, highlight the main issue, the actions taken, and any resolution steps:\n\nTicket Subject: $ticket_subject\nTicket Details: $ticket_details\nReplies:$all_replies_text\n\nShort Summary:";
+    $prompt = "
+    Summarize the following IT support ticket and its responses in a concise, clear, and professional manner. 
+    The summary should include:
+
+    1. Main Issue: What was the problem reported by the user?
+    2. Actions Taken: What steps were taken to address the issue?
+    3. Resolution or Next Steps: Was the issue resolved or is it ongoing?
+
+    Please ensure:
+    - If there are multiple issues, summarize each separately.
+    - Urgency: If the ticket or replies express urgency or escalation, highlight it.
+    - Attachments: If mentioned in the ticket, note any relevant attachments or files.
+    - Avoid extra explanations or unnecessary information.
+
+    Ticket Data:
+    - Ticket Source: $ticket_source
+    - Current Ticket Status: $ticket_status
+    - Ticket Priority: $ticket_priority
+    - Ticket Category: $ticket_category
+    - Ticket Subject: $ticket_subject
+    - Ticket Details: $ticket_details
+    - Replies:
+    $all_replies_text
+
+    Formatting instructions:
+    - Use valid HTML tags only.
+    - Use <h3> for section headers (Main Issue, Actions Taken, Resolution).
+    - Use <ul><li> for bullet points under each section.
+    - Do NOT wrap the output in ```html or any other code fences.
+    - Do NOT include <html>, <head>, or <body>.
+    - Output only the summary content in pure HTML.
+    If any part of the ticket or replies is unclear or ambiguous, mention it in the summary and suggest if further clarification is needed.
+    ";
 
     // Prepare the POST data
     $post_data = [
-        "model" => "$config_ai_model",
+        "model" => "$model_name",
         "messages" => [
-            ["role" => "system", "content" => "You are a helpful assistant."],
+            ["role" => "system", "content" => "Your task is to summarize IT support tickets with clear, concise details."],
             ["role" => "user", "content" => $prompt]
         ],
-        "temperature" => 0.7
+        "temperature" => 0.3
     ];
 
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $config_ai_url);
+    curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'Authorization: Bearer ' . $config_ai_api_key
+        'Authorization: Bearer ' . $key
     ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post_data));
 
@@ -136,14 +189,21 @@ if (isset($_GET['ai_ticket_summary'])) {
     $response_data = json_decode($response, true);
     $summary = $response_data['choices'][0]['message']['content'] ?? "No summary available.";
 
-    // Print the summary
-    echo nl2br(htmlentities($summary));
+
+    echo $summary; // nl2br to convert newlines to <br>, htmlspecialchars to prevent XSS
 }
 
 if (isset($_GET['ai_create_document_template'])) {
     // get_ai_document_template.php
 
     header('Content-Type: text/html; charset=UTF-8');
+
+    $sql = mysqli_query($mysqli, "SELECT * FROM ai_models LEFT JOIN ai_providers ON ai_model_ai_provider_id = ai_provider_id WHERE ai_model_use_case = 'General' LIMIT 1");
+
+    $row = mysqli_fetch_array($sql);
+    $model_name = $row['ai_model_name'];
+    $url = $row['ai_provider_api_url'];
+    $key = $row['ai_provider_api_key'];
 
     $prompt = $_POST['prompt'] ?? '';
 
@@ -158,21 +218,21 @@ if (isset($_GET['ai_create_document_template'])) {
     $user_message = "Create an HTML formatted IT documentation template based on the following request:\n\n\"$prompt\"\n\nThe template should be structured, professional, and useful for IT staff. Include relevant sections, instructions, prerequisites, and best practices.";
 
     $post_data = [
-        "model" => "$config_ai_model",
+        "model" => "$model_name",
         "messages" => [
             ["role" => "system", "content" => $system_message],
             ["role" => "user", "content" => $user_message]
         ],
-        "temperature" => 0.7
+        "temperature" => 0.5
     ];
 
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $config_ai_url);
+    curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'Authorization: Bearer ' . $config_ai_api_key
+        'Authorization: Bearer ' . $key
     ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post_data));
 

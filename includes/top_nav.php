@@ -1,5 +1,5 @@
 <!-- Navbar -->
-<nav class="main-header navbar navbar-expand navbar-<?php echo nullable_htmlentities($config_theme); ?> navbar-dark">
+<nav class="main-header navbar navbar-expand navbar-<?php if (isset($_GET['client_id'])) { echo "gray"; } else { echo nullable_htmlentities($config_theme); } ?> navbar-dark">
 
     <!-- Left navbar links -->
     <ul class="navbar-nav">
@@ -28,37 +28,33 @@
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
 
-        <?php if(CURRENT_DATABASE_VERSION > '1.4.5' ) { // Check DB Version REMOVE on Decemeber 1st 2024 -Johnny ?>
+        <!--Custom Nav Link -->
+        <?php
+        $sql_custom_links = mysqli_query($mysqli, "SELECT * FROM custom_links WHERE custom_link_location = 2 AND custom_link_archived_at IS NULL
+            ORDER BY custom_link_order ASC, custom_link_name ASC"
+        );
 
-            <!--Custom Nav Link -->
-            <?php
-            $sql_custom_links = mysqli_query($mysqli, "SELECT * FROM custom_links WHERE custom_link_location = 2 AND custom_link_archived_at IS NULL
-                ORDER BY custom_link_order ASC, custom_link_name ASC"
-            );
+        while ($row = mysqli_fetch_array($sql_custom_links)) {
+            $custom_link_name = nullable_htmlentities($row['custom_link_name']);
+            $custom_link_uri = sanitize_url($row['custom_link_uri']);
+            $custom_link_icon = nullable_htmlentities($row['custom_link_icon']);
+            $custom_link_new_tab = intval($row['custom_link_new_tab']);
+            if ($custom_link_new_tab == 1) {
+                $target = "target='_blank' rel='noopener noreferrer'";
+            } else {
+                $target = "";
+            }
 
-            while ($row = mysqli_fetch_array($sql_custom_links)) {
-                $custom_link_name = nullable_htmlentities($row['custom_link_name']);
-                $custom_link_uri = nullable_htmlentities($row['custom_link_uri']);
-                $custom_link_icon = nullable_htmlentities($row['custom_link_icon']);
-                $custom_link_new_tab = intval($row['custom_link_new_tab']);
-                if ($custom_link_new_tab == 1) {
-                    $target = "target='_blank' rel='noopener noreferrer'";
-                } else {
-                    $target = "";
-                }
+            ?>
 
-                ?>
+        <li class="nav-item" title="<?php echo $custom_link_name; ?>">
+            <a href="<?php echo $custom_link_uri; ?>" <?php echo $target; ?> class="nav-link">
+                <i class="fas fa-<?php echo $custom_link_icon; ?> nav-icon"></i>
+            </a>
+        </li>
 
-            <li class="nav-item" title="<?php echo $custom_link_name; ?>">
-                <a href="<?php echo $custom_link_uri; ?>" <?php echo $target; ?> class="nav-link">
-                    <i class="fas fa-<?php echo $custom_link_icon; ?> nav-icon"></i>
-                </a>
-            </li>
-
-            <?php } ?>
-            <!-- End Custom Nav Links -->
-
-        <?php } // End DB Check ?>
+        <?php } ?>
+        <!-- End Custom Nav Links -->
 
         <!-- New Notifications Dropdown -->
         <?php
@@ -68,10 +64,7 @@
         ?>
 
         <li class="nav-item">
-            <a class="nav-link" href="#"
-                data-toggle="ajax-modal"
-                data-ajax-url="ajax/ajax_notifications.php"
-                >
+            <a class="nav-link ajax-modal" href="#" data-modal-url="../modals/notifications.php">
                 <i class="fas fa-bell"></i>
                 <?php if ($num_notifications) { ?>
                 <span class="badge badge-light badge-pill navbar-badge position-absolute" style="top: 1px; right: 3px;">
@@ -86,7 +79,7 @@
                 <?php if (empty($session_avatar)) { ?>
                 <i class="fas fa-user-circle mr-1"></i>
                 <?php }else{ ?>
-                <img src="<?php echo "uploads/users/$session_user_id/$session_avatar"; ?>"
+                <img src="<?php echo "../uploads/users/$session_user_id/$session_avatar"; ?>"
                     class="user-image img-circle">
                 <?php } ?>
                 <span
@@ -99,7 +92,7 @@
                     <i class="fas fa-user-circle fa-6x"></i>
                     <?php }else{ ?>
 
-                    <img src="<?php echo "uploads/users/$session_user_id/$session_avatar"; ?>" class="img-circle">
+                    <img src="<?php echo "../uploads/users/$session_user_id/$session_avatar"; ?>" class="img-circle">
                     <?php } ?>
                     <p>
                         <?php echo stripslashes(nullable_htmlentities($session_name)); ?>
@@ -109,9 +102,9 @@
                 <!-- Menu Footer-->
                 <li class="user-footer">
                     <?php if ($session_is_admin) { ?>
-                        <a href="admin_user.php" class="btn btn-default btn-block btn-flat mb-2"><i class="fas fa-user-shield mr-2"></i>Administration</a>
+                        <a href="../admin" class="btn btn-default btn-block btn-flat mb-2"><i class="fas fa-user-shield mr-2"></i>Administration</a>
                     <?php } ?>
-                    <a href="user_details.php" class="btn btn-default btn-flat"><i class="fas fa-user-cog mr-2"></i>Account</a>
+                    <a href="../user/user_details.php" class="btn btn-default btn-flat"><i class="fas fa-user-cog mr-2"></i>Account</a>
                     <a href="post.php?logout" class="btn btn-default btn-flat float-right"><i class="fas fa-sign-out-alt mr-2"></i>Logout</a>
                 </li>
             </ul>
@@ -119,8 +112,4 @@
 
     </ul>
 </nav>
-
-<?php if ($config_module_enable_ticketing == 1) {
-    include_once __DIR__ . "/../modals/top_nav_tickets_modal.php";
-    } ?>
 <!-- /.navbar -->
