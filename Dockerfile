@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libmcrypt-dev \
-    libc-client-dev \  # <-- CHANGED THIS LINE
-    libkrb5-dev \
+    libc-client-dev \  # <-- CHANGED THIS LINE (NOTE THE BACKSLASH!)
+    libkrb5-dev \      # <-- This line must also end with a backslash
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install PHP extensions
