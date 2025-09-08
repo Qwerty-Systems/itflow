@@ -5,6 +5,7 @@ FROM php:8.2-apache
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
+# NOTE: libc-client2007e-dev is replaced with libc-client-dev
 RUN apt-get update && apt-get install -y \
     mariadb-client \
     git \
@@ -19,7 +20,7 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libmcrypt-dev \
-    libc-client2007e-dev \
+    libc-client-dev \  # <-- CHANGED THIS LINE
     libkrb5-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -69,4 +70,3 @@ EXPOSE 80 443
 
 # Start Apache
 CMD ["apache2-foreground"]
-
