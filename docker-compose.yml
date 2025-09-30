@@ -31,12 +31,12 @@ services:
     #   - wan
       # - itflow-db
     ports:
-      - "${ITFLOW_PORT}:8080"
+      - "8043:8080"
     environment:
       - TZ=${TZ}
       - ITFLOW_NAME=${ITFLOW_NAME}
       - ITFLOW_URL=${ROOT_DOMAIN}
-      - ITFLOW_PORT=${ITFLOW_PORT}
+      - ITFLOW_PORT=8080
       - ITFLOW_REPO=${ITFLOW_REPO}
       - ITFLOW_REPO_BRANCH=${ITFLOW_REPO_BRANCH}
       - ITFLOW_LOG_LEVEL=info
