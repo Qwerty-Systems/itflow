@@ -35,7 +35,7 @@ services:
     environment:
       - TZ=$TZ
       - ITFLOW_NAME=ITFlow
-      - ITFLOW_URL=it.$ROOT_DOMAIN
+      - ITFLOW_URL=$ROOT_DOMAIN
       - ITFLOW_PORT=8080
       - ITFLOW_REPO=github.com/itflow-org/itflow
       - ITFLOW_REPO_BRANCH=master
