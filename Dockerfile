@@ -5,22 +5,22 @@ FROM alpine:3.21
 LABEL dockerfile.version="v25.05" dockerfile.release-date="2025-06-05"
 
 # Set up ENVs that will be utilized in compose file.
-ENV TZ=Etc/UTC
+ENV TZ=Africa/Nairobi
 
-ENV ITFLOW_NAME=ITFlow
-
-ENV ITFLOW_URL=appp.qwerty.co.ke
-
+# ITFlow runtime variables (defaults only – override in compose/.env)
+ENV ITFLOW_NAME=""
+ENV ITFLOW_URL=""
 ENV ITFLOW_PORT=8443
-
-ENV ITFLOW_REPO=github.com/itflow-org/itflow
-
-ENV ITFLOW_REPO_BRANCH=master
+ENV ITFLOW_REPO=""
+ENV ITFLOW_REPO_BRANCH=dev
+ENV ITFLOW_LOG_LEVEL=warn
+ENV ITFLOW_DB_HOST=""
+ENV ITFLOW_DB_PASS=""
 
 # apache2 log levels: emerg, alert, crit, error, warn, notice, info, debug
 ENV ITFLOW_LOG_LEVEL=warn
 
-ENV ITFLOW_DB_HOST=itflow-db
+ENV ITFLOW_DB_HOST=null
 
 ENV ITFLOW_DB_PASS=null
 
