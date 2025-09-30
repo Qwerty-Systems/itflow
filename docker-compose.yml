@@ -40,7 +40,7 @@ services:
       - ITFLOW_REPO=github.com/itflow-org/itflow
       - ITFLOW_REPO_BRANCH=master
       - ITFLOW_LOG_LEVEL=info
-      - ITFLOW_DB_HOST=itflow-db
+      - ITFLOW_DB_HOST=$ITFLOW_DB_HOST
       - ITFLOW_DB_PASS=$ITFLOW_DB_PASS
     volumes:
       - ./itflow/:/var/www/localhost/htdocs
