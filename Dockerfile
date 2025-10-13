@@ -8,21 +8,21 @@ LABEL dockerfile.version="v25.05" dockerfile.release-date="2025-06-05"
 ENV TZ=Africa/Nairobi
 
 # ITFlow runtime variables (defaults only – override in compose/.env)
-# ENV ITFLOW_NAME=""
-# ENV ITFLOW_URL=""
+ENV ITFLOW_NAME=""
+ENV ITFLOW_URL=""
 ENV ITFLOW_PORT=8080
-# ENV ITFLOW_REPO=""
+ENV ITFLOW_REPO=""
 ENV ITFLOW_REPO_BRANCH=dev
 ENV ITFLOW_LOG_LEVEL=warn
-# ENV ITFLOW_DB_HOST=""
-# ENV ITFLOW_DB_PASS=""
+ENV ITFLOW_DB_HOST=""
+ENV ITFLOW_DB_PASS=""
 
 # apache2 log levels: emerg, alert, crit, error, warn, notice, info, debug
-# ENV ITFLOW_LOG_LEVEL=warn
+ENV ITFLOW_LOG_LEVEL=warn
 
-# ENV ITFLOW_DB_HOST=null
+ENV ITFLOW_DB_HOST=null
 
-# ENV ITFLOW_DB_PASS=null
+ENV ITFLOW_DB_PASS=null
 
 # Set timezone from TZ ENV
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
