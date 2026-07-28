@@ -16,7 +16,7 @@ $num_rows = mysqli_num_rows($sql);
     <div class="card-header py-2">
         <h3 class="card-title mt-2"><i class="fas fa-fw fa-robot mr-2"></i>AI Providers</h3>
         <div class="card-tools">
-            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addAIProviderModal"><i class="fas fa-plus mr-2"></i>Add Provider</button>
+            <button type="button" class="btn btn-primary ajax-modal" data-modal-url="modals/ai/ai_provider_add.php"><i class="fas fa-plus mr-2"></i>Add Provider</button>
         </div>
     </div>
     <div class="card-body">
@@ -39,7 +39,7 @@ $num_rows = mysqli_num_rows($sql);
                             Key <?php if ($sort == 'ai_provider_api_key') { echo $order_icon; } ?>
                         </a>
                     </th>
-                    <th>
+                    <th class="text-center">
                         <a class="text-dark">Models</a>
                     </th>
                     <th class="text-center">Action</th>
@@ -48,7 +48,7 @@ $num_rows = mysqli_num_rows($sql);
                 <tbody>
                 <?php
 
-                while ($row = mysqli_fetch_array($sql)) {
+                while ($row = mysqli_fetch_assoc($sql)) {
                     $provider_id = intval($row['ai_provider_id']);
                     $provider_name = nullable_htmlentities($row['ai_provider_name']);
                     $url = nullable_htmlentities($row['ai_provider_api_url']);
@@ -67,7 +67,8 @@ $num_rows = mysqli_num_rows($sql);
                         </td>
                         <td><?php echo $url; ?></td>
                         <td><?php echo $key; ?></td>
-                        <td><?php echo $ai_model_count; ?></td>
+                        <td class="text-center">
+                            <a class="badge badge-dark badge-pill p-2" href="ai_model.php"><?= $ai_model_count ?></a>
                         <td>
                             <div class="dropdown dropleft text-center">
                                 <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown">
@@ -105,5 +106,4 @@ $num_rows = mysqli_num_rows($sql);
 </div>
 
 <?php
-require_once "modals/ai/ai_provider_add.php";
 require_once "../includes/footer.php";

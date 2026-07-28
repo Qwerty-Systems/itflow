@@ -5,7 +5,7 @@ require_once '../../../includes/modal_header.php';
 $vendor_template_id = intval($_GET['id']);
 
 $sql = mysqli_query($mysqli, "SELECT * FROM vendor_templates WHERE vendor_template_id = $vendor_template_id LIMIT 1");
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 $vendor_name = nullable_htmlentities($row['vendor_template_name']);
 $vendor_description = nullable_htmlentities($row['vendor_template_description']);
 $vendor_account_number = nullable_htmlentities($row['vendor_template_account_number']);
@@ -31,7 +31,9 @@ ob_start();
     </button>
 </div>
 <form action="post.php" method="post" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
     <input type="hidden" name="vendor_template_id" value="<?php echo $vendor_template_id; ?>">
+
     <div class="modal-body">
 
         <ul class="nav nav-pills nav-justified mb-3">
@@ -233,7 +235,7 @@ ob_start();
                 <div class="form-group">
                     <textarea class="form-control" rows="8" placeholder="Enter some notes" name="notes"><?php echo $vendor_notes; ?></textarea>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Update Notes Globally?</label>
                     <input type="checkbox" name="global_update_vendor_notes" value="1">

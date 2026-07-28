@@ -19,31 +19,31 @@ header("X-Frame-Options: DENY");
     <title><?= $session_company_name; ?></title>
 
     <!-- Favicon -->
-    <?php if(file_exists('../uploads/favicon.ico')): ?>
-        <link rel="icon" type="image/x-icon" href="../uploads/favicon.ico">
-    <?php endif; ?>
+    <?php if(file_exists($_SERVER['DOCUMENT_ROOT'] . '/uploads/favicon.ico')) { ?>
+        <link rel="icon" type="image/x-icon" href="/uploads/favicon.ico">
+    <?php } ?>
 
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="../plugins/fontawesome-free/css/all.min.css">
+    <link rel="stylesheet" href="/plugins/fontawesome-free/css/all.min.css">
 
     <!-- Custom Styles -->
-    <link href="../plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css" rel="stylesheet" type="text/css">
-    <link href="../plugins/select2/css/select2.min.css" rel="stylesheet" type="text/css">
-    <link href="../plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css" rel="stylesheet" type="text/css">
-    <link href="../plugins/daterangepicker/daterangepicker.css" rel="stylesheet">
-    <link href="../plugins/toastr/toastr.min.css" rel="stylesheet">
-    <link href="../plugins/DataTables/datatables.min.css" rel="stylesheet">
-    <link href="../plugins/intl-tel-input/css/intlTelInput.min.css" rel="stylesheet">
-    <link href="../css/itflow_custom.css" rel="stylesheet">
-    <link rel="stylesheet" href="../plugins/adminlte/css/adminlte.min.css">
+    <link rel="stylesheet" href="/plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css" >
+    <link rel="stylesheet" href="/plugins/select2/css/select2.min.css">
+    <link rel="stylesheet" href="/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
+    <link rel="stylesheet" href="/plugins/daterangepicker/daterangepicker.css">
+    <link rel="stylesheet" href="/plugins/toastr/toastr.min.css">
+    <link rel="stylesheet" href="/plugins/DataTables/datatables.min.css">
+    <link rel="stylesheet" href="/plugins/intl-tel-input/css/intlTelInput.min.css">
+    <link rel="stylesheet" href="/css/itflow_custom.css">
+    <link rel="stylesheet" href="/plugins/adminlte/css/adminlte.min.css">
 
     <!-- Scripts -->
-    <script src="../plugins/jquery/jquery.min.js"></script>
-    <script src="../plugins/toastr/toastr.min.js"></script>
+    <script src="/plugins/jquery/jquery.min.js"></script>
+    <script src="/plugins/toastr/toastr.min.js"></script>
 </head>
 <body class="
     hold-transition sidebar-mini layout-fixed layout-navbar-fixed 
-    accent-<?php echo isset($_GET['client_id']) ? 'blue' : nullable_htmlentities($config_theme); ?>
+    accent-<?php echo nullable_htmlentities($config_theme); ?>
     <?php if ($user_config_theme_dark) echo 'dark-mode'; ?>
 ">
     <div class="wrapper text-sm">

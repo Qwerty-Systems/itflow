@@ -9,7 +9,7 @@ require_once "includes/inc_all_admin.php";
 $sql = mysqli_query(
     $mysqli,
     "SELECT SQL_CALC_FOUND_ROWS * FROM software_templates
-    WHERE software_template_name LIKE '%$q%' OR software_template_type LIKE '%$q%' 
+    WHERE software_template_name LIKE '%$q%' OR software_template_type LIKE '%$q%'
     ORDER BY $sort $order LIMIT $record_from, $record_to"
 );
 
@@ -21,7 +21,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
     <div class="card-header py-2">
         <h3 class="card-title mt-2"><i class="fas fa-fw fa-cube mr-2"></i>License Templates</h3>
         <div class="card-tools">
-            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addSoftwareTemplateModal"><i class="fas fa-plus mr-2"></i>New License Template</button>
+            <button type="button" class="btn btn-primary ajax-modal" data-modal-url="modals/software_template/software_template_add.php"><i class="fas fa-plus mr-2"></i>New License Template</button>
         </div>
     </div>
     <div class="card-body">
@@ -68,7 +68,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <tbody>
                 <?php
 
-                while($row = mysqli_fetch_array($sql)){
+                while($row = mysqli_fetch_assoc($sql)){
                     $software_template_id = intval($row['software_template_id']);
                     $software_template_name = nullable_htmlentities($row['software_template_name']);
                     $software_template_version = nullable_htmlentities($row['software_template_version']);
@@ -103,7 +103,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     </a>
                                     <?php if($session_user_role == 3) { ?>
                                         <div class="dropdown-divider"></div>
-                                        <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?delete_software_template=<?php echo $software_template_id; ?>">
+                                        <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?delete_software_template=<?php echo $software_template_id; ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>">
                                             <i class="fas fa-fw fa-trash mr-2"></i>Delete
                                         </a>
                                     <?php } ?>
@@ -127,5 +127,4 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 </div>
 
 <?php
-require_once "modals/software_template/software_template_add.php";
 require_once "../includes/footer.php";

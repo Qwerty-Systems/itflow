@@ -24,7 +24,7 @@ $session_ip = sanitizeInput(getIP());
 $session_user_agent = sanitizeInput($_SERVER['HTTP_USER_AGENT']);
 
 $sql_settings = mysqli_query($mysqli, "SELECT config_azure_client_id, config_azure_client_secret FROM settings WHERE company_id = 1");
-$settings = mysqli_fetch_array($sql_settings);
+$settings = mysqli_fetch_assoc($sql_settings);
 
 $client_id = $settings['config_azure_client_id'];
 $client_secret = $settings['config_azure_client_secret'];
@@ -100,8 +100,17 @@ if (isset($_POST['code']) && $_POST['state'] == session_id()) {
 
             $upn = mysqli_real_escape_string($mysqli, $msgraph_response["userPrincipalName"]);
 
-            $sql = mysqli_query($mysqli, "SELECT * FROM users LEFT JOIN contacts ON user_id = contact_user_id LEFT JOIN contact_client_id = client_id WHERE user_email = '$upn' AND user_archived_at IS NULL AND client_archived_at IS NULL AND user_type = 2 AND user_status = 1 LIMIT 1");
-            $row = mysqli_fetch_array($sql);
+            $sql = mysqli_query($mysqli, "SELECT * FROM users
+                LEFT JOIN contacts ON user_id = contact_user_id
+                LEFT JOIN clients ON contact_client_id = client_id
+                WHERE user_email = '$upn'
+                AND user_archived_at IS NULL
+                AND client_archived_at IS NULL
+                AND user_type = 2
+                AND user_status = 1
+                LIMIT 1"
+            );
+            $row = mysqli_fetch_assoc($sql);
             $client_id = intval($row['contact_client_id']);
             $user_id = intval($row['user_id']);
             $session_user_id = $user_id; // to pass the user_id to logAction function
@@ -116,6 +125,7 @@ if (isset($_POST['code']) && $_POST['state'] == session_id()) {
                 $_SESSION['user_id'] = $user_id;
                 $_SESSION['user_type'] = 2;
                 $_SESSION['contact_id'] = $contact_id;
+                $_SESSION['csrf_token'] = randomString(32);
                 $_SESSION['login_method'] = "azure";
 
                 // Logging
@@ -124,20 +134,20 @@ if (isset($_POST['code']) && $_POST['state'] == session_id()) {
                 header("Location: index.php");
 
             } else {
-                
+
                 $_SESSION['login_message'] = 'Something went wrong with logging you in: Your account is not configured for Entra SSO. Please ensure you are setup in ITFlow as a contact and have Entra SSO configured.';
-                
+
                 header("Location: index.php");
             }
-        
+
         }
-        
+
         header('Location: index.php');
-    
+
     } else {
-        
+
         echo "Error getting access_token";
-    
+
     }
 
 }

@@ -49,3 +49,19 @@ if (isset($_POST['edit_favicon_settings'])) {
     redirect();
 
 }
+
+if (isset($_GET['reset_favicon'])) {
+
+    validateCSRFToken($_GET['csrf_token']);
+
+    if (file_exists("../uploads/favicon.ico")) {
+        unlink("../uploads/favicon.ico");
+    }
+
+    logAction("Settings", "Edit", "$session_name reset Favicon");
+
+    flash_alert("Favicon reset", 'error');
+
+    redirect();
+
+}

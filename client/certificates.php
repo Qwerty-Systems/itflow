@@ -33,7 +33,7 @@ $certificates_sql = mysqli_query($mysqli, "SELECT certificate_id, certificate_na
                 <tbody>
 
                 <?php
-                while ($row = mysqli_fetch_array($certificates_sql)) {
+                while ($row = mysqli_fetch_assoc($certificates_sql)) {
                     $certificate_name = nullable_htmlentities($row['certificate_name']);
                     $certificate_domain = nullable_htmlentities($row['certificate_domain']);
                     $certificate_issued_by = nullable_htmlentities($row['certificate_issued_by']);

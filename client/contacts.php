@@ -40,7 +40,7 @@ $contacts_sql = mysqli_query($mysqli, "SELECT contact_id, contact_name, contact_
                 <tbody>
 
                 <?php
-                while ($row = mysqli_fetch_array($contacts_sql)) {
+                while ($row = mysqli_fetch_assoc($contacts_sql)) {
                     $contact_id = intval($row['contact_id']);
                     $contact_name = nullable_htmlentities($row['contact_name']);
                     $contact_email = nullable_htmlentities($row['contact_email']);

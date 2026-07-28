@@ -53,34 +53,15 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         </div>
                     </div>
                 </div>
-                <div class="collapse mt-3 <?php if (!empty($_GET['dtf']) || $_GET['canned_date'] !== "custom" ) { echo "show"; } ?>" id="advancedFilter">
+                <div class="collapse mt-3 <?php if (isset($_GET['dtf']) && $_GET['dtf'] !== '1970-01-01') { echo "show"; } ?>" id="advancedFilter">
                     <div class="row">
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <div class="form-group">
-                                <label>Canned Date</label>
-                                <select onchange="this.form.submit()" class="form-control select2" name="canned_date">
-                                    <option <?php if ($_GET['canned_date'] == "custom") { echo "selected"; } ?> value="">Custom</option>
-                                    <option <?php if ($_GET['canned_date'] == "today") { echo "selected"; } ?> value="today">Today</option>
-                                    <option <?php if ($_GET['canned_date'] == "yesterday") { echo "selected"; } ?> value="yesterday">Yesterday</option>
-                                    <option <?php if ($_GET['canned_date'] == "thisweek") { echo "selected"; } ?> value="thisweek">This Week</option>
-                                    <option <?php if ($_GET['canned_date'] == "lastweek") { echo "selected"; } ?> value="lastweek">Last Week</option>
-                                    <option <?php if ($_GET['canned_date'] == "thismonth") { echo "selected"; } ?> value="thismonth">This Month</option>
-                                    <option <?php if ($_GET['canned_date'] == "lastmonth") { echo "selected"; } ?> value="lastmonth">Last Month</option>
-                                    <option <?php if ($_GET['canned_date'] == "thisyear") { echo "selected"; } ?> value="thisyear">This Year</option>
-                                    <option <?php if ($_GET['canned_date'] == "lastyear") { echo "selected"; } ?> value="lastyear">Last Year</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label>Date From</label>
-                                <input onchange="this.form.submit()" type="date" class="form-control" name="dtf" max="2999-12-31" value="<?php echo nullable_htmlentities($dtf); ?>">
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label>Date To</label>
-                                <input onchange="this.form.submit()" type="date" class="form-control" name="dtt" max="2999-12-31" value="<?php echo nullable_htmlentities($dtt); ?>">
+                                <label>Date range</label>
+                                <input type="text" id="dateFilter" class="form-control" autocomplete="off">
+                                <input type="hidden" name="canned_date" id="canned_date" value="<?php echo nullable_htmlentities($_GET['canned_date']) ?? ''; ?>">
+                                <input type="hidden" name="dtf" id="dtf" value="<?php echo nullable_htmlentities($dtf ?? ''); ?>">
+                                <input type="hidden" name="dtt" id="dtt" value="<?php echo nullable_htmlentities($dtt ?? ''); ?>">
                             </div>
                         </div>
                     </div>
@@ -135,7 +116,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                         <tbody>
                         <?php
 
-                        while ($row = mysqli_fetch_array($sql)) {
+                        while ($row = mysqli_fetch_assoc($sql)) {
                             $email_id = intval($row['email_id']);
                             $email_from = nullable_htmlentities($row['email_from']);
                             $email_from_name = nullable_htmlentities($row['email_from_name']);
@@ -152,9 +133,9 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                             } elseif($email_status == 1) {
                                 $email_status_display = "<div class='text-warning'>Sending</div>";
                             } elseif($email_status == 2) {
-                                $email_status_display = "<div class='text-danger'>Failed</div><small class='text-secondary'>$email_failed_at</small>";
+                                $email_status_display = "<div class='text-danger'>Failed</div><small class='text-secondary text-monospace'>$email_failed_at</small>";
                             } else {
-                                $email_status_display = "<div class='text-success'>Sent</div><small class='text-secondary'>$email_sent_at</small>";
+                                $email_status_display = "<div class='text-success'>Sent</div><small class='text-secondary text-monospace'>$email_sent_at</small>";
                             }
 
                             ?>
@@ -167,7 +148,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                     </div>
                                     <?php } ?>
                                 </td>
-                                <td><?php echo $email_queued_at; ?></td>
+                                <td class="text-monospace"><?php echo $email_queued_at; ?></td>
                                 <td><?php echo "$email_from<br><small class='text-secondary'>$email_from_name</small>"?></td>
                                 <td><?php echo "$email_recipient<br><small class='text-secondary'>$email_recipient_name</small>"?></td>
                                 <td><?php echo $email_subject; ?></td>
@@ -182,12 +163,12 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 
                                     <!-- Show force resend if all retries have failed -->
                                     <?php if ($email_status == 2 && $email_attempts > 3) { ?>
-                                        <a class="btn btn-sm btn-success" href="post.php?send_failed_mail=<?php echo $email_id; ?>"><i class="fas fa-fw fa-paper-plane"></i></a>
+                                        <a class="btn btn-sm btn-success" href="post.php?send_failed_mail=<?php echo $email_id; ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>"><i class="fas fa-fw fa-paper-plane"></i></a>
                                     <?php } ?>
 
                                     <!-- Allow cancelling a message if it hasn't yet been picked up (e.g. stuck/bugged) -->
                                     <?php if ($email_status !== 3) { ?>
-                                        <a class="btn btn-sm btn-danger confirm-link" href="post.php?cancel_mail=<?php echo $email_id; ?>"><i class="fas fa-fw fa-trash"></i></a>
+                                        <a class="btn btn-sm btn-danger confirm-link" href="post.php?cancel_mail=<?php echo $email_id; ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>"><i class="fas fa-fw fa-trash"></i></a>
                                     <?php } ?>
 
                                 </td>

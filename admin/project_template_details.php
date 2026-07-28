@@ -13,13 +13,13 @@ if (isset($_GET['project_template_id'])) {
     );
 
     if (mysqli_num_rows($sql_project_templates) == 0) {
-        echo "<center><h1 class='text-secondary mt-5'>Nothing to see here</h1><a class='btn btn-lg btn-secondary mt-3' href='admin_project_template.php'><i class='fa fa-fw fa-arrow-left'></i> Go Back</a></center>";
+        echo "<center><h1 class='text-secondary mt-5'>Nothing to see here</h1><a class='btn btn-lg btn-secondary mt-3' href='javascript:history.back()'><i class='fa fa-fw fa-arrow-left'></i> Go Back</a></center>";
 
-        include_once "footer.php";
+        require_once "../includes/footer.php";
         exit;
     }
 
-    $row = mysqli_fetch_array($sql_project_templates);
+    $row = mysqli_fetch_assoc($sql_project_templates);
 
     $project_template_name = nullable_htmlentities($row['project_template_name']);
     $project_template_description = nullable_htmlentities($row['project_template_description']);
@@ -91,7 +91,7 @@ if (isset($_GET['project_template_id'])) {
 
         <div class="col-sm-2">
             <div class="btn-group float-right">
-                <button type="button" class="btn btn-primary btn-sm" href="#" data-toggle="modal" data-target="#addProjectTemplateTicketTemplateModal">
+                <button type="button" class="btn btn-primary btn-sm ajax-modal" href="#" data-modal-url="modals/project_template/project_template_ticket_template_add.php?project_template_id=<?= $project_template_id ?>">
                     <i class="fas fa-fw fa-plus mr-2"></i>Add Ticket Template
                 </button>
                 <div class="dropdown dropleft text-center ml-3">
@@ -99,18 +99,18 @@ if (isset($_GET['project_template_id'])) {
                         <i class="fas fa-fw fa-ellipsis-v"></i>
                     </button>
                     <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#editProjectTemplateModal<?php echo $project_template_id; ?>">
+                        <a class="dropdown-item ajax-modal" href="#" data-modal-url="modals/project_template/project_template_edit.php?project_template_id=<?= $project_template_id ?>">
                             <i class="fas fa-fw fa-edit mr-2"></i>Edit Template
                         </a>
                         <?php if ($session_user_role == 3) { ?>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?archive_project_template=<?php echo $project_template_id; ?>">
+                            <a class="dropdown-item text-danger text-bold confirm-link" href="post.php?archive_project_template=<?php echo $project_template_id; ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>">
                                 <i class="fas fa-fw fa-archive mr-2"></i>Archive (not yet implemented)
                             </a>
                         <?php } ?>
                         <?php if ($session_user_role == 3) { ?>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item text-danger confirm-link" href="post.php?delete_project_template=<?php echo $project_template_id; ?>">
+                            <a class="dropdown-item text-danger confirm-link" href="post.php?delete_project_template=<?php echo $project_template_id; ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>">
                                 <i class="fas fa-fw fa-trash mr-2"></i>Delete
                             </a>
                         <?php } ?>
@@ -130,10 +130,9 @@ if (isset($_GET['project_template_id'])) {
 
                 <h5 class="text-secondary"><i class="fa fa-fw fa-life-ring mr-2"></i>Project Ticket Templates</h5>
                 <div class="table-responsive-sm">
-                    <table class="table table-striped table-borderless table-hover">
+                    <table class="table table-striped table-borderless table-hover" id="ticket_templates">
                         <thead class="text-dark">
                         <tr>
-                            <th>Order</th>
                             <th>Template Name</th>
                             <th>Description</th>
                             <th>Ticket Subject</th>
@@ -143,7 +142,7 @@ if (isset($_GET['project_template_id'])) {
                         <tbody>
                         <?php
 
-                        while ($row = mysqli_fetch_array($sql_ticket_templates)) {
+                        while ($row = mysqli_fetch_assoc($sql_ticket_templates)) {
                             $ticket_template_id = intval($row['ticket_template_id']);
                             $ticket_template_order = intval($row['ticket_template_order']);
                             $ticket_template_name = nullable_htmlentities($row['ticket_template_name']);
@@ -154,16 +153,9 @@ if (isset($_GET['project_template_id'])) {
 
                             ?>
 
-                            <tr>
-                                <td class="pr-0">
-                                    <form action="post.php" method="post" autocomplete="off">
-                                        <input type="hidden" name="edit_ticket_template_order">
-                                        <input type="hidden" name="project_template_id" value="<?php echo $project_template_id; ?>">
-                                        <input type="hidden" name="ticket_template_id" value="<?php echo $ticket_template_id; ?>">
-                                        <input type="text" class="form-control pr-0" onchange="this.form.submit()" name="order" value="<?php echo $ticket_template_order; ?>">
-                                    </form>
-                                </td>
+                            <tr data-task-id="<?php echo $ticket_template_id; ?>">
                                 <td>
+                                    <a href="#" class="drag-handle"><i class="fas fa-bars text-muted mr-2"></i></a>
                                     <a href="ticket_template_details.php?ticket_template_id=<?php echo $ticket_template_id; ?>">
                                         <?php echo $ticket_template_name; ?>
                                     </a>
@@ -172,6 +164,7 @@ if (isset($_GET['project_template_id'])) {
                                 <td><?php echo $ticket_template_subject; ?></td>
                                 <td>
                                     <form action="post.php" method="post" autocomplete="off">
+                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                         <input type="hidden" name="project_template_id" value="<?php echo $project_template_id; ?>">
                                         <input type="hidden" name="ticket_template_id" value="<?php echo $ticket_template_id; ?>">
                                         <button type="submit" class="btn btn-default btn-sm confirm-link"
@@ -199,7 +192,7 @@ if (isset($_GET['project_template_id'])) {
             <h5 class="text-secondary"><i class="fas fa-fw fa-tasks mr-2"></i>Project Task Templates</h5>
             <table class="table">
                 <?php
-                while($row = mysqli_fetch_array($sql_task_templates)){
+                while($row = mysqli_fetch_assoc($sql_task_templates)){
                     $task_template_id = intval($row['task_template_id']);
                     $task_template_name = nullable_htmlentities($row['task_template_name']);
                 ?>
@@ -219,10 +212,29 @@ if (isset($_GET['project_template_id'])) {
 
 </div> <!-- End row -->
 
-<?php
+<script src="../plugins/SortableJS/Sortable.min.js"></script>
+<script>
+new Sortable(document.querySelector('table#ticket_templates tbody'), {
+    handle: '.drag-handle',
+    animation: 150,
+    onEnd: function (evt) {
+        const rows = document.querySelectorAll('table#ticket_templates tbody tr');
+        const positions = Array.from(rows).map((row, index) => ({
+            id: row.dataset.taskId,
+            order: index
+        }));
 
-require_once "modals/project_template/project_template_edit.php";
-require_once "modals/project_template/project_template_ticket_template_add.php";
+        $.post('/agent/ajax.php', {
+            update_project_template_ticket_order: true,
+            csrf_token: '<?= $_SESSION['csrf_token'] ?>',
+            project_template_id: <?php echo $project_template_id; ?>,
+            positions: positions
+        });
+    }
+});
+</script>
+
+<?php
 
 }
 

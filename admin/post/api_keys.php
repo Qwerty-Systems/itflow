@@ -31,6 +31,27 @@ if (isset($_POST['add_api_key'])) {
 
 }
 
+if (isset($_GET['revoke_api_key'])) {
+
+    validateCSRFToken($_GET['csrf_token']);
+
+    $api_key_id = intval($_GET['revoke_api_key']);
+
+    // Get API Key Name
+    $row = mysqli_fetch_assoc(mysqli_query($mysqli,"SELECT api_key_name, api_key_client_id FROM api_keys WHERE api_key_id = $api_key_id"));
+    $api_key_name = sanitizeInput($row['api_key_name']);
+    $client_id = intval($row['api_key_client_id']);
+
+    mysqli_query($mysqli,"UPDATE api_keys SET api_key_expire = NOW() WHERE api_key_id = $api_key_id");
+
+    logAction("API Key", "Revoke", "$session_name revoked API key $name", $client_id);
+
+    flash_alert("API Key <strong>$name</strong> revoked", 'error');
+
+    redirect();
+
+}
+
 if (isset($_GET['delete_api_key'])) {
 
     validateCSRFToken($_GET['csrf_token']);
@@ -38,7 +59,7 @@ if (isset($_GET['delete_api_key'])) {
     $api_key_id = intval($_GET['delete_api_key']);
 
     // Get API Key Name
-    $row = mysqli_fetch_array(mysqli_query($mysqli,"SELECT api_key_name, api_key_client_id FROM api_keys WHERE api_key_id = $api_key_id"));
+    $row = mysqli_fetch_assoc(mysqli_query($mysqli,"SELECT api_key_name, api_key_client_id FROM api_keys WHERE api_key_id = $api_key_id"));
     $api_key_name = sanitizeInput($row['api_key_name']);
     $client_id = intval($row['api_key_client_id']);
 
@@ -64,9 +85,9 @@ if (isset($_POST['bulk_delete_api_keys'])) {
         foreach ($_POST['api_key_ids'] as $api_key_id) {
 
             $api_key_id = intval($api_key_id);
-            
+
             // Get API Key Name
-            $row = mysqli_fetch_array(mysqli_query($mysqli,"SELECT api_key_name, api_key_client_id FROM api_keys WHERE api_key_id = $api_key_id"));
+            $row = mysqli_fetch_assoc(mysqli_query($mysqli,"SELECT api_key_name, api_key_client_id FROM api_keys WHERE api_key_id = $api_key_id"));
             $api_key_name = sanitizeInput($row['api_key_name']);
             $client_id = intval($row['api_key_client_id']);
 

@@ -4,7 +4,7 @@ require_once "includes/inc_all_admin.php";
 
 $sql = mysqli_query($mysqli,"SELECT * FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1");
 
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 $company_locale = nullable_htmlentities($row['company_locale']);
 $company_currency = nullable_htmlentities($row['company_currency']);
 
@@ -76,4 +76,3 @@ $timezones = DateTimeZone::listIdentifiers();
 
 <?php
 require_once "../includes/footer.php";
-

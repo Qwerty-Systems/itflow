@@ -34,7 +34,7 @@ $quotes_sql = mysqli_query($mysqli, "SELECT * FROM quotes WHERE quote_client_id 
             <tbody>
 
             <?php
-            while ($row = mysqli_fetch_array($quotes_sql)) {
+            while ($row = mysqli_fetch_assoc($quotes_sql)) {
                 $quote_id = intval($row['quote_id']);
                 $quote_prefix = nullable_htmlentities($row['quote_prefix']);
                 $quote_number = intval($row['quote_number']);

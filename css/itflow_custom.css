@@ -1,6 +1,6 @@
-/* 
-   For screens below 576px (xs): 
-   - Make the button full-width, display:block 
+/*
+   For screens below 576px (xs):
+   - Make the button full-width, display:block
 */
 @media (max-width: 575.98px) {
   .btn-responsive {
@@ -9,9 +9,9 @@
   }
 }
 
-/* 
+/*
    For screens 576px (sm) and above:
-   - Revert to an inline style 
+   - Revert to an inline style
 */
 @media (min-width: 576px) {
   .btn-responsive {
@@ -26,4 +26,35 @@
 
 .drag-handle:active {
     cursor: grabbing !important;
+}
+
+.star-toggle input {
+    display: none;
+}
+
+.star-toggle i {
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: #adb5bd;
+}
+
+.star-toggle input:checked + i {
+    color: #f1c40f;
+    font-weight: 900;
+}
+
+.checkbox-column {
+    width: 40px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.checkbox-column .form-check {
+    padding-left: 0;
+    margin-bottom: 0;
+}
+
+.checkbox-column .form-check-input {
+    position: static;
+    margin: 0;
 }

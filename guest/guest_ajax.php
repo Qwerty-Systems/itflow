@@ -42,7 +42,7 @@ if (isset($_GET['stripe_create_pi'])) {
         exit("Invalid Invoice ID/SQL query");
     }
 
-    $row = mysqli_fetch_array($invoice_sql);
+    $row = mysqli_fetch_assoc($invoice_sql);
     $invoice_prefix = nullable_htmlentities($row['invoice_prefix']);
     $invoice_number = intval($row['invoice_number']);
     $invoice_amount = floatval($row['invoice_amount']);
@@ -52,7 +52,7 @@ if (isset($_GET['stripe_create_pi'])) {
 
     // Add up all the payments for the invoice and get the total amount paid to the invoice
     $sql_amount_paid = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS amount_paid FROM payments WHERE payment_invoice_id = $invoice_id");
-    $row_amt = mysqli_fetch_array($sql_amount_paid);
+    $row_amt = mysqli_fetch_assoc($sql_amount_paid);
     $amount_paid = floatval($row_amt['amount_paid']);
     $balance_to_pay = $invoice_amount - $amount_paid;
 
@@ -63,7 +63,7 @@ if (isset($_GET['stripe_create_pi'])) {
     }
 
     // Setup Stripe from payment_providers
-    $stripe_provider = mysqli_fetch_array(mysqli_query($mysqli, "SELECT * FROM payment_providers WHERE payment_provider_name = 'Stripe' LIMIT 1"));
+    $stripe_provider = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT * FROM payment_providers WHERE payment_provider_name = 'Stripe' LIMIT 1"));
     if (!$stripe_provider) {
         exit("Stripe not enabled / configured");
     }

@@ -16,7 +16,7 @@ if (isset($_GET['id']) && isset($_GET['key'])) {
     $item_key = sanitizeInput($_GET['key']);
 
     $sql = mysqli_query($mysqli, "SELECT * FROM shared_items WHERE item_id = $item_id AND item_key = '$item_key' AND item_expire_at > NOW() LIMIT 1");
-    $row = mysqli_fetch_array($sql);
+    $row = mysqli_fetch_assoc($sql);
 
     $item_active = intval($row['item_active']);
     $item_type = sanitizeInput($row['item_type']);
@@ -50,7 +50,7 @@ if (isset($_GET['id']) && isset($_GET['key'])) {
     }
 
     $file_sql = mysqli_query($mysqli, "SELECT * FROM files WHERE file_id = $item_related_id AND file_client_id = $client_id LIMIT 1");
-    $file_row = mysqli_fetch_array($file_sql);
+    $file_row = mysqli_fetch_assoc($file_sql);
 
     if (mysqli_num_rows($file_sql) !== 1 || !$file_row) {
         exit("Item cannot be viewed at this time (No file, may have been deleted).");

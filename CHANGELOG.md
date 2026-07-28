@@ -2,6 +2,426 @@
 
 This file documents all notable changes made to ITFlow.
 
+## [26.07.1]
+
+### Bug fixes
+- Fixed broken M365 and Google Workspaces OAUTH2 in Mail Settings.
+- Security Fix.
+
+
+## [26.07]
+
+### Major Changes
+- Migrated from Webklex php Library to IMAPEngine.
+- Major Rewrite of the mail settings page to better support Microsoft 365 and Google OAUTH2.
+
+### Bug fixes
+- Many Security Fixes.
+- Microsoft 365 and Google can now specify Licensed User.
+- Clients - Only show 3 Tags per line instead of streching all the way across.
+- Login: Make Email field email type instead of text.
+- Fixed Invoice Late Overdue notices now shows correct balance when late fees are attached and if partial invoice was paid.
+- User Preferences Avatar: Fix creating user upload directory if doesn't exist, and remove Avatar now properly deletes the old avatar image.
+- Do not send an in-app alert on successful cron execution, keep it in logging only.
+- Fix Issues with Clients Signing in via Entra in the client Portal, items were broken because CSRF token was not being generated.
+
+### New Features & Updates
+- Clients: Removed Entity Stat Counter was slow and unused.
+- Added Monospace text in areas where it deserves it like, IPs, Amounts Costs in Tabular data forms etc.
+- Cicking into the client section no longer turns the main nav and text gray, it keeps the configured theme across the app. It was implmented long ago to differentiate between the client section and the main section of ITFLow but didn't work very well. 
+- Bump Sortablejs from 1.15.6 to 1.15.7.
+- Bump TinyMCE from 8.5.0 to 8.6.0.
+- Bump Fullcalendar from 6.1.20 to 7.0.0 amd convert existing code to comply with 7.0, also make calendar more printable.
+- Bump PHPMailer from 7.0.2 to 7.1.1.
+
+## [26.05.1] Stable Release
+- Security Fixes.
+
+## [26.05] Stable Release
+### Bug Fixes
+- Stripe Payment: Fix adding saved cards on client portal.
+- Various client and module enforments fixes. 
+- Projects: Fix slow load by using an optimized query to count tickets and tasks.
+- Show correct currency for the account balance when adding payment to invoice.
+- Expire all Password reset tokens nightly with cron.
+- Shared Items via secure link: Do not delete shared items that have not been viewed before cron runs.
+- Client: Fix Client Abbreviation being converted to an int on edit.
+
+### New Features & Updates 
+- Bump TinyMCE from 8.4.0 to 8.5.0.
+- Bump TCPDF from 6.11.2 to 6.11.3.
+- DeBump stripe-php from 20.0.0 to 19.4.1.
+
+## [26.04] Stable Release
+### Bug Fixes
+- Racks: Fix Device Removal.
+- Table Lists: replace class table-responsive-sm with just table-reponsive was causing ui issues with certain screen sizes.
+- Client: Fix Edit erroring on certain characters.
+- Category: Fix Add/Edit due to missing CSRF fields.
+- Category: Fix Restore function and Icon and text color.
+- Invoice: Do not apply late fee on first overdue reminder (1 day).
+- Ticket: Fix issue with contact not being added with Add contact modal v1.
+- Quote: Fix Copy was missing client.
+- API: Don't set client ID from POST - this is properly done via require_post_method instead only if it's an all-clients key.
+- API: Prevent error 500s when existing data can't be cleanly re-inserted to database.
+- API: Add more helpful errors.
+- API: Fix asset read uri_2 field.
+- API: Various other field fixes.
+
+### New Features & Updates 
+- Categories: Add Description Field.
+- Categories: Add DB Field for order.
+- Categories: Move Asset Status and Network Interface Type to categories so custom ones can be created and edited.
+- Categories: Moved note type, software type, rack type to be creatable/editable Categories with common defaults and descriptions
+- Files: Allow .swb file for MikroTik Backup Files.
+- Software: Added additonal License Types including Perpetual, Site, etc.
+- API: Invoice Items: Add read endpoint.
+- Networks: Added Import.
+- Bump TinyMCE from 8.3.2 to 8.4.0.
+- Bump stripe-php from 19.4.1 to 20.0.0.
+
+## [26.03] Stable Release
+### Bug Fixes
+- Ticket Templates: Fix Task Sortinhahahg.
+- Ticket: Lower autoclose setting minimum value from 48 to 24 Hours.
+- Ticket: Fix Task Approval.
+- Recurring Ticket: add empty value placeholder for Ticket Frequency.
+- Documents/Files: Fix redirect after File Upload to redirect to files instead of the non existent documents.
+- Setup: Fix base url tacking on /setup when not installing via script.
+
+### New Features & Updates 
+- Clients: Net Terms: Added common 45 and 15 Days, removed 14 Days not as common.
+- Clients: Bulk Action Set Net Terms Added.
+- Clients: Swapped location and contact column, add PopOver with Details such as created, abbreviation, DB ID instead of taking up space underneath client, rounded tag pills and increased padding, removed info badges and added one info badge that displays a popover with details.
+- Clients: Added New Ticket to Client Top Header Menu.
+- Clients: Client Overview: UI Sprucing.
+- Invoice: Send reminder 1 day after due date.
+- Invoices/Quotes/Recurring Invoices: Split Items tables into their own POST logic and Modal UIs and tables (quote_items, invoice_items, recurring_items).
+- Tickets: New Ticket Parsing - Anyone CC'ed onto the original email that created the ticket is added as a ticket watcher.
+- Ticket/Quotes: Quotes can now be associated with a ticket.
+- Networks: Removed Subnet Mask Field, Use CIDR instead.
+- Networks: Rearranged fields, Updated placeholders, Add/Edit/list for better flow.
+- Networks: Renamed DHCP to IP Range to allow for you use of both DHCP and or Usable IPs.
+- Assets: Rearranged fields, Updated placeholders, Add/Edit/list for better flow.
+- Assets: Added IPv6 if available under IP, Make and Model are now one line with Serial Underneath. Added OS under Type. use pill for status.
+- Calendar: Event thats are cut off can now be viewed as a tooltip on hover.
+- Calendar: Renamed System Calendars to built-in calendars and added the names and color dot for reference.
+- Calendar: You can now delete a custom calendar.
+- Report: Client Ticket Time Detail Audit: Selectable Billing Time Increment, will later be avauilable globally.
+- Roles/Permissions: Now complete and is out of beta all permission roles are strictly enforced, except for in Trips and Calendar, new enforce modules will be added for these at a later date.
+- Project Templates: Ticket Template order can now be dragged and dropped.
+- Global: Introduced new checkbox class to all Checkbox select columns to keep consistency and reduce space and enhance ui.
+- Global: CSRF Checks everywhere instead of just deletion calls.
+- Global: Renamed the rest of the unarchive post and label calls to restore.
+- Files: Allow upload of .unifi extension.
+- Bump Libraries:
+  - stripe-php from 19.0.0 to 19.4.1.
+  - fullcalendar from 6.1.19 to 6.1.20
+  - TCPDF from 6.10.1 to 6.11.2
+
+## [26.02.1] Maint Release
+### Bug Fixes
+- Credentials: Fix Password Generator.
+- Calendar: Restrict Events for client restricted agents. 
+- Ticket Merge: Fix.
+- Asset Transfer: Fix.
+- Ticket Listing: Restrict Tickets presented in ticket list view from client restricted agents.
+- Ticket Details: Deny access to client restricted agents to view tickets without client_id in uri.
+- Tickets: Allow agents with restricted client access to view and edit tickets without a client.
+- Ticket Change client: Limit selection for agents with restricted client access.
+- Ticket Details: Don't display updated at when null.
+
+### New Features & Updates 
+- Report: Added Client Detail Auditing.
+- API: Added Endpoint to retrieve time worked by agent.
+- ajax-modal: Revert to previous JS implementation before 26.02 release.
+- Ticket: Move Subject from Ticket main ticket header to ticket details card header.
+
+## [26.02] Stable Release
+### Bug Fixes
+- Mail Parser - Do not automatically send new ticket notifications to noreply/donotreply addresses.
+- Ticket: removed newline \n on Parsed emails.
+- Show Trips for everyone if accounting module is enabled.
+- Fix Invoice Exporting.
+- Fix Billable Column not sorting correctly in tickets.
+- Fix Login flow where user agent and client user exists and agent has MFA but will not let them continue.
+- Fix passing missing user_id var in client portal.
+- Fix Ticket Templates not auto filling when selected.
+- Fix Invoices not being sent to all billings contacts when manaully sent.
+- Fix Documents and Files not able to be bulk deleted.
+- Fix Role Archiving, can be archived as long as no users are assigned to the role.
+- Fix showing Powered By ITFlow visibility on the login screen when Whitelabel is enabled.
+- Missing username in audit log on successful login due to missing passed user_id to logging.
+- API: Fix updating all documents instead of the intended document.
+- Documents: Fix Document created at not showing the correct creation date of the master document.
+- Ticket: Fixed Using edit ticket modal agent was not able to be set.
+- Always check if a user is archived and or disabled instead of just during login.
+- Report: Fix Collected tax report not totalling all tax categories.
+
+### New Features & Updates 
+- Task Approval System for ticket tasks: Once an approval is requested, the task cannot be marked as complete until approved. Internal Approvals Any other technician, or Specific technician, Client Approvals Anyone (usually the requestor) Tech contacts Billing contacts.
+- Printable Invoice Packing Slips now available.
+- Drastic Performance Bump: Up to 50% faster queries accross the board and reduced server memory usage by 40% by switching Database Query method from mysqli_fetch_array to mysqli_fetch_assoc.
+- Added Connect to Microsoft 365 Button to mail settings.
+- OAUTH2 support for Microsoft 365 and Google Workspaces is now considered stable and working.
+- Favorites: Assets and Credentials now can be favorited singly or by Bulk action. Favorited items appear in the client overview now.
+- Files/Documents: Collapsable folders feature, collapsed by default with a button to expand all.
+- URL Keys and such are now set to a more manageable 32 Characters by default.
+- Various UI/UX Updates throughout the app, with focus oin ticket details, contact details modal etc.
+- Added Show Archived files and documents to the files section.
+- Added Bulk Archive and restore options to files and documents.
+- Rewrite of the Kanban Ticket view to match our procedural style of coding.
+- All options are available in TinyMCE now in Mobile mode.
+- Agent names appear now in Invoice History section.
+- Mail Parser: Support flowed text.
+- Assets: Keep Purchase reference when copying.
+- Assets: Add basic tracking history: Archiving, restoring, name changes, transferimg to new clients.
+- Mail Parser: NDR Parsing.
+- Allow SVG files in mail attachments.
+- Tickets: Use a more friendly time worked instead of 02:41:00 translates to 2h 41m.
+- Update wording on ticket to invoice item details.
+- Merge Tickets: Now wth a ticket merge dropdown list of tickets instead of a text field.
+- Role Permissions can now be set during role creation, update Permission UI to use radio buttons instead of select boxes.
+- Bump TinyMCE 8.2.2 to 8.3.2.
+- Bump PHPMailer from 7.0.1 to 7.0.2.
+- Bump Datatables from 2.3.4 to 2.3.7.
+
+## [25.12.1] Maint Release
+
+### Major Changes
+- Unified the Client/Agent Login and process (Note only Client Users can Reset passwords from the login page, does not apply to agent users).
+
+### Bug Fixes
+- Fix Payment Provider not adding an account.
+- Fix New ticket button in contact details in the related tickets section.
+
+### New Features & Updates
+- You can now Set Payment Provider income/expense account, expense vendor and expense category upond creation or editing.
+- Moved Saved Payment Provider Methods away from admin side nav to the count link within Payment Providers page.
+- Moved AI Models from the admin side nav to the model count link within AI Providers.
+- Add Favicon Reset.
+
+## [25.12] Stable Release
+
+### Breaking Changes ###
+- For Existing installs: **php-xml** extension needs to be installed for document creation and editing, new install script does this for you as of Dec 6th 2025. To install php-xml: `sudo apt install php-xml`
+
+### Major Changes
+- Consolidated "Files" and "Documents" into a single section called **Files**.
+
+### Bug Fixes
+- Resolved issue with updating asset notes in asset details.
+- Fixed problem with bulk ticket merging.
+- Corrected issue where decimal inputs (e.g., price, cost) weren’t displaying on iPhones in certain forms.
+- Added CSV escaping to the sample export data in areas where a sample CSV template is provided.
+- Fix a race condition where dupe tickets, invoices, recurring invoices, recurring tickets, quotes will be created using the same number if created in parallel espcecially when using the API.
+
+### New Features & Updates
+- Introduced automatic subject-based ticket merging/reply detection. Now, if an email comes from a known contact or domain and the subject matches 95% of a ticket opened in the last 7 days, it will be merged automatically.
+- Added `cleanInput` function to sanitize data before inserting it into the database when using MySQLi prepared statements.
+- Migrated client post functionality to use MySQLi prepared statements.
+- Updated payment method post functionality to use MySQLi prepared statements.
+- Implemented `saveBase64Images()` to convert base64-encoded `<img>` tags into actual image files stored under `/uploads/<module>/<id>/` with secure filenames. Added wrapper functions, and updated document creation to use processed image paths.
+- For new documents and document templates, images are now stored in `/uploads/documents/$document_id` instead of being stored as base64 in the database, using the `saveBase64Images()` function.
+- UI/UX improvements made to the document details page.
+- Removed sidebar quick-add options.
+- Created new folders in the uploads directory: `documents`, `document_templates`, and `recurring_tickets`.
+- Reworked the bulk action function to pass the name arrays, instead of a generic `selected_ids` array. This allows multiple bulk name arrays to be passed at once, currently used for the new file-document merge.
+- Big task: Converted the remaining modals to use the new `ajax-modal` system, enabling more flexible flow expansion going forward.
+- Mail queue: Added a `--no-mx-validation` flag to bypass recipient domain MX validation.
+- Bump PHPMailer from 7.0.0 to 7.0.1.
+- Bump stripe-php from 18.1.0 to 19.0.0.
+- Bump TCPDF from 6.10.0 to 6.10.1.
+- Bump TinyMCE from 8.2.0 to 8.2.2.
+
+## [25.11.1] Maint Release
+
+### Fixes
+- Fix broken edit Payment Method.
+- Fix unable to delete Vendor Template.
+- Fix Mail Queue link in flash alert for testing email and sending a quote.
+- Add Show Category Type select if not defined.
+- Add Show Product Type select if not defined.
+- Fix add ticket watcher.
+- Fix if Client isn't assigned to a ticket dont show client view.
+- Fix missing session client id check when paying an invoice from client portal.
+- Update Composer Webklex-IMAP library dependency symfony/http-foundation from 7.3.3 to 7.3.7 to fix security related issues.
+- Add back delete Payment provider the database will handle cascade deletes to saved cards, recurring payments and client payment provider reference.
+- Don't show Client Tickets Breadcrumb if no client is assigned to a ticket.
+- Don't Show Contact or Assignment Tab in edit ticket if no Client is Assigned.
+- Don't Show add contact, asset, vendor, watcher if not client is assigned to a ticket.
+- Don't Show Public Comment & Email if contact email doesn't exist.
+- Fixed IMAP Test whicn now uses RAW TCP Connection instead of the depracated php-imap extension.
+- Fix Broken Link in Ticket Updates via Client Portal to agent.
+
+### Added / Changed
+- [Feature] Added Asset Tags.
+- [Feature] Added Quick Add Links to most side bar navs example quickly add a client from sidebar.
+- Migrate ticket template add to ajax modal.
+- Add TOTP secret to Client Export PDF in Credential section.
+- Add UserID on hover in users listing.
+- Merge ticket now redirects to the new ticket details page.
+- [Feature] Add Pay via saved card under invoice Listings.
+- Ticket Related Side Items UI Cleanup to use btn-tool class. 
+
+## [25.11] Stable
+
+### Deprecation Notice:
+- **Outdated CRON Scripts**: The following scripts are removed.
+  - `/scripts/cron_mail_queue.php`
+  - `/scripts/cron_ticket_email_parser.php`
+  - `/scripts/cron.php`
+  - `/scripts/cron_domain_refresher.php`
+  - `/scripts/cron_certificate_refresher.php`
+  
+  **Action Required**: Transition to the new versions:
+  - `/cron/mail_queue.php`
+  - `/cron/ticket_email_parser.php`
+  - `/cron/cron.php`
+  - `/cron/domain_refresher.php`
+  - `/cron/certificate_refresher.php`
+
+- PHP Extensions php-imap and php-mime-mail-parser are no longer required.
+---
+
+### Fixes
+- **Ticket Listing**: Resolved issue where the “Check All” checkbox was visible even when ticket status wasn’t set. Now hidden for closed tickets only.
+- **Timer Auto-Start**: Show H/M/S placeholders when timer auto-start is disabled.
+- **Ticket Guest URL**: Fixed email not including the ticket guest URL key.
+- **EML Generation**: Resolved issue with EML not being generated in the new ticket parser.
+- **New Ticket Mail Notification**: Included message when notifying the tech of a reply in the new ticket mail parser.
+- **Advanced Filter Collapse**: Added clause to prevent collapse of advanced filters when the “from” date is set to the default (1970-01-01).
+- **Recurring Invoice**: Fixed issue where email was marked as sent but not actually sent when forcing a recurring invoice to an invoice.
+- **CSRF Token**: Fixed issue with deleting recurring ticket from asset details page due to missing CSRF check token.
+- **Vendor Website Link**: Fixed missing `https://` prefix in the vendor website link on the vendor details modal.
+- **Agent Select Box**: Resolved issue where agents sometimes didn’t appear in the agent select boxes.
+- **TinyMCE**: Fixed TinyMCE editor issue on Bulk Create Ticket in Assets.
+- **Ticket Timer**: Fixed ticket timer initialization after reload and when the tab is put to sleep (background tab).
+- **Client Deletion**: Fixed issue with client deletion.
+- **Domain Records**: Added flag for missing SOA record when adding a domain (prevents subdomain creation).
+- **Domain Fetching**: Quits domain record fetching if no SOA record exists (prevents subdomains).
+- **Domain Expiry**: Only show time to expiry when there’s an expiry date set; otherwise, display a dash.
+- **Certificates**: Improved handling of empty date in the agent UI.
+- **Certificates API**: Fixed bug with missing JS to fetch certificate details.
+- **API Updates**:
+  - Clients API: Added support for archiving/un-archiving clients, updating client data, and abbreviation support.
+  - Contacts API: Added archiving/un-archiving and restriction to only allow one primary contact per client.
+  - Mail Queue: Added recipient domain MX validation before sending emails.
+
+---
+
+### Added / Changed
+- **Backup / Restore**: Improved backup and restore by streaming data to disk (to prevent memory issues), setting unlimited timeouts, checking for bad backup contents, and using PHP for DB import instead of shell exec. Added `.htaccess` to prevent PHP execution in `/uploads/` directory.
+- **Ajax Modals**: Migrated all Add and Bulk modals to the new Ajax Modal for improved performance.
+- **Recurring Ticket Sorting**: Default sorting of recurring tickets by `RunDate` instead of subject.
+- **Recurring Ticket Enhancements**:
+  - Added Billable column.
+  - Added bulk actions for setting priority, agent, billable status, and next run dates.
+  - Added filters for category, assigned agent, and billable status.
+  - Added new frequency options: 3-day and biweekly.
+- **Asset Select**: Updated asset select dropdown to separate asset types using opt groups (planned for wider use).
+- **Expiring Domains & Certificates**: Added "30 Day" warning for expiring domains and certificates in the dashboard.
+- **Ticket Search**: Allowed search using both ticket prefix and number.
+- **Recurring Invoice**: Cancel recurring invoices when the associated client is archived.
+- **Credentials Import/Export**: Now includes TOTP secrets when importing/exporting credentials.
+- **Asset Notes Import**: Allowed importing of asset notes.
+- **Ticket View**: Added a "View HTML Code" button in all ticket views for TinyMCE.
+- **Date Range Picker**: Updated all date filters to use the improved DateRangePicker JS.
+- **Bulk Ticket Creation**: Added bulk ticket creation for clients.
+- **Sidebar Updates**: Updated all sidebars to use absolute paths for easier integration with custom code.
+- **Document Actions**: Added Archive and Delete buttons to the Document Details view with improved redirect behavior.
+- **Ticket Template Sorting**: Allowed sorting by task count in ticket templates.
+- **Contact Modal UI**: Updated contact details modal to display contact information at the top.
+- **API & Code Updates**: 
+  - Separated out post files for recurring tickets, invoices, expenses, and payments.
+  - Removed unused budget code.
+- **Invoice Product Autocomplete**: Now allows searching for product codes as well as names.
+- **Client Duplicate Check**: Flags duplicate clients or leads when using the client add modal.
+- **Recurring Invoice Reference**: Added a column to invoices indicating if they were created from a recurring invoice.
+- **Global Search Enhancements**: 
+  - Allowed ticket details to be searchable in global search.
+  - Allowed searching for quotes in global search.
+- **UI/UX Improvements**:
+  - Spruced up the ticket details page UI.
+  - Added contact email validation to flag duplicates or invalid addresses.
+- **API Debugging**: Log API endpoint/URL path for authentication failures to aid in debugging.
+- **Image Upload Optimization**: Removed image optimization from uploads (this will be handled by a cron job in the future).
+- **View Behavior Change**: Updated ticket/invoice/quote views to always be in the Client section, showing client-side navigation and top info bar.
+
+---
+
+### Library Updates:
+- **DataTable**: Bumped from 2.3.3 to 2.3.4.
+- **TinyMCE**: Bumped from 8.0.2 to 8.2.0.
+- **Stripe-PHP**: Bumped from 17.6.0 to 18.1.0.
+- **PHPMailer**: Bumped from 6.10.0 to 7.0.0.
+- **Chart.js**: Bumped from 4.5.0 to 4.5.1.
+
+
+
+
+## [25.10.1]
+- Deprecation Notice: `/scripts/cron_mail_queue.php` , `/scripts/cron_ticket_email_parser.php` , `/scripts/cron.php` `/scripts/cron_domain_refresher.php`, `/scripts/cron_certificate_refresher.php` are being phased out. Please transition to `/cron/mail_queue.php` , `/cron/ticket_email_parser.php`, `/cron/cron.php`, `/cron/domain_refresher.php`, `/cron/certificate_refresher.php` These older scripts will be removed in the November 25.11 release—update accordingly. 25.10.1 installs have the script already configured.
+
+### Fixes
+- Fix regression missing custom Favicon.
+- Update SMTP and IMAP provider to allow for empty strings, empty means disabled.
+- Fix Client portal Microsoft SSO Logins.
+- Fix regression in Vendor Templates.
+- Fix refression in some broken links from user to agent.
+- Fix Project edit.
+- Prevent open redirects upon agent login.
+- Fix regression on switching to Webklex IMAP to allow for no SSL/TLS in IMAP.
+- Fix Setup Redirect not behaving properly when setup hasnt been performed.
+- Added Server Document Root Var to several includes, headers, footers files to allow includes from deeper directory strutures such as the new custom directories.
+- Fix edit contact in contact details.
+- Add .htaccess to /cron/.
+
+### Added / Changed
+- Support for HTML Signatures.
+- Add Edit Project Functionality in a ticket.
+- Added more custom locations: /cron/custom/, /scripts/custom/, /api/v1/custom/, /setup/custom/.
+- Copied `/scripts/cron.php` `/scripts/cron_domain_refresher.php`, `/scripts/cron_certificate_refresher.php` to `/cron/cron.php`, `/cron/domain_refresher.php`, `/cron/certificate_refresher.php`. See Above!
+- Signatures is now handled in post ticket reply on Public Comments only.
+
+## [25.10]
+
+### Breaking Changes
+- Renamed `/user/` directory to `/agent/`.
+- Deprecation Notice: `/scripts/cron_mail_queue.php` and `/scripts/cron_ticket_email_parser.php` are being phased out. Please transition to `/cron/mail_queue.php` and `/cron/ticket_email_parser.php`. These older scripts will be removed in the November release—update accordingly. New Installs via the script will have this already configured.
+- Custom is working now. Custom code should be placed in /admin/custom/ , /agent/custom/ , /client/custom/ /guest/custom/
+We will provide example code with directory structure for each custom directory a week after this release.
+
+### Fixes
+- Resolved issue with "Restore from Setup" not functioning correctly.
+- Corrected asset name display in logs and flash messages when editing an asset in a ticket.
+- Fixed Payment Provider Threshold not being applied.
+- Fixed issue where Threshold setting was not saving properly.
+- Various minor fixes for Payment Provider issues.
+- Removed leads from the client selection list in the "New Ticket" modal.
+- Fixed issues with the MFA modal.
+- Resolved MFA enforcement bugs.
+- Fixed KeepAlive functionality to maintain user sessions longer.
+- Fixed multiple broken links caused by the `/user/` to `/agent/` path migration.
+- Fixed Custom code directories.
+
+### Added / Changed
+- Removed "ACH" as a payment method; added "Bank Transfer" instead.
+- Replaced relative paths with absolute paths for web assets.
+- Tickets can now be resolved via the API.
+- Added a filter for Archived Users and an option to restore them.
+- Introduced a modal when archiving users, allowing reassignment of open and recurring tickets to another agent.
+- Improved logic for determining the index/root page.
+- Added "Assigned Agent" column for recurring tickets.
+- Introduced "Additional Assets" option when editing assets in tickets; modal now uses the updated AJAX method.
+- Added Gibraltar to the list of supported countries.
+- Added Custom Link Option for the Admin Nav.
+- Added Custom Link Option for the Reports Nav.
+
+### Other notes
+- Major releases will happen on the first week of every Month.
+
+
 ## [25.09.2]
 
 ### Fixes
@@ -98,7 +518,7 @@ This file documents all notable changes made to ITFlow.
 ---
 
 ### Fixed
-- Several security vulnerabilities patched.
+- Several security vulnerabilities patched (with thanks to www.helx.io).
 - Ticket status is no longer updated when scheduling.
 - Client Portal: Tech contacts can no longer edit their own details.
 - Fixed overlapping logo issue in Invoice/Quote PDF exports.

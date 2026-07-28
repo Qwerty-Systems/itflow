@@ -5,7 +5,7 @@ if (file_exists("../config.php")) {
 
 }
 
-include "../functions.php";
+include "../functions.php"; // Global Functions
 include "../includes/database_version.php";
 
 if (!isset($config_enable_setup)) {
@@ -13,7 +13,7 @@ if (!isset($config_enable_setup)) {
 }
 
 if ($config_enable_setup == 0) {
-    header("Location: ../login.php");
+    header("Location: /login.php");
     exit;
 }
 
@@ -54,8 +54,7 @@ if (isset($_POST['add_database'])) {
     $database = filter_var(trim($_POST['database']), FILTER_SANITIZE_STRING);
     $username = filter_var(trim($_POST['username']), FILTER_SANITIZE_STRING);
     $password = filter_var(trim($_POST['password']), FILTER_SANITIZE_STRING);
-    $config_base_url = $_SERVER['HTTP_HOST'] . dirname($_SERVER['REQUEST_URI']);
-    $config_base_url = rtrim($config_base_url, '/');
+    $config_base_url = $_SERVER['HTTP_HOST'];
 
     $installation_id = randomString(32);
 
@@ -127,7 +126,72 @@ if (isset($_POST['add_database'])) {
 
 if (isset($_POST['restore'])) {
 
-    // === 1. Validate uploaded file ===
+    // ---------- Long-running guards ----------
+    @set_time_limit(0);
+    if (function_exists('ini_set')) { @ini_set('memory_limit', '1024M'); }
+
+    // ---------- Minimal helpers (scoped) ----------
+    if (!function_exists('deleteDir')) {
+        function deleteDir($dir) {
+            if (!is_dir($dir)) return;
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($it as $item) {
+                $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+            }
+            @rmdir($dir);
+        }
+    }
+
+    if (!function_exists('importSqlFile')) {
+        /**
+         * Import a SQL file via mysqli, supports DELIMITER and multi statements.
+         */
+        function importSqlFile(mysqli $mysqli, string $path): void {
+            if (!is_file($path) || !is_readable($path)) {
+                throw new RuntimeException("SQL file not found or unreadable: $path");
+            }
+            $fh = fopen($path, 'r');
+            if (!$fh) throw new RuntimeException("Failed to open SQL file");
+
+            $delimiter = ';';
+            $statement = '';
+
+            while (($line = fgets($fh)) !== false) {
+                $trim = trim($line);
+
+                // Skip comments/empty
+                if ($trim === '' || str_starts_with($trim, '--') || str_starts_with($trim, '#')) {
+                    continue;
+                }
+
+                // Handle DELIMITER changes
+                if (preg_match('/^DELIMITER\s+(.+)$/i', $trim, $m)) {
+                    $delimiter = $m[1];
+                    continue;
+                }
+
+                $statement .= $line;
+
+                // End of statement?
+                if (substr(rtrim($statement), -strlen($delimiter)) === $delimiter) {
+                    $sql = substr($statement, 0, -strlen($delimiter));
+                    if ($mysqli->multi_query($sql) === false) {
+                        fclose($fh);
+                        throw new RuntimeException("SQL error: " . $mysqli->error);
+                    }
+                    // Flush any result sets
+                    while ($mysqli->more_results() && $mysqli->next_result()) { /* discard */ }
+                    $statement = '';
+                }
+            }
+            fclose($fh);
+        }
+    }
+
+    // ---------- 1) Validate uploaded backup ----------
     if (!isset($_FILES['backup_zip']) || $_FILES['backup_zip']['error'] !== UPLOAD_ERR_OK) {
         die("No backup file uploaded or upload failed.");
     }
@@ -138,124 +202,163 @@ if (isset($_POST['restore'])) {
         die("Only .zip files are allowed.");
     }
 
-    // === 2. Move to secure temp location ===
+    // ---------- 2) Save to secure temp ----------
     $tempZip = tempnam(sys_get_temp_dir(), "restore_");
     if (!move_uploaded_file($file["tmp_name"], $tempZip)) {
         die("Failed to save uploaded backup file.");
     }
+    @chmod($tempZip, 0600);
 
     $zip = new ZipArchive;
     if ($zip->open($tempZip) !== TRUE) {
-        unlink($tempZip);
+        @unlink($tempZip);
         die("Failed to open backup zip file.");
     }
 
-    // === 3. Zip-slip protection and extract to unique dir ===
-    $tempDir = sys_get_temp_dir() . "/restore_temp_" . uniqid();
-    mkdir($tempDir, 0700, true);
+    // ---------- 3) Guard & extract OUTER zip ----------
+    $tempDir = sys_get_temp_dir() . "/restore_temp_" . uniqid("", true);
+    if (!mkdir($tempDir, 0700, true)) {
+        $zip->close();
+        @unlink($tempZip);
+        die("Failed to create temp directory.");
+    }
 
+    // Zip-slip guard (outer)
     for ($i = 0; $i < $zip->numFiles; $i++) {
-        $stat = $zip->statIndex($i);
-        if (strpos($stat['name'], '..') !== false) {
+        $name = $zip->getNameIndex($i);
+        if ($name === false) continue;
+        if (strpos($name, '..') !== false || preg_match('#^(?:/|\\\\|[a-zA-Z]:[\\\\/])#', $name)) {
             $zip->close();
-            unlink($tempZip);
-            die("Invalid file path in ZIP.");
+            @unlink($tempZip);
+            deleteDir($tempDir);
+            die("Invalid file path in outer ZIP.");
         }
     }
 
     if (!$zip->extractTo($tempDir)) {
         $zip->close();
-        unlink($tempZip);
+        @unlink($tempZip);
+        deleteDir($tempDir);
         die("Failed to extract backup contents.");
     }
 
     $zip->close();
-    unlink($tempZip);
+    @unlink($tempZip);
 
-    // === 4. Restore SQL ===
+    // ---------- 4) Restore SQL (via PHP, no CLI) ----------
     $sqlPath = "$tempDir/db.sql";
     if (file_exists($sqlPath)) {
-        mysqli_query($mysqli, "SET foreign_key_checks = 0");
+        // Drop-all first (foreign key safe)
+        mysqli_query($mysqli, "SET FOREIGN_KEY_CHECKS = 0");
         $tables = mysqli_query($mysqli, "SHOW TABLES");
-        while ($row = mysqli_fetch_array($tables)) {
-            mysqli_query($mysqli, "DROP TABLE IF EXISTS `" . $row[0] . "`");
+        if ($tables) {
+            while ($row = mysqli_fetch_row($tables)) {
+                mysqli_query($mysqli, "DROP TABLE IF EXISTS `" . $row[0] . "`");
+            }
         }
-        mysqli_query($mysqli, "SET foreign_key_checks = 1");
+        mysqli_query($mysqli, "SET FOREIGN_KEY_CHECKS = 1");
 
-        // Use env var to avoid exposing password
-        putenv("MYSQL_PWD=$dbpassword");
-        $command = sprintf(
-            'mysql -h%s -u%s %s < %s',
-            escapeshellarg($dbhost),
-            escapeshellarg($dbusername),
-            escapeshellarg($database),
-            escapeshellarg($sqlPath)
-        );
-
-        exec($command, $output, $returnCode);
-        if ($returnCode !== 0) {
+        try {
+            importSqlFile($mysqli, $sqlPath);
+        } catch (Throwable $e) {
             deleteDir($tempDir);
-            die("SQL import failed. Error code: $returnCode");
+            die("SQL import failed: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'));
         }
     } else {
         deleteDir($tempDir);
         die("Missing db.sql in the backup archive.");
     }
 
-    // === 5. Restore uploads directory ===
-    $uploadDir = __DIR__ . "../uploads/";
+    // ---------- 5) Restore uploads directory ----------
+    $uploadDir  = rtrim(__DIR__ . "/../uploads", '/\\') . '/';
     $uploadsZip = "$tempDir/uploads.zip";
 
-    if (file_exists($uploadsZip)) {
-        $uploads = new ZipArchive;
-        if ($uploads->open($uploadsZip) === TRUE) {
-            // Clean existing uploads
-            foreach (new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($uploadDir, FilesystemIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            ) as $item) {
-                $item->isDir() ? rmdir($item) : unlink($item);
-            }
-
-            $uploads->extractTo($uploadDir);
-            $uploads->close();
-        } else {
-            deleteDir($tempDir);
-            die("Failed to open uploads.zip in backup.");
-        }
-    } else {
+    if (!file_exists($uploadsZip)) {
         deleteDir($tempDir);
         die("Missing uploads.zip in the backup archive.");
     }
 
-    // === 6. Read version.txt (optional display/logging) ===
+    $uploads = new ZipArchive;
+    if ($uploads->open($uploadsZip) !== TRUE) {
+        deleteDir($tempDir);
+        die("Failed to open uploads.zip in backup.");
+    }
+
+    // Zip-slip guard (inner)
+    for ($i = 0; $i < $uploads->numFiles; $i++) {
+        $name = $uploads->getNameIndex($i);
+        if ($name === false) continue;
+        if (strpos($name, '..') !== false || preg_match('#^(?:/|\\\\|[a-zA-Z]:[\\\\/])#', $name)) {
+            $uploads->close();
+            deleteDir($tempDir);
+            die("Invalid file path in uploads.zip.");
+        }
+    }
+
+    // Ensure uploads dir exists then clean it
+    if (!is_dir($uploadDir)) {
+        if (!mkdir($uploadDir, 0750, true)) {
+            $uploads->close();
+            deleteDir($tempDir);
+            die("Failed to create uploads directory.");
+        }
+    } else {
+        foreach (new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($uploadDir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        ) as $item) {
+            $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+        }
+    }
+
+    // Extract uploads.zip directly into /uploads (your original, working behavior)
+    if (!$uploads->extractTo($uploadDir)) {
+        $uploads->close();
+        deleteDir($tempDir);
+        die("Failed to extract uploads.zip into uploads directory.");
+    }
+    $uploads->close();
+
+    // Verify uploads isn’t empty
+    $hasFiles = false;
+    $fileCount = 0; $dirCount = 0;
+    if (is_dir($uploadDir)) {
+        $it = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($uploadDir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+        foreach ($it as $node) {
+            if ($node->isDir()) $dirCount++;
+            else { $fileCount++; $hasFiles = true; }
+        }
+    }
+    if (!$hasFiles) {
+        deleteDir($tempDir);
+        die("Uploads restore appears empty after extraction.");
+    }
+
+    // ---------- 6) Optional: version info ----------
     $versionTxt = "$tempDir/version.txt";
     if (file_exists($versionTxt)) {
-        $versionInfo = file_get_contents($versionTxt);
-        logAction("Backup Restore", "Version Info", $versionInfo);
+        $versionInfo = @file_get_contents($versionTxt);
+        if ($versionInfo !== false) {
+            logAction("Backup Restore", "Version Info", $versionInfo);
+        }
     }
 
-    // === 7. Clean up temp dir ===
-    function deleteDir($dir) {
-        if (!is_dir($dir)) return;
-        $items = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($items as $item) {
-            $item->isDir() ? rmdir($item) : unlink($item);
-        }
-        rmdir($dir);
-    }
+    // ---------- 7) Cleanup temp ----------
     deleteDir($tempDir);
 
-    // === 8. Optional: finalize setup flag ===
-    $myfile = fopen("../config.php", "a");
-    fwrite($myfile, "\$config_enable_setup = 0;\n\n");
-    fclose($myfile);
+    // ---------- 8) Finalize setup flag (append safely) ----------
+    $configPath = __DIR__ . "/../config.php";
+    $append = "\n\$config_enable_setup = 0;\n\n";
+    if (!@file_put_contents($configPath, $append, FILE_APPEND | LOCK_EX)) {
+        $_SESSION['alert_message'] = "Backup restored ($fileCount files, $dirCount folders), but couldn't update setup flag — please set \$config_enable_setup = 0 in config.php.";
+    } else {
+        $_SESSION['alert_message'] = "Full backup restored successfully ($fileCount files, $dirCount folders).";
+    }
 
-    // === 9. Done ===
-    $_SESSION['alert_message'] = "Full backup restored successfully.";
+    // ---------- 9) Done ----------
     header("Location: ../login.php");
     exit;
 }
@@ -440,7 +543,7 @@ if (isset($_POST['add_company_settings'])) {
     // Payment Methods
     mysqli_query($mysqli,"INSERT INTO payment_methods SET payment_method_name = 'Cash'");
     mysqli_query($mysqli,"INSERT INTO payment_methods SET payment_method_name = 'Check'");
-    mysqli_query($mysqli,"INSERT INTO payment_methods SET payment_method_name = 'ACH'");
+    mysqli_query($mysqli,"INSERT INTO payment_methods SET payment_method_name = 'Bank Transfer'");
     mysqli_query($mysqli,"INSERT INTO payment_methods SET payment_method_name = 'Credit Card'");
 
     // Default Calendar
@@ -480,6 +583,49 @@ if (isset($_POST['add_company_settings'])) {
     // Custom Links
     mysqli_query($mysqli,"INSERT INTO custom_links SET custom_link_name = 'Docs', custom_link_uri = 'https://docs.itflow.org', custom_link_new_tab = 1, custom_link_icon = 'question-circle'");
 
+    // network_interfaces
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Ethernet', category_type = 'network_interface', category_order = 1"); // 1
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'SFP', category_type = 'network_interface', category_order = 2"); // 2
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'SFP+', category_type = 'network_interface', category_order = 3"); // 3
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'QSFP28', category_type = 'network_interface', category_order = 4"); // 4
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'QSFP-DD', category_type = 'network_interface', category_order = 5"); // 5
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Coaxial', category_type = 'network_interface', category_order = 6"); // 6
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Fiber', category_type = 'network_interface', category_order = 7"); // 7
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'WiFi', category_type = 'network_interface', category_order = 8"); // 8
+
+    // Asset statuses
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Ready to Deploy', category_description = 'Asset is configured and ready to be assigned', category_type = 'asset_status', category_order = 1"); // 1
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Deployed', category_description = 'Asset is actively in use and assigned to a client or location', category_type = 'asset_status', category_order = 2"); // 2
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Out for Repair', category_description = 'Asset has been sent out for servicing or repair', category_type = 'asset_status', category_order = 3"); // 3
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Lost', category_description = 'Asset location is unknown and cannot be accounted for', category_type = 'asset_status', category_order = 4"); // 4
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Stolen', category_description = 'Asset has been reported stolen', category_type = 'asset_status', category_order = 5"); // 5
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Retired', category_description = 'Asset has been decommissioned and is no longer in service', category_type = 'asset_status', category_order = 6"); // 6
+
+    // Contact note types
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Call', category_description = 'Phone call with a client or contact', category_icon = 'fa-phone-alt', category_type = 'contact_note_type', category_order = 1"); // 1
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Email', category_description = 'Email correspondence with a client or contact', category_icon = 'fa-envelope', category_type = 'contact_note_type', category_order = 2"); // 2
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Meeting', category_description = 'Scheduled meeting with a client or contact', category_icon = 'fa-handshake', category_type = 'contact_note_type', category_order = 3"); // 3
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'In Person', category_description = 'In person visit or on-site interaction', category_icon = 'fa-people-arrows', category_type = 'contact_note_type', category_order = 4"); // 4
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Note', category_description = 'General note or internal comment', category_icon = 'fa-sticky-note', category_type = 'contact_note_type', category_order = 5"); // 5
+
+    // Rack Types
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = '2-Post Open Frame', category_description = 'Two-post open frame rack for patch panels and lightweight equipment', category_type = 'rack_type', category_order = 1"); // 1
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = '4-Post Open Frame', category_description = 'Four-post open frame rack for servers and heavier equipment', category_type = 'rack_type', category_order = 2"); // 2
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = '4-Post Enclosed Cabinet', category_description = 'Four-post enclosed cabinet with doors and sides for secure equipment housing', category_type = 'rack_type', category_order = 3"); // 3
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Wall-Mount Open', category_description = 'Open frame rack mounted directly to a wall for small deployments', category_type = 'rack_type', category_order = 4"); // 4
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Wall-Mount Enclosed', category_description = 'Enclosed cabinet rack mounted to a wall with a locking door', category_type = 'rack_type', category_order = 5"); // 5
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Other', category_description = 'Rack type does not fit any standard category', category_type = 'rack_type', category_order = 6"); // 6
+
+    // Software Types
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Software as a Service (SaaS)', category_description = 'Cloud-hosted software accessed via a web browser or API', category_type = 'software_type', category_order = 1"); // 1
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Productivity Suite', category_description = 'Bundled office and collaboration tools such as Microsoft 365 or Google Workspace', category_type = 'software_type', category_order = 2"); // 2
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Web Application', category_description = 'Application hosted on a web server and accessed through a browser', category_type = 'software_type', category_order = 3"); // 3
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Desktop Application', category_description = 'Application installed and run locally on a workstation or laptop', category_type = 'software_type', category_order = 4"); // 4
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Mobile Application', category_description = 'Application installed and run on a mobile device or tablet', category_type = 'software_type', category_order = 5"); // 5
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Security Software', category_description = 'Software providing antivirus, endpoint protection, or security monitoring', category_type = 'software_type', category_order = 6"); // 6
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'System Software', category_description = 'Low-level software managing hardware resources and system operations', category_type = 'software_type', category_order = 7"); // 7
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Operating System', category_description = 'Core software managing hardware and providing a platform for applications', category_type = 'software_type', category_order = 8"); // 8
+    mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Other', category_description = 'Software type does not fit any standard category', category_type = 'software_type', category_order = 9"); // 9
 
     $_SESSION['alert_message'] = "Company <strong>$name</strong> created";
 
@@ -516,7 +662,7 @@ if (isset($_POST['add_telemetry'])) {
         $comments = sanitizeInput($_POST['comments']);
 
         $sql = mysqli_query($mysqli,"SELECT * FROM companies WHERE company_id = 1");
-        $row = mysqli_fetch_array($sql);
+        $row = mysqli_fetch_assoc($sql);
 
         $company_name = $row['company_name'];
         $website = $row['company_website'];
@@ -582,12 +728,12 @@ if (isset($_POST['add_telemetry'])) {
     <title>ITFlow Setup</title>
 
     <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="../plugins/fontawesome-free/css/all.min.css">
+    <link rel="stylesheet" href="/plugins/fontawesome-free/css/all.min.css">
     <!-- Theme style -->
-    <link rel="stylesheet" href="../plugins/adminlte/css/adminlte.min.css">
+    <link rel="stylesheet" href="/plugins/adminlte/css/adminlte.min.css">
     <!-- Custom Style Sheet -->
-    <link href="../plugins/select2/css/select2.min.css" rel="stylesheet" type="text/css">
-    <link href="../plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css" rel="stylesheet" type="text/css">
+    <link href="/plugins/select2/css/select2.min.css" rel="stylesheet" type="text/css">
+    <link href="/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css" rel="stylesheet" type="text/css">
 
 </head>
 
@@ -704,7 +850,7 @@ if (isset($_POST['add_telemetry'])) {
                     $_SESSION['alert_message'] = '';
                 }
                 ?>
-                
+
                 <?php if (isset($_GET['checks'])) {
 
                     $checks = [];
@@ -712,13 +858,12 @@ if (isset($_POST['add_telemetry'])) {
                     // Section: PHP Extensions
                     $phpExtensions = [];
                     $extensions = [
-                        'php-mailparse' => 'mailparse',
-                        'php-imap' => 'imap',
                         'php-mysqli' => 'mysqli',
                         'php-intl' => 'intl',
                         'php-curl' => 'curl',
                         'php-mbstring' => 'mbstring',
                         'php-gd' => 'gd',
+                        'php-xml' => 'xml',
                     ];
 
                     foreach ($extensions as $name => $ext) {
@@ -1005,7 +1150,7 @@ if (isset($_POST['add_telemetry'])) {
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
-                            
+
                             <hr>
 
                             <a href="?database" class="btn btn-primary text-bold">Next (Database)<i class="fa fa-fw fa-arrow-circle-right ml-2"></i></a>
@@ -1020,7 +1165,7 @@ if (isset($_POST['add_telemetry'])) {
                         </div>
                         <div class="card-body">
                             <?php
-                            if (file_exists('config.php')) {
+                            if (file_exists('../config.php')) {
 
                                 echo "<p>Database is already configured. Any further changes should be made by editing the <code>config.php</code> file.</p>";
 
@@ -1111,9 +1256,10 @@ if (isset($_POST['add_telemetry'])) {
                                 <h3 class="card-title"><i class="fas fa-fw fa-database mr-2"></i>Restore from Backup</h3>
                             </div>
                             <div class="card-body">
-                                <form method="post" enctype="multipart/form-data">
+                                <form method="post" enctype="multipart/form-data" autocomplete="off">
                                     <label>Restore ITFlow Backup (.zip)</label>
                                     <input type="file" name="backup_zip" accept=".zip" required>
+                                    <p class="text-muted mt-2 mb-0"><small>Large restores may take several minutes. Do not close this page.</small></p>
                                     <hr>
                                     <button type="submit" name="restore" class="btn btn-primary text-bold">
                                         Restore Backup<i class="fas fa-fw fa-upload ml-2"></i>
@@ -1476,17 +1622,17 @@ if (isset($_POST['add_telemetry'])) {
 <!-- REQUIRED SCRIPTS -->
 
 <!-- jQuery -->
-<script src="../plugins/jquery/jquery.min.js"></script>
+<script src="/plugins/jquery/jquery.min.js"></script>
 <!-- Bootstrap 4 -->
-<script src="../plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 <!-- Custom js-->
-<script src='../plugins/select2/js/select2.min.js'></script>
-<script src="../plugins/Show-Hide-Passwords-Bootstrap-4/bootstrap-show-password.min.js"></script>
+<script src='/plugins/select2/js/select2.min.js'></script>
+<script src="/plugins/Show-Hide-Passwords-Bootstrap-4/bootstrap-show-password.min.js"></script>
 <!-- AdminLTE App -->
-<script src="../plugins/adminlte/js/adminlte.min.js"></script>
+<script src="/plugins/adminlte/js/adminlte.min.js"></script>
 
 <!-- Custom js-->
-<script src="../js/app.js"></script>
+<script src="/js/app.js"></script>
 
 </body>
 

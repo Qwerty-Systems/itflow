@@ -16,18 +16,11 @@ if (!isset($_SESSION)) {
 }
 
 if (!isset($_SESSION['client_logged_in']) || !$_SESSION['client_logged_in']) {
-    header("Location: login.php");
-    die;
-}
-
-// Check user type
-if ($_SESSION['user_type'] !== 2) {
-    header("Location: login.php");
-    exit();
+    redirect("/login.php");
 }
 
 // Set Timezone
-require_once "../includes/inc_set_timezone.php";
+require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/inc_set_timezone.php';
 
 // User IP & UA
 $session_ip = sanitizeInput(getIP());
@@ -39,10 +32,40 @@ $session_client_id = intval($_SESSION['client_id']);
 $session_contact_id = intval($_SESSION['contact_id']);
 $session_user_id = intval($_SESSION['user_id']);
 
+// Load user session vars
+$sql = mysqli_query($mysqli, "SELECT * FROM users WHERE users.user_id = $session_user_id");
 
-// Get company info from database
+$row = mysqli_fetch_assoc($sql);
+
+$session_avatar = $row['user_avatar'];
+$session_user_type = intval($row['user_type']);
+$session_user_status = intval($row['user_status']);
+$session_user_archived_at = $row['user_archived_at'];
+
+// Check user type is client aka 2
+if ($session_user_type !== 2) {
+    session_unset();
+    session_destroy();
+    redirect("/login.php");
+}
+
+// Check User is active
+if ($session_user_status !== 1) {
+    session_unset();
+    session_destroy();
+    redirect("/login.php");
+}
+
+// Check User is archived
+if ($session_user_archived_at !== null) {
+    session_unset();
+    session_destroy();
+    redirect("/login.php");
+}
+
+// Load company session vars
 $sql = mysqli_query($mysqli, "SELECT * FROM companies WHERE company_id = 1");
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 
 $session_company_name = $row['company_name'];
 $session_company_country = $row['company_country'];
@@ -51,9 +74,9 @@ $session_company_currency = $row['company_currency'];
 $currency_format = numfmt_create($session_company_locale, NumberFormatter::CURRENCY);
 $session_company_logo = $row['company_logo'];
 
-// Get contact info
+// Load contact session vars
 $contact_sql = mysqli_query($mysqli, "SELECT * FROM contacts WHERE contact_id = $session_contact_id AND contact_client_id = $session_client_id");
-$contact = mysqli_fetch_array($contact_sql);
+$contact = mysqli_fetch_assoc($contact_sql);
 
 $session_contact_name = sanitizeInput($contact['contact_name']);
 $session_contact_initials = initials($session_contact_name);
@@ -72,8 +95,8 @@ if ($contact['contact_billing'] == 1) {
     $session_contact_is_billing_contact = true;
 }
 
-// Get client info
+// Load client session vars
 $client_sql = mysqli_query($mysqli, "SELECT * FROM clients WHERE client_id = $session_client_id");
-$client = mysqli_fetch_array($client_sql);
+$client = mysqli_fetch_assoc($client_sql);
 
 $session_client_name = $client['client_name'];

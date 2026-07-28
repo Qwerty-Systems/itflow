@@ -1,6 +1,6 @@
 <?php
 $sql = mysqli_query($mysqli, "SELECT * FROM companies, settings WHERE settings.company_id = companies.company_id AND companies.company_id = 1");
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 
 $session_company_name = $row['company_name'];
 $session_company_country = $row['company_country'];

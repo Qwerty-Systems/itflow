@@ -12,13 +12,15 @@ $sql = mysqli_query(
      WHERE users.user_id = $session_user_id"
 );
 
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 
 $session_name = sanitizeInput($row['user_name']);
 $session_email = $row['user_email'];
 $session_avatar = $row['user_avatar'];
 $session_token = $row['user_token'];
 $session_user_type = intval($row['user_type']);
+$session_user_archived_at = $row['user_archived_at'];
+$session_user_status = intval($row['user_status']);
 $session_user_role = intval($row['user_role_id']);
 $session_user_role_display = sanitizeInput($row['role_name']);
 $session_is_admin = isset($row['role_is_admin']) && $row['role_is_admin'] == 1;
@@ -26,11 +28,25 @@ $session_user_config_force_mfa = intval($row['user_config_force_mfa']);
 $user_config_records_per_page = intval($row['user_config_records_per_page']);
 $user_config_theme_dark = intval($row['user_config_theme_dark']);
 
+// Check user type is agent aka 1
 if ($session_user_type !== 1) {
     session_unset();
     session_destroy();
-    header("Location: ../login.php");
-    exit;
+    redirect("/login.php");
+}
+
+// Check User is active
+if ($session_user_status !== 1) {
+    session_unset();
+    session_destroy();
+    redirect("/login.php");
+}
+
+// Check User is archived
+if ($session_user_archived_at !== null) {
+    session_unset();
+    session_destroy();
+    redirect("/login.php");
 }
 
 // Load user client permissions

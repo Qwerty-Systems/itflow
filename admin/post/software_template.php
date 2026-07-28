@@ -6,6 +6,8 @@ defined('FROM_POST_HANDLER') || die("Direct file access is not allowed");
 
 if (isset($_POST['add_software_template'])) {
 
+    validateCSRFToken($_POST['csrf_token']);
+
     $name = sanitizeInput($_POST['name']);
     $version = sanitizeInput($_POST['version']);
     $description = sanitizeInput($_POST['description']);
@@ -27,6 +29,8 @@ if (isset($_POST['add_software_template'])) {
 
 if (isset($_POST['edit_software_template'])) {
 
+    validateCSRFToken($_POST['csrf_token']);
+
     $software_template_id = intval($_POST['software_template_id']);
     $name = sanitizeInput($_POST['name']);
     $version = sanitizeInput($_POST['version']);
@@ -47,11 +51,13 @@ if (isset($_POST['edit_software_template'])) {
 
 if (isset($_GET['delete_software_template'])) {
 
+    validateCSRFToken($_GET['csrf_token']);
+
     $software_template_id = intval($_GET['delete_software_template']);
 
     // Get Software Template Name for logging and alert message
     $sql = mysqli_query($mysqli,"SELECT software_template_name FROM software_templates WHERE software_template_id = $software_template_id");
-    $row = mysqli_fetch_array($sql);
+    $row = mysqli_fetch_assoc($sql);
     $software_template_name = sanitizeInput($row['software_template_name']);
 
     mysqli_query($mysqli,"DELETE FROM software_templates WHERE software_template_id = $software_template_id");

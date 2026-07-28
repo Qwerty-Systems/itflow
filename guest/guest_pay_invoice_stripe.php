@@ -1,11 +1,11 @@
 <?php
 
-require_once 'includes/guest_header.php';
+require_once 'includes/inc_all_guest.php';
 
 DEFINE("WORDING_PAYMENT_FAILED", "<br><h2>There was an error verifying your payment. Please contact us for more information before attempting payment again.</h2>");
 
 // --- Get Stripe config from payment_providers table ---
-$stripe_provider = mysqli_fetch_array(mysqli_query($mysqli, "SELECT * FROM payment_providers"));
+$stripe_provider = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT * FROM payment_providers"));
 
 
 $stripe_publishable      = nullable_htmlentities($stripe_provider['payment_provider_public_key']);
@@ -42,7 +42,7 @@ if (isset($_GET['invoice_id'], $_GET['url_key']) && !isset($_GET['payment_intent
         exit();
     }
 
-    $row = mysqli_fetch_array($sql);
+    $row = mysqli_fetch_assoc($sql);
     $invoice_id            = intval($row['invoice_id']);
     $invoice_prefix        = nullable_htmlentities($row['invoice_prefix']);
     $invoice_number        = intval($row['invoice_number']);
@@ -57,13 +57,13 @@ if (isset($_GET['invoice_id'], $_GET['url_key']) && !isset($_GET['payment_intent
 
     // Company info for currency formatting, etc
     $sql_company = mysqli_query($mysqli, "SELECT * FROM companies WHERE company_id = 1");
-    $company_row = mysqli_fetch_array($sql_company);
+    $company_row = mysqli_fetch_assoc($sql_company);
     $company_locale = nullable_htmlentities($company_row['company_locale']);
     $config_base_url = nullable_htmlentities($company_row['company_base_url'] ?? ''); // You might want to pull from settings if needed
 
     // Add up all payments made to the invoice
     $sql_amount_paid = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS amount_paid FROM payments WHERE payment_invoice_id = $invoice_id");
-    $amount_paid = floatval(mysqli_fetch_array($sql_amount_paid)['amount_paid']);
+    $amount_paid = floatval(mysqli_fetch_assoc($sql_amount_paid)['amount_paid']);
     $balance_to_pay = round($invoice_amount - $amount_paid, 2);
 
     // Get invoice items
@@ -95,7 +95,7 @@ if (isset($_GET['invoice_id'], $_GET['url_key']) && !isset($_GET['payment_intent
                         </thead>
                         <tbody>
                         <?php
-                        while ($row = mysqli_fetch_array($sql_invoice_items)) {
+                        while ($row = mysqli_fetch_assoc($sql_invoice_items)) {
                             $item_name = nullable_htmlentities($row['item_name']);
                             $item_quantity = floatval($row['item_quantity']);
                             $item_total = floatval($row['item_total']);
@@ -199,7 +199,7 @@ if (isset($_GET['invoice_id'], $_GET['url_key']) && !isset($_GET['payment_intent
         exit(WORDING_PAYMENT_FAILED);
     }
 
-    $row = mysqli_fetch_array($invoice_sql);
+    $row = mysqli_fetch_assoc($invoice_sql);
     $invoice_id = intval($row['invoice_id']);
     $invoice_prefix = sanitizeInput($row['invoice_prefix']);
     $invoice_number = intval($row['invoice_number']);
@@ -212,7 +212,7 @@ if (isset($_GET['invoice_id'], $_GET['url_key']) && !isset($_GET['payment_intent
     $contact_email = sanitizeInput($row['contact_email']);
 
     $sql_company = mysqli_query($mysqli, "SELECT * FROM companies WHERE company_id = 1");
-    $row = mysqli_fetch_array($sql_company);
+    $row = mysqli_fetch_assoc($sql_company);
     $company_name = sanitizeInput($row['company_name']);
     $company_phone = sanitizeInput(formatPhoneNumber($row['company_phone']));
     $company_locale = sanitizeInput($row['company_locale']);
@@ -220,7 +220,7 @@ if (isset($_GET['invoice_id'], $_GET['url_key']) && !isset($_GET['payment_intent
     $currency_format = numfmt_create($company_locale, NumberFormatter::CURRENCY);
 
     $sql_amount_paid_previously = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS amount_paid FROM payments WHERE payment_invoice_id = $invoice_id");
-    $amount_paid_previously = floatval(mysqli_fetch_array($sql_amount_paid_previously)['amount_paid']);
+    $amount_paid_previously = floatval(mysqli_fetch_assoc($sql_amount_paid_previously)['amount_paid']);
     $balance_to_pay = $invoice_amount - $amount_paid_previously;
 
     // Stripe expense
@@ -242,7 +242,7 @@ if (isset($_GET['invoice_id'], $_GET['url_key']) && !isset($_GET['payment_intent
     mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Paid', history_description = 'Online Payment added (client) - $ip - $os - $browser', history_invoice_id = $invoice_id");
 
     // Notify
-    appNotify("Invoice Paid", "Invoice $invoice_prefix$invoice_number has been paid by $client_name - $ip - $os - $browser", "invoice.php?invoice_id=$invoice_id", $pi_client_id);
+    appNotify("Invoice Paid", "Invoice $invoice_prefix$invoice_number has been paid by $client_name - $ip - $os - $browser", "/agent/invoice.php?invoice_id=$invoice_id", $pi_client_id);
 
     customAction('invoice_pay', $invoice_id);
 
@@ -254,7 +254,7 @@ if (isset($_GET['invoice_id'], $_GET['url_key']) && !isset($_GET['payment_intent
 
     // Email Receipt
     $sql_settings = mysqli_query($mysqli, "SELECT * FROM settings WHERE company_id = 1");
-    $settings = mysqli_fetch_array($sql_settings);
+    $settings = mysqli_fetch_assoc($sql_settings);
 
     $config_smtp_host = $settings['config_smtp_host'];
     $config_invoice_from_name = sanitizeInput($settings['config_invoice_from_name']);
@@ -300,4 +300,4 @@ if (isset($_GET['invoice_id'], $_GET['url_key']) && !isset($_GET['payment_intent
     exit(WORDING_PAYMENT_FAILED);
 }
 
-require_once 'includes/guest_footer.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';

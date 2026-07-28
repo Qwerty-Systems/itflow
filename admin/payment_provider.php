@@ -6,10 +6,10 @@ $order = "ASC";
 
 require_once "includes/inc_all_admin.php";
 
-$sql = mysqli_query($mysqli, "SELECT * FROM payment_providers 
+$sql = mysqli_query($mysqli, "SELECT * FROM payment_providers
     LEFT JOIN accounts ON payment_provider_account = account_id
     LEFT JOIN vendors ON payment_provider_expense_vendor = vendor_id
-    LEFT JOIN categories ON payment_provider_expense_category = category_id 
+    LEFT JOIN categories ON payment_provider_expense_category = category_id
     ORDER BY $sort $order"
 );
 
@@ -21,7 +21,7 @@ $num_rows = mysqli_num_rows($sql);
     <div class="card-header py-2">
         <h3 class="card-title mt-2"><i class="fas fa-fw fa-credit-card mr-2"></i>Payment Providers</h3>
         <div class="card-tools">
-            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addPaymentProviderModal"><i class="fas fa-plus mr-2"></i>Add Provider</button>
+            <button type="button" class="btn btn-primary ajax-modal" data-modal-url="modals/payment_provider/payment_provider_add.php"><i class="fas fa-plus mr-2"></i>Add Provider</button>
         </div>
     </div>
     <div class="card-body">
@@ -55,9 +55,9 @@ $num_rows = mysqli_num_rows($sql);
                         </a>
                     </th>
                     <th>
-                        <a class="text-dark">Fee</a>
+                        <a class="text-dark">Expensed Fee</a>
                     </th>
-                    <th>
+                    <th class="text-center">
                         <a class="text-dark">Saved Payment Methods</a>
                     </th>
                     <th class="text-center">Action</th>
@@ -66,13 +66,13 @@ $num_rows = mysqli_num_rows($sql);
                 <tbody>
                 <?php
 
-                while ($row = mysqli_fetch_array($sql)) {
+                while ($row = mysqli_fetch_assoc($sql)) {
                     $provider_id = intval($row['payment_provider_id']);
                     $provider_name = nullable_htmlentities($row['payment_provider_name']);
                     $provider_description = nullable_htmlentities($row['payment_provider_description']);
                     $account_name = nullable_htmlentities($row['account_name']);
                     $threshold = floatval($row['payment_provider_threshold']);
-                    $vendor_name = nullable_htmlentities($row['vendor_name']);
+                    $vendor_name = nullable_htmlentities($row['vendor_name'] ?? "Expense Disabled");
                     $category = nullable_htmlentities($row['category_name']);
                     $percent_fee = floatval($row['payment_provider_expense_percentage_fee']) * 100;
                     $flat_fee = floatval($row['payment_provider_expense_flat_fee']);
@@ -93,8 +93,10 @@ $num_rows = mysqli_num_rows($sql);
                         <td><?php echo numfmt_format_currency($currency_format, $threshold, $session_company_currency); ?></td>
                         <td><?php echo $vendor_name; ?></td>
                         <td><?php echo $category; ?></td>
-                        <td><?php echo $percent_fee; ?> + <?php echo numfmt_format_currency($currency_format, $flat_fee, $session_company_currency); ?></td>
-                        <td><?php echo $saved_payment_count; ?></td>
+                        <td><?php echo $percent_fee; ?>% + <?php echo numfmt_format_currency($currency_format, $flat_fee, $session_company_currency); ?></td>
+                        <td class="text-center">
+                            <a class="badge badge-dark badge-pill p-2" href="saved_payment_method.php"><?= $saved_payment_count ?></a>
+                        </td>
                         <td>
                             <div class="dropdown dropleft text-center">
                                 <button class="btn btn-secondary btn-sm" type="button" data-toggle="dropdown">
@@ -106,8 +108,13 @@ $num_rows = mysqli_num_rows($sql);
                                         <i class="fas fa-fw fa-edit mr-2"></i>Edit
                                     </a>
                                     <div class="dropdown-divider"></div>
-                                    <a class="dropdown-item text-danger confirm-link" href="post.php?disable_payment_provicer=<?php echo $provider_id; ?>&csrf_token=<?php echo $_SESSION['csrf_token'] ?>">
-                                        <i class="fas fa-fw fa-thumbs-down mr-2"></i>Disable
+                                    <a class="dropdown-item text-danger confirm-link" href="post.php?delete_payment_provider=<?= $provider_id ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>">
+                                        <i class="fas fa-fw fa-trash mr-2"></i><strong>Delete Provider and</strong>
+                                        <ul class="text-xs">
+                                            <li>Related Recurring Payments</li>
+                                            <li>Related Saved cards</li>
+                                            <li>Client Provider Relations</li>
+                                        </ul>
                                     </a>
                                 </div>
                             </div>
@@ -132,5 +139,4 @@ $num_rows = mysqli_num_rows($sql);
 </div>
 
 <?php
-require_once "modals/payment_provider/payment_provider_add.php";
 require_once "../includes/footer.php";

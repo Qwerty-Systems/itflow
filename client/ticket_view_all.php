@@ -53,7 +53,7 @@ $all_tickets = mysqli_query($mysqli, "SELECT ticket_id, ticket_prefix, ticket_nu
         <tbody>
 
         <?php
-        while ($row = mysqli_fetch_array($all_tickets)) {
+        while ($row = mysqli_fetch_assoc($all_tickets)) {
             $ticket_id = intval($row['ticket_id']);
             $ticket_prefix = nullable_htmlentities($row['ticket_prefix']);
             $ticket_number = intval($row['ticket_number']);
@@ -75,4 +75,3 @@ $all_tickets = mysqli_query($mysqli, "SELECT ticket_id, ticket_prefix, ticket_nu
 
 <?php
 require_once 'includes/footer.php';
-

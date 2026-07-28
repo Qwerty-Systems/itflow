@@ -66,13 +66,13 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     <tbody>
                     <?php
 
-                    while ($row = mysqli_fetch_array($sql)) {
+                    while ($row = mysqli_fetch_assoc($sql)) {
                         $custom_field_id = intval($row['custom_field_id']);
                         $custom_field_label = nullable_htmlentities($row['custom_field_label']);
                         $custom_field_type = nullable_htmlentities($row['custom_field_type']);
                         $custom_field_location = intval($row['custom_field_location']);
                         $custom_field_order = intval($row['custom_field_order']);
-                        
+
                         ?>
                         <tr>
                             <td><a class="text-dark" href="#" data-toggle="modal" data-target="#editCustomFieldModal<?php echo $custom_field_id; ?>"><?php echo $custom_field_label; ?></a></td>
@@ -118,4 +118,3 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
 require_once "custom_field_create_modal.php";
 
 require_once "../includes/footer.php";
-

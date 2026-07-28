@@ -45,7 +45,7 @@ $documents_sql = mysqli_query($mysqli, "SELECT document_id, document_name, docum
             <tbody>
 
             <?php
-            while ($row = mysqli_fetch_array($documents_sql)) {
+            while ($row = mysqli_fetch_assoc($documents_sql)) {
                 $document_id = intval($row['document_id']);
                 $folder_name = nullable_htmlentities($row['folder_name']);
                 $document_name = nullable_htmlentities($row['document_name']);
@@ -90,6 +90,7 @@ $documents_sql = mysqli_query($mysqli, "SELECT document_id, document_name, docum
                 </button>
             </div>
             <form action="post.php" method="post" autocomplete="off">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <div class="modal-body bg-white">
                     <div class="form-group">
                         <label>Document Name <strong class="text-danger">*</strong></label>
@@ -136,6 +137,7 @@ $documents_sql = mysqli_query($mysqli, "SELECT document_id, document_name, docum
                 </button>
             </div>
             <form action="post.php" method="post" enctype="multipart/form-data" autocomplete="off">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <div class="modal-body bg-white">
                     <div class="form-group">
                         <label>Document Name <strong class="text-danger">*</strong></label>
@@ -159,7 +161,7 @@ $documents_sql = mysqli_query($mysqli, "SELECT document_id, document_name, docum
 
                     <div class="form-group">
                         <label>Upload File <strong class="text-danger">*</strong></label>
-                        <input type="file" class="form-control-file" name="document_file" id="documentFileInput" 
+                        <input type="file" class="form-control-file" name="document_file" id="documentFileInput"
                                accept=".pdf,.doc,.docx,.txt,.md,.odt,.rtf" required>
                         <small class="text-secondary">Supported formats: PDF, Word documents, text files</small>
                     </div>

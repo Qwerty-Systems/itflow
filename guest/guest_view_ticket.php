@@ -1,6 +1,6 @@
 <?php
 
-require_once "includes/guest_header.php";
+require_once "includes/inc_all_guest.php";
 
 //Initialize the HTML Purifier to prevent XSS
 require "../plugins/htmlpurifier/HTMLPurifier.standalone.php";
@@ -12,12 +12,24 @@ $purifier = new HTMLPurifier($purifier_config);
 
 if (!isset($_GET['ticket_id'], $_GET['url_key'])) {
     echo "<br><h2>Oops, something went wrong! Please raise a ticket if you believe this is an error.</h2>";
-    require_once "includes/guest_footer.php";
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
     exit();
 }
 
 // Company info
-$company_sql_row = mysqli_fetch_array(mysqli_query($mysqli, "SELECT company_phone, company_website FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1"));
+$company_sql_row = mysqli_fetch_assoc(mysqli_query($mysqli, "
+    SELECT
+        company_phone,
+        company_phone_country_code,
+        company_website
+    FROM
+        companies,
+        settings
+    WHERE
+        companies.company_id = settings.company_id
+        AND companies.company_id = 1"
+));
+
 $company_phone_country_code = nullable_htmlentities($company_sql_row['company_phone_country_code']);
 $company_phone = nullable_htmlentities(formatPhoneNumber($company_sql_row['company_phone'], $company_phone_country_code));
 $company_website = nullable_htmlentities($company_sql_row['company_website']);
@@ -35,12 +47,12 @@ $ticket_sql = mysqli_query($mysqli,
 if (mysqli_num_rows($ticket_sql) !== 1) {
     // Invalid invoice/key
     echo "<br><h2>Oops, something went wrong! Please raise a ticket if you believe this is an error.</h2>";
-    require_once "includes/guest_footer.php";
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
 
     exit();
 }
 
-$ticket_row = mysqli_fetch_array($ticket_sql);
+$ticket_row = mysqli_fetch_assoc($ticket_sql);
 
 if ($ticket_row) {
 
@@ -137,7 +149,7 @@ if ($ticket_row) {
     <?php
     $sql = mysqli_query($mysqli, "SELECT * FROM ticket_replies LEFT JOIN users ON ticket_reply_by = user_id LEFT JOIN contacts ON ticket_reply_by = contact_id WHERE ticket_reply_ticket_id = $ticket_id AND ticket_reply_archived_at IS NULL AND ticket_reply_type != 'Internal' ORDER BY ticket_reply_id DESC");
 
-    while ($row = mysqli_fetch_array($sql)) {
+    while ($row = mysqli_fetch_assoc($sql)) {
         $ticket_reply_id = intval($row['ticket_reply_id']);
         $ticket_reply = $purifier->purify($row['ticket_reply']);
         $ticket_reply_created_at = nullable_htmlentities($row['ticket_reply_created_at']);
@@ -198,7 +210,7 @@ if ($ticket_row) {
 
     ?>
 
-    <script src="../js/pretty_content.js"></script>
+    <script src="/js/pretty_content.js"></script>
 
     <?php } else {
         echo "Ticket ID not found!";
@@ -209,4 +221,4 @@ if ($ticket_row) {
 </div>
 
 <?php
-require_once "includes/guest_footer.php";
+require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';

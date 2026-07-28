@@ -6,7 +6,7 @@ $payment_method_id = intval($_GET['id']);
 
 $sql = mysqli_query($mysqli, "SELECT * FROM payment_methods WHERE payment_method_id = $payment_method_id LIMIT 1");
 
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 $payment_method_id = intval($row['payment_method_id']);
 $payment_method_name = nullable_htmlentities($row['payment_method_name']);
 $payment_method_description = nullable_htmlentities($row['payment_method_description']);
@@ -22,7 +22,7 @@ ob_start();
 </div>
 <form action="post.php" method="post" autocomplete="off">
     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
-
+    <input type="hidden" name="payment_method_id" value="<?= $payment_method_id ?>">
     <div class="modal-body">
 
         <div class="form-group">

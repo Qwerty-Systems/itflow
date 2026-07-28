@@ -13,7 +13,7 @@ $sql = mysqli_query(
     LEFT JOIN user_settings ON users.user_id = user_settings.user_id
     WHERE (user_name LIKE '%$q%' OR user_email LIKE '%$q%')
     AND user_type = 1
-    AND user_archived_at IS NULL
+    AND user_$archive_query
     ORDER BY $sort $order LIMIT $record_from, $record_to"
 );
 
@@ -26,16 +26,23 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
         <h3 class="card-title mt-2"><i class="fas fa-fw fa-users mr-2"></i>Users</h3>
         <div class="card-tools">
             <div class="btn-group">
-                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addUserModal">
+                <button type="button" class="btn btn-primary ajax-modal" data-modal-url="modals/user/user_add.php">
                     <i class="fas fa-fw fa-user-plus mr-2"></i>New User
                 </button>
                 <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"></button>
                 <div class="dropdown-menu">
-                    <!--<a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#userInviteModal"><i class="fas fa-paper-plane mr-2"></i>Invite User</a>-->
+                    <!--<a class="dropdown-item text-dark ajax-modal" href="#" data-modal-url="modals/user/user_invite.php"><i class="fas fa-paper-plane mr-2"></i>Invite User</a>-->
                     <?php if ($num_rows[0] > 1) { ?>
-                        <a class="dropdown-item text-dark" href="#" data-toggle="modal" data-target="#exportUserModal"><i class="fa fa-fw fa-download mr-2"></i>Export</a>
+                        <a class="dropdown-item text-dark ajax-modal" href="#"
+                            data-modal-url="modals/user/user_export.php">
+                            <i class="fa fa-fw fa-download mr-2"></i>Export
+                        </a>
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item text-danger" href="#" data-toggle="modal" data-target="#resetAllUserPassModal"><i class="fas fa-skull-crossbones mr-2"></i>IR</a>
+                        <a class="dropdown-item text-danger ajax-modal" href="#"
+                            data-modal-url="modals/user/user_all_reset_password.php"
+                            data-modal-size="lg">
+                            <i class="fas fa-skull-crossbones mr-2"></i>IR
+                        </a>
                     <?php } ?>
                 </div>
             </div>
@@ -53,6 +60,12 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     </div>
                 </div>
                 <div class="col-md-8">
+                    <div class="btn-group float-right">
+                        <a href="?archived=<?php if($archived == 1){ echo 0; } else { echo 1; } ?>"
+                            class="btn btn-<?php if($archived == 1){ echo "primary"; } else { echo "default"; } ?>">
+                            <i class="fa fa-fw fa-archive mr-2"></i>Archived
+                        </a>
+                    </div>
                 </div>
             </div>
         </form>
@@ -91,7 +104,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <tbody>
                 <?php
 
-                while ($row = mysqli_fetch_array($sql)) {
+                while ($row = mysqli_fetch_assoc($sql)) {
                     $user_id = intval($row['user_id']);
                     $user_name = nullable_htmlentities($row['user_name']);
                     $user_email = nullable_htmlentities($row['user_email']);
@@ -113,7 +126,9 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     $user_config_force_mfa = intval($row['user_config_force_mfa']);
                     $user_role = intval($row['user_role_id']);
                     $user_role_display = nullable_htmlentities($row['role_name']);
+                    $user_archived_at = nullable_htmlentities($row['user_archived_at']);
                     $user_initials = nullable_htmlentities(initials($user_name));
+
 
                     $sql_last_login = mysqli_query(
                         $mysqli,
@@ -124,7 +139,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     if (mysqli_num_rows($sql_last_login) == 0) {
                         $last_login = "<span class='text-bold'>Never logged in</span>";
                     } else {
-                        $row = mysqli_fetch_array($sql_last_login);
+                        $row = mysqli_fetch_assoc($sql_last_login);
                         $log_created_at = nullable_htmlentities($row['log_created_at']);
                         $log_ip = nullable_htmlentities($row['log_ip']);
                         $log_user_agent = nullable_htmlentities($row['log_user_agent']);
@@ -148,7 +163,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     ?>
                     <tr>
                         <td class="text-center">
-                            <a href="#" 
+                            <a href="#" title="UserID: <?= $user_id ?>"
                                 <?php if ($user_id !== $session_user_id) { // Prevent modifying self ?>
                                 class="ajax-modal"
                                 data-modal-url="modals/user/user_edit.php?id=<?= $user_id ?>"
@@ -196,10 +211,17 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                                             <i class="fas fa-fw fa-user-slash mr-2"></i>Disable
                                         </a>
                                     <?php } ?>
+                                    <?php if ($user_archived_at) { ?>
                                     <div class="dropdown-divider"></div>
-                                    <a class="dropdown-item text-danger" href="#" data-toggle="modal" data-target="#archiveUserModal<?php echo $user_id; ?>">
+                                    <a class="dropdown-item text-info ajax-modal" href="#" data-modal-url="modals/user/user_restore.php?id=<?= $user_id ?>">
+                                        <i class="fas fa-fw fa-redo-alt mr-2"></i>Restore
+                                    </a>
+                                    <?php } else { ?>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item text-danger ajax-modal" href="#" data-modal-url="modals/user/user_archive.php?id=<?= $user_id ?>">
                                         <i class="fas fa-fw fa-archive mr-2"></i>Archive
                                     </a>
+                                    <?php } ?>
                                 </div>
                             </div>
                             <?php } ?>
@@ -207,9 +229,6 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     </tr>
 
                     <?php
-
-                    require "modals/user/user_archive.php";
-
                 }
 
                 ?>
@@ -221,15 +240,6 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
  ?>
     </div>
 </div>
-<script>
-    function generatePassword() {
-        document.getElementById("password").value = "<?php echo randomString() ?>"
-    }
-</script>
 
 <?php
-require_once "modals/user/user_add.php";
-require_once "modals/user/user_invite.php";
-require_once "modals/user/user_export.php";
-require_once "modals/user/user_all_reset_password.php";
 require_once "../includes/footer.php";

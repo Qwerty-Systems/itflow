@@ -43,7 +43,7 @@ $assets_sql = mysqli_query($mysqli, "SELECT * FROM assets LEFT JOIN contacts ON 
                 <tbody>
 
                 <?php
-                while ($row = mysqli_fetch_array($assets_sql)) {
+                while ($row = mysqli_fetch_assoc($assets_sql)) {
                     $asset_id = intval($row['asset_id']);
                     $asset_name = nullable_htmlentities($row['asset_name']);
                     $asset_description = nullable_htmlentities($row['asset_description']);

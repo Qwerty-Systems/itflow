@@ -3,30 +3,14 @@
 // Role check failed wording
 DEFINE("WORDING_ROLECHECK_FAILED", "You are not permitted to do that!");
 
-// PHP Mailer Libs
-require_once "plugins/PHPMailer/src/Exception.php";
-require_once "plugins/PHPMailer/src/PHPMailer.php";
-require_once "plugins/PHPMailer/src/SMTP.php";
-
-// Initiate PHPMailer
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
 // Function to generate both crypto & URL safe random strings
-function randomString($length = 16) {
-    // Generate some cryptographically safe random bytes
-    //  Generate a little more than requested as we'll lose some later converting
-    $random_bytes = random_bytes($length + 5);
-
-    // Convert the bytes to something somewhat human-readable
-    $random_base_64 = base64_encode($random_bytes);
-
-    // Replace the nasty characters that come with base64
-    $bad_chars = array("/", "+", "=");
-    $random_string = str_replace($bad_chars, random_int(0, 9), $random_base_64);
-
-    // Truncate the string to the requested $length and return
-    return substr($random_string, 0, $length);
+function randomString(int $length = 16): string {
+    $bytes = random_bytes((int) ceil($length * 3 / 4));
+    return substr(
+        rtrim(strtr(base64_encode($bytes), '+/', '-_'), '='),
+        0,
+        $length
+    );
 }
 
 // Older keygen function - only used for TOTP currently
@@ -70,6 +54,32 @@ function removeDirectory($path) {
         is_dir($file) ? removeDirectory($file) : unlink($file);
     }
     rmdir($path);
+}
+
+function copyDirectory($src, $dst) {
+    if (!is_dir($src)) {
+        return;
+    }
+
+    if (!is_dir($dst)) {
+        mkdir($dst, 0775, true);
+    }
+
+    $items = scandir($src);
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+
+        $srcPath = $src . '/' . $item;
+        $dstPath = $dst . '/' . $item;
+
+        if (is_dir($srcPath)) {
+            copyDirectory($srcPath, $dstPath);
+        } else {
+            copy($srcPath, $dstPath);
+        }
+    }
 }
 
 function getUserAgent() {
@@ -520,7 +530,7 @@ function getDomainRecords($name)
     $records = array();
 
     // Only run if we think the domain is valid
-    if (!filter_var($name, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+    if (!filter_var($name, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) || !checkdnsrr($name, 'SOA')) {
         $records['a'] = '';
         $records['ns'] = '';
         $records['mx'] = '';
@@ -688,116 +698,6 @@ function validateAccountantRole() {
     }
 }
 
-// Send a single email to a single recipient
-function sendSingleEmail($config_smtp_host, $config_smtp_username, $config_smtp_password, $config_smtp_encryption, $config_smtp_port, $from_email, $from_name, $to_email, $to_name, $subject, $body, $ics_str)
-{
-
-    $mail = new PHPMailer(true);
-
-    if (empty($config_smtp_username)) {
-        $smtp_auth = false;
-    } else {
-        $smtp_auth = true;
-    }
-
-    try {
-        // Mail Server Settings
-        $mail->CharSet = "UTF-8";                                   // Specify UTF-8 charset to ensure symbols ($/£) load correctly
-        $mail->SMTPDebug = 0;                                       // No Debugging
-        $mail->isSMTP();                                            // Set mailer to use SMTP
-        $mail->Host       = $config_smtp_host;                      // Specify SMTP server
-        $mail->SMTPAuth   = $smtp_auth;                             // Enable SMTP authentication
-        $mail->Username   = $config_smtp_username;                  // SMTP username
-        $mail->Password   = $config_smtp_password;                  // SMTP password
-        if ($config_smtp_encryption == 'None') {
-            $mail->SMTPOptions = array(
-                'ssl' => array(
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-            ));
-            $mail->SMTPSecure = false;
-            $mail->SMTPAutoTLS = false;
-        } else {
-            $mail->SMTPSecure = $config_smtp_encryption;            // Enable TLS encryption, `ssl` also accepted
-        }
-        $mail->Port       = $config_smtp_port;                      // TCP port to connect to
-
-        //Recipients
-        $mail->setFrom($from_email, $from_name);
-        $mail->addAddress("$to_email", "$to_name");    // Add a recipient
-
-        // Content
-        $mail->isHTML(true); // Set email format to HTML
-        $mail->Subject = "$subject";                                // Subject
-        $mail->Body    = "<html>
-        <head>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    color: #333;
-                    line-height: 1.6;
-                }
-                .email-container {
-                    max-width: 600px;
-                    margin: auto;
-                    padding: 20px;
-                    border: 1px solid #ddd;
-                    border-radius: 5px;
-                }
-                .header {
-                    font-size: 18px;
-                    margin-bottom: 20px;
-                }
-                .link-button {
-                    display: inline-block;
-                    background-color: #007bff;
-                    color: #ffffff;
-                    padding: 10px 20px;
-                    text-decoration: none;
-                    border-radius: 5px;
-                    margin: 10px 0;
-                }
-                .footer {
-                    font-size: 14px;
-                    color: #666;
-                    margin-top: 20px;
-                    border-top: 1px solid #ddd;
-                    padding-top: 10px;
-                }
-                .no-reply {
-                    color: #999;
-                    font-size: 12px;
-                }
-            </style>
-        </head>
-        <body>
-            <div class='email-container'>
-        $body
-        </div>
-        </body>
-        </html>
-        ";                                   // Content
-
-        // Attachments - todo
-        //$mail->addAttachment('/var/tmp/file.tar.gz');             // Add attachments
-        //$mail->addAttachment('/tmp/image.jpg', 'new.jpg');        // Optional name
-
-        if (!empty($ics_str)) {
-            $mail->addStringAttachment($ics_str, 'Scheduled_ticket.ics', 'base64', 'text/calendar');
-        }
-
-        // Send
-        $mail->send();
-
-        // Return true if this was successful
-        return true;
-    } catch (Exception $e) {
-        // If we couldn't send the message return the error, so we can log it in the database (truncated)
-        error_log("ITFlow - Failed to send email: " . $mail->ErrorInfo);
-        return substr("Mailer Error: $mail->ErrorInfo", 0, 100) . "...";
-    }
-}
-
 function roundUpToNearestMultiple($n, $increment = 1000)
 {
     return (int) ($increment * ceil($n / $increment));
@@ -920,6 +820,26 @@ function sanitizeInput($input) {
 
     return $input;
 }
+
+function cleanInput($input) {
+    // Only process non-empty input
+    if (!empty($input)) {
+        // Normalize encoding to UTF-8 if it’s not valid
+        if (!mb_check_encoding($input, 'UTF-8')) {
+            // Convert from Windows-1252 as a safe fallback
+            $input = mb_convert_encoding($input, 'UTF-8', 'Windows-1252');
+        }
+    }
+
+    // Remove HTML and PHP tags
+    $input = strip_tags((string) $input);
+
+    // Trim whitespace
+    $input = trim($input);
+
+    return $input;
+}
+
 
 function sanitizeForEmail($data)
 {
@@ -1249,7 +1169,7 @@ function getTicketStatusName($ticket_status) {
     global $mysqli;
 
     $status_id = intval($ticket_status);
-    $row = mysqli_fetch_array(mysqli_query($mysqli, "SELECT * FROM ticket_statuses WHERE ticket_status_id = $status_id LIMIT 1"));
+    $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT * FROM ticket_statuses WHERE ticket_status_id = $status_id LIMIT 1"));
 
     if ($row) {
         return nullable_htmlentities($row['ticket_status_name']);
@@ -1292,7 +1212,7 @@ function fetchUpdates() {
 function getDomainExpirationDate($domain) {
     // Execute the whois command
     $result = shell_exec("whois " . escapeshellarg($domain));
-    if (!$result) {
+    if (!$result || !checkdnsrr($domain, 'SOA')) {
         return null; // Return null if WHOIS query fails
     }
 
@@ -1445,7 +1365,7 @@ function lookupUserPermission($module) {
 			module_name = '$module' AND user_role_permissions.user_role_id = $session_user_role"
     );
 
-    $row = mysqli_fetch_array($sql);
+    $row = mysqli_fetch_assoc($sql);
 
     if (isset($row['user_role_permission_level'])) {
         return intval($row['user_role_permission_level']);
@@ -1471,6 +1391,64 @@ function enforceUserPermission($module, $check_access_level = 1) {
     }
 }
 
+function enforceClientAccess($client_id = null) {
+    global $mysqli, $session_user_id, $session_is_admin, $session_name;
+
+    // Use global $client_id if none passed
+    if ($client_id === null) {
+        global $client_id;
+    }
+
+    if ($session_is_admin) {
+        return true;
+    }
+
+    $client_id = (int) $client_id;
+    $session_user_id = (int) $session_user_id;
+
+    if (empty($client_id) || empty($session_user_id)) {
+        flash_alert('Access Denied.', 'error');
+        redirect('clients.php');
+    }
+
+    // Check if this user has any client permissions set
+    $permissions_sql = "SELECT client_id
+                        FROM user_client_permissions
+                        WHERE user_id = $session_user_id
+                        LIMIT 1";
+
+    $permissions_result = mysqli_query($mysqli, $permissions_sql);
+
+    // If no permission rows exist for this user, allow access by default
+    if ($permissions_result && mysqli_num_rows($permissions_result) == 0) {
+        return true;
+    }
+
+    // If permission rows exist, require this client
+    $access_sql = "SELECT client_id
+                   FROM user_client_permissions
+                   WHERE user_id = $session_user_id
+                   AND client_id = $client_id
+                   LIMIT 1";
+
+    $access_result = mysqli_query($mysqli, $access_sql);
+
+    if ($access_result && mysqli_num_rows($access_result) > 0) {
+        return true;
+    }
+
+    logAction(
+        'Client',
+        'Access',
+        "$session_name was denied permission from accessing client",
+        $client_id,
+        $client_id
+    );
+
+    flash_alert('Access Denied - You do not have permission to access that client!', 'error');
+    redirect('clients.php');
+}
+
 // TODO: Probably remove this
 function enforceAdminPermission() {
     global $session_is_admin;
@@ -1481,10 +1459,14 @@ function enforceAdminPermission() {
 }
 
 function customAction($trigger, $entity) {
+    $original_dir = getcwd(); // Save
+
     chdir(dirname(__FILE__));
     if (file_exists(__DIR__ . "/custom/custom_action_handler.php")) {
         include_once __DIR__ . "/custom/custom_action_handler.php";
     }
+
+    chdir($original_dir); // Restore original working directory
 }
 
 function appNotify($type, $details, $action = null, $client_id = 0, $entity_id = 0) {
@@ -1494,11 +1476,15 @@ function appNotify($type, $details, $action = null, $client_id = 0, $entity_id =
         $action = "NULL"; // Without quotes for SQL NULL
     }
 
-    $sql = mysqli_query($mysqli, "SELECT user_id FROM users 
+    $type = substr($type, 0, 200);
+    $details = substr($details, 0, 1000);
+    $action = substr($action, 0, 250);
+
+    $sql = mysqli_query($mysqli, "SELECT user_id FROM users
         WHERE user_type = 1 AND user_status = 1 AND user_archived_at IS NULL
     ");
 
-    while ($row = mysqli_fetch_array($sql)) {
+    while ($row = mysqli_fetch_assoc($sql)) {
         $user_id = intval($row['user_id']);
 
         mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = '$type', notification = '$details', notification_action = '$action', notification_client_id = $client_id, notification_entity_id = $entity_id, notification_user_id = $user_id");
@@ -1508,15 +1494,26 @@ function appNotify($type, $details, $action = null, $client_id = 0, $entity_id =
 function logAction($type, $action, $description, $client_id = 0, $entity_id = 0) {
     global $mysqli, $session_user_agent, $session_ip, $session_user_id;
 
+    $client_id = intval($client_id);
+    $entity_id = intval($entity_id);
+    $session_user_id = intval($session_user_id);
+
     if (empty($session_user_id)) {
         $session_user_id = 0;
     }
+
+    $type = substr($type, 0, 200);
+    $action = substr($action, 0, 255);
+    $description = substr($description, 0, 1000);
 
     mysqli_query($mysqli, "INSERT INTO logs SET log_type = '$type', log_action = '$action', log_description = '$description', log_ip = '$session_ip', log_user_agent = '$session_user_agent', log_client_id = $client_id, log_user_id = $session_user_id, log_entity_id = $entity_id");
 }
 
 function logApp($category, $type, $details) {
     global $mysqli;
+
+    $category = mysqli_real_escape_string($mysqli, substr($category, 0, 200));
+    $details = mysqli_real_escape_string($mysqli, substr($details, 0, 1000));
 
     mysqli_query($mysqli, "INSERT INTO app_logs SET app_log_category = '$category', app_log_type = '$type', app_log_details = '$details'");
 }
@@ -1603,6 +1600,8 @@ function getFieldById($table, $id, $field, $escape_method = 'sql') {
 
         // Apply the desired escaping method or auto-detect integer type if using SQL escaping
         switch ($escape_method) {
+            case 'raw':
+                return $value; // Return as-is from the database
             case 'html':
                 return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8'); // Escape for HTML
             case 'json':
@@ -1624,15 +1623,11 @@ function getFieldById($table, $id, $field, $escape_method = 'sql') {
 }
 
 // Recursive function to display folder options - Used in folders files and documents
-function display_folder_options($parent_folder_id, $client_id, $folder_location = 0, $indent = 0) {
+function display_folder_options($parent_folder_id, $client_id, $indent = 0) {
     global $mysqli;
 
-    $folder_location = intval($folder_location);
-    // 0 = Document Folders
-    // 1 = File Folders
-
-    $sql_folders = mysqli_query($mysqli, "SELECT * FROM folders WHERE parent_folder = $parent_folder_id AND folder_location = $folder_location AND folder_client_id = $client_id ORDER BY folder_name ASC");
-    while ($row = mysqli_fetch_array($sql_folders)) {
+    $sql_folders = mysqli_query($mysqli, "SELECT * FROM folders WHERE parent_folder = $parent_folder_id AND folder_client_id = $client_id ORDER BY folder_name ASC");
+    while ($row = mysqli_fetch_assoc($sql_folders)) {
         $folder_id = intval($row['folder_id']);
         $folder_name = nullable_htmlentities($row['folder_name']);
 
@@ -1649,7 +1644,7 @@ function display_folder_options($parent_folder_id, $client_id, $folder_location 
         echo "<option value=\"$folder_id\" $selected>$indentation$folder_name</option>";
 
         // Recursively display subfolders
-        display_folder_options($folder_id, $client_id, $folder_location, $indent + 1);
+        display_folder_options($folder_id, $client_id, $indent + 1);
     }
 }
 
@@ -1724,4 +1719,364 @@ function sanitize_filename($filename, $strict = false) {
     }
 
     return $filename;
+}
+
+function saveBase64Images(string $html, string $baseFsPath, string $baseWebPath, int $ownerId): string {
+    // Normalize paths
+    $baseFsPath  = rtrim($baseFsPath, '/\\') . '/';
+    $baseWebPath = rtrim($baseWebPath, '/\\') . '/';
+
+    $targetDir = $baseFsPath . $ownerId . "/";
+
+    $folderCreated = false;   // <-- NEW FLAG
+    $savedAny      = false;   // <-- Track if ANY images processed
+
+    libxml_use_internal_errors(true);
+    $dom = new DOMDocument();
+    $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html);
+    libxml_clear_errors();
+
+    $imgs = $dom->getElementsByTagName('img');
+
+    foreach ($imgs as $img) {
+        $src = $img->getAttribute('src');
+
+        // Match base64 images
+        if (preg_match('/^data:image\/([a-zA-Z0-9+]+);base64,(.*)$/s', $src, $matches)) {
+
+            $savedAny = true;  // <-- We are actually saving at least 1 image
+
+            // Create folder ONLY when needed
+            if (!$folderCreated) {
+                if (!is_dir($targetDir)) {
+                    mkdir($targetDir, 0775, true);
+                }
+                $folderCreated = true;
+            }
+
+            $mimeType = strtolower($matches[1]);
+            $base64   = $matches[2];
+
+            $binary = base64_decode($base64);
+            if ($binary === false) {
+                continue;
+            }
+
+            // Extension mapping
+            switch ($mimeType) {
+                case 'jpeg':
+                case 'jpg': $ext = 'jpg'; break;
+                case 'png': $ext = 'png'; break;
+                case 'gif': $ext = 'gif'; break;
+                case 'webp': $ext = 'webp'; break;
+                default: $ext = 'png';
+            }
+
+            // Secure random filename
+            $uid = bin2hex(random_bytes(16));
+            $filename = "img_{$uid}.{$ext}";
+
+            $filePath = $targetDir . $filename;
+
+            if (file_put_contents($filePath, $binary) !== false) {
+                $webPath = "/" . $baseWebPath . $ownerId . "/" . $filename;
+                $img->setAttribute('src', $webPath);
+            }
+        }
+    }
+
+    // If no images were processed, return original HTML immediately
+    if (!$savedAny) {
+        return $html;
+    }
+
+    // Extract body content only
+    $body = $dom->getElementsByTagName('body')->item(0);
+
+    if ($body) {
+        $innerHTML = '';
+        foreach ($body->childNodes as $child) {
+            $innerHTML .= $dom->saveHTML($child);
+        }
+        return $innerHTML;
+    }
+
+    return $html;
+}
+
+function cleanupUnusedImages(string $html, string $folderFsPath, string $folderWebPath) {
+
+    $folderFsPath  = rtrim($folderFsPath, '/\\') . '/';
+    $folderWebPath = rtrim($folderWebPath, '/\\') . '/';
+
+    if (!is_dir($folderFsPath)) {
+        return; // no folder = nothing to delete
+    }
+
+    // 1. Get all files currently on disk
+    $filesOnDisk = glob($folderFsPath . "*");
+
+    // 2. Find all <img src="">
+    preg_match_all('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $matches);
+    $htmlImagePaths = $matches[1] ?? [];
+
+    // Normalize paths: keep only filenames belonging to this template folder
+    $referencedFiles = [];
+
+    foreach ($htmlImagePaths as $src) {
+        if (strpos($src, $folderWebPath) !== false) {
+            $filename = basename($src);
+            $referencedFiles[] = $filename;
+        }
+    }
+
+    // 3. Delete any physical file not referenced in the HTML
+    foreach ($filesOnDisk as $filePath) {
+        $filename = basename($filePath);
+
+        if (!in_array($filename, $referencedFiles)) {
+            unlink($filePath);
+        }
+    }
+}
+
+/**
+ * Simple mysqli helper functions
+ * - Prepared statements under the hood
+ * - "Old style" INSERT/UPDATE SET feeling
+ */
+
+/**
+ * Core executor: prepares, binds, executes.
+ *
+ * @throws Exception on error
+ */
+function dbExecute(mysqli $mysqli, string $sql, array $params = []): mysqli_stmt
+{
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) {
+        throw new Exception('MySQLi prepare error: ' . $mysqli->error . ' | SQL: ' . $sql);
+    }
+
+    if (!empty($params)) {
+        $types  = '';
+        $values = [];
+
+        foreach ($params as $param) {
+            if (is_int($param)) {
+                $types .= 'i';
+            } elseif (is_float($param)) {
+                $types .= 'd';
+            } elseif (is_bool($param)) {
+                $types .= 'i';
+                $param  = $param ? 1 : 0;
+            } elseif (is_null($param)) {
+                $types .= 's';
+                $param  = null;
+            } else {
+                $types .= 's';
+            }
+            $values[] = $param;
+        }
+
+        if (!$stmt->bind_param($types, ...$values)) {
+            throw new Exception('MySQLi bind_param error: ' . $stmt->error . ' | SQL: ' . $sql);
+        }
+    }
+
+    if (!$stmt->execute()) {
+        throw new Exception('MySQLi execute error: ' . $stmt->error . ' | SQL: ' . $sql);
+    }
+
+    return $stmt;
+}
+
+/**
+ * Fetch all rows as associative arrays.
+ */
+function dbFetchAll(mysqli $mysqli, string $sql, array $params = []): array
+{
+    $stmt   = dbExecute($mysqli, $sql, $params);
+    $result = $stmt->get_result();
+    if ($result === false) {
+        return [];
+    }
+    return $result->fetch_all(MYSQLI_ASSOC);
+}
+
+/**
+ * Fetch a single row (assoc) or null if none.
+ */
+function dbFetchOne(mysqli $mysqli, string $sql, array $params = []): ?array
+{
+    $stmt   = dbExecute($mysqli, $sql, $params);
+    $result = $stmt->get_result();
+    if ($result === false) {
+        return null;
+    }
+    $row = $result->fetch_assoc();
+    return $row !== null ? $row : null;
+}
+
+/**
+ * Fetch a single scalar value (first column of first row) or null.
+ */
+function dbFetchValue(mysqli $mysqli, string $sql, array $params = [])
+{
+    $row = dbFetchOne($mysqli, $sql, $params);
+    if ($row === null) {
+        return null;
+    }
+    return reset($row);
+}
+
+/**
+ * INSERT using "SET" style.
+ * Example:
+ *   $id = dbInsert($mysqli, 'clients', [
+ *       'client_name' => $name,
+ *       'client_type' => $type,
+ *   ]);
+ *
+ * @return int insert_id
+ *
+ * @throws InvalidArgumentException
+ * @throws Exception
+ */
+function dbInsert(mysqli $mysqli, string $table, array $data): int
+{
+    if (empty($data)) {
+        throw new InvalidArgumentException('dbInsert called with empty $data');
+    }
+
+    $setParts = [];
+    foreach ($data as $column => $_) {
+        $setParts[] = "$column = ?";
+    }
+
+    $sql    = "INSERT INTO $table SET " . implode(', ', $setParts);
+    $params = array_values($data);
+
+    dbExecute($mysqli, $sql, $params);
+
+    return $mysqli->insert_id;
+}
+
+function dbUpdate(
+    mysqli $mysqli,
+    string $table,
+    array $data,
+    $where,
+    array $whereParams = []
+): int {
+    if (empty($data)) {
+        throw new InvalidArgumentException('dbUpdate called with empty $data');
+    }
+    if (empty($where)) {
+        throw new InvalidArgumentException('dbUpdate requires a WHERE clause');
+    }
+
+    $setParts = [];
+    foreach ($data as $column => $_) {
+        $setParts[] = "$column = ?";
+    }
+
+    if (is_array($where)) {
+        $whereParts  = [];
+        $whereParams = [];
+        foreach ($where as $column => $value) {
+            $whereParts[]  = "$column = ?";
+            $whereParams[] = $value;
+        }
+        $whereSql = implode(' AND ', $whereParts);
+    } else {
+        $whereSql = $where;
+    }
+
+    $sql    = "UPDATE $table SET " . implode(', ', $setParts) . " WHERE $whereSql";
+    $params = array_merge(array_values($data), $whereParams);
+
+    $stmt = dbExecute($mysqli, $sql, $params);
+    return $stmt->affected_rows;
+}
+
+/**
+ * DELETE helper.
+ *
+ * WHERE can be:
+ *   - array: ['client_id' => $id] (auto "client_id = ?")
+ *   - string: 'client_id = ?' (use with $whereParams)
+ *
+ * @return int affected_rows
+ *
+ * @throws InvalidArgumentException
+ * @throws Exception
+ */
+function dbDelete(
+    mysqli $mysqli,
+    string $table,
+    $where,
+    array $whereParams = []
+): int {
+    if (empty($where)) {
+        throw new InvalidArgumentException('dbDelete requires a WHERE clause');
+    }
+
+    if (is_array($where)) {
+        $whereParts  = [];
+        $whereParams = [];
+        foreach ($where as $column => $value) {
+            $whereParts[]  = "$column = ?";
+            $whereParams[] = $value;
+        }
+        $whereSql = implode(' AND ', $whereParts);
+    } else {
+        $whereSql = $where;
+    }
+
+    $sql  = "DELETE FROM $table WHERE $whereSql";
+    $stmt = dbExecute($mysqli, $sql, $whereParams);
+    return $stmt->affected_rows;
+}
+
+/**
+ * Transaction helpers (optional sugar).
+ */
+function dbBegin(mysqli $mysqli): void
+{
+    $mysqli->begin_transaction();
+}
+
+function dbCommit(mysqli $mysqli): void
+{
+    $mysqli->commit();
+}
+
+function dbRollback(mysqli $mysqli): void
+{
+    $mysqli->rollback();
+}
+
+function formatDuration($time) {
+    // expects "HH:MM:SS"
+    [$h, $m, $s] = array_map('intval', explode(':', $time));
+
+    $parts = [];
+
+    if ($h > 0) $parts[] = $h . 'h';
+    if ($m > 0) $parts[] = $m . 'm';
+
+    // show seconds only if under 1 minute total OR if nothing else exists
+    if ($h == 0 && $m == 0) {
+        $parts[] = $s . 's';
+    }
+
+    return implode(' ', $parts);
+}
+
+function validateDate($date) {
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return $date;
+    }
+    return date('Y-m-d'); // Fallback
 }

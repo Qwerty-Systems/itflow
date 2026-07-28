@@ -5,10 +5,12 @@
 defined('FROM_POST_HANDLER') || die("Direct file access is not allowed");
 
 // Import shared code from user-side tickets/tasks as we reuse functions
-require_once '../user/post/ticket.php';
-require_once '../user/post/task.php';
+require_once '../agent/post/ticket.php';
+require_once '../agent/post/task.php';
 
 if (isset($_POST['add_ticket_template'])) {
+
+    validateCSRFToken($_POST['csrf_token']);
 
     $name = sanitizeInput($_POST['name']);
     $description = sanitizeInput($_POST['description']);
@@ -34,6 +36,8 @@ if (isset($_POST['add_ticket_template'])) {
 
 if (isset($_POST['edit_ticket_template'])) {
 
+    validateCSRFToken($_POST['csrf_token']);
+
     $ticket_template_id = intval($_POST['ticket_template_id']);
     $name = sanitizeInput($_POST['name']);
     $description = sanitizeInput($_POST['description']);
@@ -51,6 +55,8 @@ if (isset($_POST['edit_ticket_template'])) {
 }
 
 if (isset($_GET['delete_ticket_template'])) {
+
+    validateCSRFToken($_GET['csrf_token']);
 
     $ticket_template_id = intval($_GET['delete_ticket_template']);
 
@@ -72,6 +78,8 @@ if (isset($_GET['delete_ticket_template'])) {
 
 if (isset($_POST['add_ticket_template_task'])) {
 
+    validateCSRFToken($_POST['csrf_token']);
+
     $ticket_template_id = intval($_POST['ticket_template_id']);
     $task_name = sanitizeInput($_POST['task_name']);
 
@@ -89,6 +97,8 @@ if (isset($_POST['add_ticket_template_task'])) {
 
 if (isset($_GET['delete_task_template'])) {
 
+    validateCSRFToken($_GET['csrf_token']);
+
     $task_template_id = intval($_GET['delete_task_template']);
 
     $task_template_name = sanitizeInput(getFieldById('tags', $task_template_id, 'task_template_name'));
@@ -100,5 +110,5 @@ if (isset($_GET['delete_task_template'])) {
     flash_alert("Task <strong>$task_template_name</strong> deleted", 'error');
 
     redirect();
-    
+
 }

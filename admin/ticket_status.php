@@ -21,7 +21,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
     <div class="card-header py-2">
         <h3 class="card-title mt-2"><i class="fas fa-fw fa-info-circle mr-2"></i>Tickets Statuses</h3>
         <div class="card-tools">
-            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addTicketStatusModal"><i class="fas fa-plus mr-2"></i>New Ticket Status</button>
+            <button type="button" class="btn btn-primary ajax-modal" data-modal-url="modals/ticket_status/ticket_status_add.php"><i class="fas fa-plus mr-2"></i>New Ticket Status</button>
         </div>
     </div>
 
@@ -67,7 +67,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 <tbody>
                 <?php
 
-                while ($row = mysqli_fetch_array($sql)) {
+                while ($row = mysqli_fetch_assoc($sql)) {
                     $ticket_status_id = intval($row['ticket_status_id']);
                     $ticket_status_name = nullable_htmlentities($row['ticket_status_name']);
                     $ticket_status_color = nullable_htmlentities($row['ticket_status_color']);
@@ -81,7 +81,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                     ?>
                     <tr>
                         <td>
-                            <a href="#" 
+                            <a href="#"
                                 <?php if ( $ticket_status_id > 5 ) { ?>
                                 class="ajax-modal" data-modal-url="modals/ticket_status/ticket_status_edit.php?id=<?= $ticket_status_id ?>"
                                 <?php } ?>
@@ -120,13 +120,9 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli, "SELECT FOUND_ROWS()"));
                 </tbody>
             </table>
         </div>
-        <?php require_once "../includes/filter_footer.php";
-?>
+        <?php require_once "../includes/filter_footer.php"; ?>
     </div>
 </div>
 
 <?php
-require_once "modals/ticket_status/ticket_status_add.php";
-
 require_once "../includes/footer.php";
-

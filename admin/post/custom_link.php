@@ -8,6 +8,8 @@ defined('FROM_POST_HANDLER') || die("Direct file access is not allowed");
 
 if (isset($_POST['add_custom_link'])) {
 
+    validateCSRFToken($_POST['csrf_token']);
+
     $name = sanitizeInput($_POST['name']);
     $uri = sanitizeInput($_POST['uri']);
     $new_tab = intval($_POST['new_tab'] ?? 0);
@@ -29,6 +31,8 @@ if (isset($_POST['add_custom_link'])) {
 
 if (isset($_POST['edit_custom_link'])) {
 
+    validateCSRFToken($_POST['csrf_token']);
+
     $custom_link_id = intval($_POST['custom_link_id']);
     $name = sanitizeInput($_POST['name']);
     $uri = sanitizeInput($_POST['uri']);
@@ -48,12 +52,14 @@ if (isset($_POST['edit_custom_link'])) {
 }
 
 if (isset($_GET['delete_custom_link'])) {
-    
+
+    validateCSRFToken($_GET['csrf_token']);
+
     $custom_link_id = intval($_GET['delete_custom_link']);
 
     // Get Custom Link name and uri for logging
     $sql = mysqli_query($mysqli,"SELECT custom_link_name, custom_link_uri FROM custom_links WHERE custom_link_id = $custom_link_id");
-    $row = mysqli_fetch_array($sql);
+    $row = mysqli_fetch_assoc($sql);
     $custom_link_name = sanitizeInput($row['custom_link_name']);
     $custom_link_uri = sanitizeInput($row['custom_link_uri']);
 

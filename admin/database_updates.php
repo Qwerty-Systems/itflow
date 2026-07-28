@@ -791,7 +791,7 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
 
         // Copy primary_location and primary_contact to their new vars in their own respecting tables
         $sql = mysqli_query($mysqli, "SELECT * FROM clients");
-        while($row = mysqli_fetch_array($sql)) {
+        while($row = mysqli_fetch_assoc($sql)) {
             $primary_contact = $row['primary_contact'];
             $primary_location = $row['primary_location'];
 
@@ -1666,7 +1666,7 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
     if (CURRENT_DATABASE_VERSION == '1.3.9') {
         // Migrate all Network Info from Assets to Interface Table and make it primary interface
         $sql = mysqli_query($mysqli, "SELECT * FROM assets");
-        while ($row = mysqli_fetch_array($sql)) {
+        while ($row = mysqli_fetch_assoc($sql)) {
             $asset_id = intval($row['asset_id']);
             $mac = sanitizeInput($row['asset_mac']);
             $ip = sanitizeInput($row['asset_ip']);
@@ -1945,7 +1945,7 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
     if (CURRENT_DATABASE_VERSION == '1.5.7') {
         // Create Users for contacts that have logins enabled and that are not archived
         $contacts_sql = mysqli_query($mysqli, "SELECT * FROM `contacts` WHERE contact_archived_at IS NULL AND (contact_auth_method = 'local' OR contact_auth_method = 'azure')");
-        while($row = mysqli_fetch_array($contacts_sql)) {
+        while($row = mysqli_fetch_assoc($contacts_sql)) {
             $contact_id = intval($row['contact_id']);
             $contact_name = mysqli_real_escape_string($mysqli, $row['contact_name']);
             $contact_email = mysqli_real_escape_string($mysqli, $row['contact_email']);
@@ -2325,7 +2325,7 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
                 `interface_link_status` VARCHAR(50) NULL,
                 `interface_link_created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 `interface_link_updated_at` DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
-                
+
                 CONSTRAINT `fk_interface_a`
                     FOREIGN KEY (`interface_a_id`)
                     REFERENCES `asset_interfaces` (`interface_id`)
@@ -3701,8 +3701,8 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
                 `ai_model_updated_at` DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
                 `ai_model_ai_provider_id` INT(11) NOT NULL,
                 PRIMARY KEY (`ai_model_id`),
-                FOREIGN KEY (`ai_model_ai_provider_id`) 
-                    REFERENCES `ai_providers`(`ai_provider_id`) 
+                FOREIGN KEY (`ai_model_ai_provider_id`)
+                    REFERENCES `ai_providers`(`ai_provider_id`)
                     ON DELETE CASCADE
             )
         ");
@@ -3769,7 +3769,7 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
     }
 
     if (CURRENT_DATABASE_VERSION == '2.2.3') {
-        
+
         mysqli_query($mysqli, "CREATE TABLE `credits` (
             `credit_id` INT(11) NOT NULL AUTO_INCREMENT,
             `credit_amount` DECIMAL(15,2) NOT NULL,
@@ -3817,19 +3817,19 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
         mysqli_query($mysqli, "ALTER TABLE `credits` ADD INDEX (`credit_client_id`)");
         mysqli_query($mysqli, "ALTER TABLE `credits` ADD INDEX (`credit_invoice_id`)");
         mysqli_query($mysqli, "ALTER TABLE `credits` ADD INDEX (`credit_created_at`)");
-        
+
         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.2.7'");
     }
 
     if (CURRENT_DATABASE_VERSION == '2.2.7') {
         mysqli_query($mysqli, "ALTER TABLE `user_settings` ADD `user_config_theme_dark` TINYINT(1) NOT NULL DEFAULT 0 AFTER `user_config_signature`");
         mysqli_query($mysqli, "ALTER TABLE `settings` DROP `config_theme_dark`");
-        
+
         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.2.8'");
     }
 
     if (CURRENT_DATABASE_VERSION == '2.2.8') {
-        
+
         mysqli_query($mysqli, "ALTER TABLE `products` ADD `product_type` ENUM('service', 'product') NOT NULL DEFAULT 'service' AFTER `product_name`");
         mysqli_query($mysqli, "ALTER TABLE `products` ADD `product_code` VARCHAR(200) DEFAULT NULL AFTER `product_description`");
         mysqli_query($mysqli, "ALTER TABLE `products` ADD `product_location` VARCHAR(250) DEFAULT NULL AFTER `product_code`");
@@ -3844,7 +3844,7 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
             `stock_product_id` INT(11) NOT NULL,
             PRIMARY KEY (`stock_id`)
         )");
-        
+
         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.2.9'");
     }
 
@@ -3853,7 +3853,7 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
 
         // Get Current Stripe Settings
         $sql_stripe_settings = mysqli_query($mysqli, "SELECT * FROM settings WHERE company_id = 1");
-        $row = mysqli_fetch_array($sql_stripe_settings);
+        $row = mysqli_fetch_assoc($sql_stripe_settings);
         $config_stripe_enable = intval($row['config_stripe_enable']);
         if ($config_stripe_enable === 1) {
             $config_stripe_publishable = mysqli_real_escape_string($mysqli, $row['config_stripe_publishable']);
@@ -3879,7 +3879,7 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
 
             // Migrate Clients and Payment Method over
             $sql_stripe_clients = mysqli_query($mysqli, "SELECT * FROM client_stripe WHERE stripe_pm IS NOT NULL AND stripe_pm != ''");
-            while ($row = mysqli_fetch_array($sql_stripe_clients)) {
+            while ($row = mysqli_fetch_assoc($sql_stripe_clients)) {
                 $client_id = intval($row['client_id']);
                 $stripe_id = mysqli_real_escape_string($mysqli, $row['stripe_id']);
                 $stripe_pm = mysqli_real_escape_string($mysqli, $row['stripe_pm']);
@@ -3931,13 +3931,13 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
     if (CURRENT_DATABASE_VERSION == '2.3.0') {
         // Migrate Payment Methods from Categories Table to new payment_methods table
         $sql_categories = mysqli_query($mysqli, "SELECT * FROM categories WHERE category_type = 'Payment Method' AND category_name != 'Stripe' AND category_archived_at IS NULL");
-        
-        while ($row = mysqli_fetch_array($sql_categories)) {
+
+        while ($row = mysqli_fetch_assoc($sql_categories)) {
             $category_name = sanitizeInput($row['category_name']);
 
             mysqli_query($mysqli,"INSERT INTO payment_methods SET payment_method_name = '$category_name'");
         }
-      
+
         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.3.1'");
     }
 
@@ -3971,7 +3971,7 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
 
     if (CURRENT_DATABASE_VERSION == '2.3.2') {
 
-        mysqli_query($mysqli, "ALTER TABLE settings 
+        mysqli_query($mysqli, "ALTER TABLE settings
             ADD `config_imap_provider` ENUM('standard_imap','google_oauth','microsoft_oauth') NULL DEFAULT NULL AFTER `config_mail_from_name`,
             ADD `config_mail_oauth_client_id` VARCHAR(255) NULL AFTER `config_imap_provider`,
             ADD `config_mail_oauth_client_secret` VARCHAR(255) NULL AFTER `config_mail_oauth_client_id`,
@@ -3986,17 +3986,418 @@ if (LATEST_DATABASE_VERSION > CURRENT_DATABASE_VERSION) {
 
     if (CURRENT_DATABASE_VERSION == '2.3.3') {
 
-        mysqli_query($mysqli, "ALTER TABLE settings 
+        mysqli_query($mysqli, "ALTER TABLE settings
             ADD `config_smtp_provider` ENUM('standard_smtp','google_oauth','microsoft_oauth') NULL DEFAULT NULL AFTER `config_start_page`
         ");
 
         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.3.4'");
     }
-    
-    // if (CURRENT_DATABASE_VERSION == '2.3.4') {
-    //     // Insert queries here required to update to DB version 2.3.4
+
+    if (CURRENT_DATABASE_VERSION == '2.3.4') {
+
+        // Add Software Keys
+        mysqli_query($mysqli, "CREATE TABLE `software_keys` (
+            `software_key_id` INT(11) NOT NULL AUTO_INCREMENT,
+            `software_key` VARCHAR(400) NOT NULL,
+            `software_key_software_id` INT(11) NOT NULL,
+            PRIMARY KEY (`software_key_id`),
+            FOREIGN KEY (`software_key_software_id`) REFERENCES `software`(`software_id`) ON DELETE CASCADE
+        )");
+
+        // Software Key Assignments to Contacts
+        mysqli_query($mysqli, "CREATE TABLE `software_key_contact_assignments` (
+            `software_key_id` INT(11) NOT NULL,
+            `contact_id` INT(11) NOT NULL,
+            `software_key_assigned_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`software_key_id`, `contact_id`),
+            FOREIGN KEY (`software_key_id`) REFERENCES `software_keys`(`software_key_id`) ON DELETE CASCADE,
+            FOREIGN KEY (`contact_id`) REFERENCES `contacts`(`contact_id`) ON DELETE CASCADE
+        )");
+
+        // Software Key Assignments to Assets
+        mysqli_query($mysqli, "CREATE TABLE `software_key_asset_assignments` (
+            `software_key_id` INT(11) NOT NULL,
+            `asset_id` INT(11) NOT NULL,
+            `software_key_assigned_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`software_key_id`, `asset_id`),
+            FOREIGN KEY (`software_key_id`) REFERENCES `software_keys`(`software_key_id`) ON DELETE CASCADE,
+            FOREIGN KEY (`asset_id`) REFERENCES `assets`(`asset_id`) ON DELETE CASCADE
+        )");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.3.5'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '2.3.5') {
+        mysqli_query($mysqli, "ALTER TABLE `settings` CHANGE `config_smtp_provider` `config_smtp_provider` VARCHAR(200) DEFAULT NULL");
+        mysqli_query($mysqli, "ALTER TABLE `settings` CHANGE `config_imap_provider` `config_imap_provider` VARCHAR(200) DEFAULT NULL");
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.3.6'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '2.3.6') {
+        // Create New Contract Templates Table
+        mysqli_query($mysqli, "CREATE TABLE `contract_templates` (
+          `contract_template_id` INT(11) AUTO_INCREMENT PRIMARY KEY,
+          `contract_template_name` VARCHAR(255) NOT NULL,
+          `contract_template_description` TEXT NULL DEFAULT NULL,
+          `contract_template_type` VARCHAR(50) NULL DEFAULT NULL,
+
+          `contract_template_sla_low_response_time` INT(11) NULL DEFAULT NULL,
+          `contract_template_sla_low_resolution_time` INT(11) NULL DEFAULT NULL,
+          `contract_template_sla_medium_response_time` INT(11) NULL DEFAULT NULL,
+          `contract_template_sla_medium_resolution_time` INT(11) NULL DEFAULT NULL,
+          `contract_template_sla_high_response_time` INT(11) NULL DEFAULT NULL,
+          `contract_template_sla_high_resolution_time` INT(11) NULL DEFAULT NULL,
+
+          `contract_template_rate_standard` DECIMAL(10,2) NULL DEFAULT NULL,
+          `contract_template_rate_after_hours` DECIMAL(10,2) NULL DEFAULT NULL,
+
+          `contract_template_net_terms` VARCHAR(50) NULL DEFAULT NULL,
+          `contract_template_support_hours` VARCHAR(100) NULL DEFAULT NULL,
+          `contract_template_renewal_frequency` VARCHAR(50) NULL DEFAULT NULL,
+
+          `contract_template_details` TEXT NULL DEFAULT NULL,
+
+          `contract_template_created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+          `contract_template_updated_at` DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+          `contract_template_archived_at` DATETIME NULL DEFAULT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+
+        // Create New Contracts Table
+        mysqli_query($mysqli, "CREATE TABLE `contracts` (
+            `contract_id` INT(11) AUTO_INCREMENT PRIMARY KEY,
+            `contract_name` VARCHAR(255) NOT NULL,
+            `contract_status` VARCHAR(50) NOT NULL,
+            `contract_type` VARCHAR(50) NOT NULL,
+
+            `contract_sla_low_response_time` INT(11) NULL DEFAULT NULL,
+            `contract_sla_low_resolution_time` INT(11) NULL DEFAULT NULL,
+            `contract_sla_medium_response_time` INT(11) NULL DEFAULT NULL,
+            `contract_sla_medium_resolution_time` INT(11) NULL DEFAULT NULL,
+            `contract_sla_high_response_time` INT(11) NULL DEFAULT NULL,
+            `contract_sla_high_resolution_time` INT(11) NULL DEFAULT NULL,
+
+            `contract_details` TEXT NULL DEFAULT NULL,
+
+            `contract_client_id` INT(11) NULL DEFAULT NULL,
+            `contract_client_name` VARCHAR(255) NULL DEFAULT NULL,
+            `contract_client_address` TEXT NULL DEFAULT NULL,
+            `contract_client_email` VARCHAR(255) NULL DEFAULT NULL,
+            `contract_client_phone` VARCHAR(100) NULL DEFAULT NULL,
+
+            `contract_contact_name` VARCHAR(255) NULL DEFAULT NULL,
+            `contract_contact_signature` TEXT NULL DEFAULT NULL,
+            `contract_contact_signature_date` DATETIME NULL DEFAULT NULL,
+
+            `contract_agent_name` VARCHAR(255) NULL DEFAULT NULL,
+            `contract_agent_signature` TEXT NULL DEFAULT NULL,
+            `contract_agent_signature_date` DATETIME NULL DEFAULT NULL,
+
+            `contract_rate_standard` DECIMAL(10,2) NULL DEFAULT NULL,
+            `contract_rate_after_hours` DECIMAL(10,2) NULL DEFAULT NULL,
+
+            `contract_net_terms` VARCHAR(50) NULL DEFAULT NULL,
+            `contract_support_hours` VARCHAR(100) NULL DEFAULT NULL,
+
+            `contract_start_date` DATE NULL DEFAULT NULL,
+            `contract_end_date` DATE NULL DEFAULT NULL,
+            `contract_renewal_frequency` VARCHAR(50) NULL DEFAULT NULL,
+
+            `contract_created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `contract_updated_at` DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+            `contract_archived_at` DATETIME NULL DEFAULT NULL,
+
+            FOREIGN KEY (`contract_client_id`) REFERENCES `clients`(`client_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.3.7'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '2.3.7') {
+
+        mysqli_query($mysqli, "
+            CREATE TABLE `asset_tags` (
+                `asset_tag_asset_id` INT(11) NOT NULL,
+                `asset_tag_tag_id` INT(11) NOT NULL,
+                PRIMARY KEY (`asset_tag_asset_id`, `asset_tag_tag_id`),
+                CONSTRAINT `fk_asset`
+                    FOREIGN KEY (`asset_tag_asset_id`)
+                    REFERENCES `assets`(`asset_id`)
+                    ON DELETE CASCADE,
+                CONSTRAINT `fk_tag`
+                    FOREIGN KEY (`asset_tag_tag_id`)
+                    REFERENCES `tags`(`tag_id`)
+                    ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.3.8'");
+    }
+
+     if (CURRENT_DATABASE_VERSION == '2.3.8') {
+
+         mysqli_query($mysqli, "
+            CREATE TABLE `task_approvals` (
+              `approval_id` int(11) NOT NULL AUTO_INCREMENT,
+              `approval_scope` enum('client','internal') NOT NULL,
+              `approval_type` enum('any','technical','billing','specific') NOT NULL,
+              `approval_required_user_id` int(11) DEFAULT NULL,
+              `approval_status` enum('pending','approved','declined') NOT NULL,
+              `approval_created_by` int(11) NOT NULL,
+              `approval_approved_by` varchar(255) DEFAULT NULL,
+              `approval_url_key` varchar(200) NOT NULL,
+              `approval_task_id` int(11) NOT NULL,
+              PRIMARY KEY (`approval_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+         mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.3.9'");
+     }
+
+    if (CURRENT_DATABASE_VERSION == '2.3.9') {
+        mysqli_query($mysqli, "ALTER TABLE `clients` ADD `client_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `client_notes`");
+
+        mysqli_query($mysqli, "ALTER TABLE `locations` ADD `location_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `location_notes`");
+
+        mysqli_query($mysqli, "ALTER TABLE `vendors` ADD `vendor_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `vendor_notes`");
+
+        mysqli_query($mysqli, "ALTER TABLE `software` ADD `software_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `software_notes`");
+
+        mysqli_query(
+            $mysqli,
+            "ALTER TABLE `credentials`
+             CHANGE `credential_important` `credential_favorite`
+             TINYINT(1) NOT NULL DEFAULT 0
+             AFTER `credential_note`"
+        );
+
+        mysqli_query($mysqli, "ALTER TABLE `assets` DROP `asset_important`");
+        mysqli_query($mysqli, "ALTER TABLE `assets` ADD `asset_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `asset_notes`");
+
+        mysqli_query($mysqli, "ALTER TABLE `documents` DROP `document_important`");
+        mysqli_query($mysqli, "ALTER TABLE `documents` ADD `document_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `document_client_visible`");
+
+        mysqli_query($mysqli, "ALTER TABLE `racks` ADD `rack_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `rack_notes`");
+
+        mysqli_query($mysqli, "ALTER TABLE `files` DROP `file_important`");
+        mysqli_query($mysqli, "ALTER TABLE `files` ADD `file_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `file_mime_type`");
+
+        mysqli_query($mysqli, "ALTER TABLE `networks` ADD `network_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `network_notes`");
+
+        mysqli_query($mysqli, "ALTER TABLE `domains` ADD `domain_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `domain_notes`");
+
+        mysqli_query($mysqli, "ALTER TABLE `certificates` ADD `certificate_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `certificate_notes`");
+
+        mysqli_query($mysqli, "ALTER TABLE `services` ADD `service_favorite` TINYINT(1) NOT NULL DEFAULT '0' AFTER `service_notes`");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.4.0'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '2.4.0') {
+
+        mysqli_query($mysqli, "
+            CREATE TABLE `quote_items` (
+              `item_id` int(11) NOT NULL AUTO_INCREMENT,
+              `item_name` varchar(200) NOT NULL,
+              `item_description` text DEFAULT NULL,
+              `item_quantity` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_price` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_subtotal` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_tax` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_total` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_order` int(11) NOT NULL DEFAULT 0,
+              `item_created_at` datetime NOT NULL DEFAULT current_timestamp(),
+              `item_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+              `item_archived_at` datetime DEFAULT NULL,
+              `item_tax_id` int(11) NOT NULL DEFAULT 0,
+              `item_product_id` int(11) NOT NULL DEFAULT 0,
+              `item_quote_id` int(11) NOT NULL,
+              PRIMARY KEY (`item_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        mysqli_query($mysqli, "
+            CREATE TABLE `recurring_invoice_items` (
+              `item_id` int(11) NOT NULL AUTO_INCREMENT,
+              `item_name` varchar(200) NOT NULL,
+              `item_description` text DEFAULT NULL,
+              `item_quantity` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_price` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_subtotal` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_tax` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_total` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `item_order` int(11) NOT NULL DEFAULT 0,
+              `item_created_at` datetime NOT NULL DEFAULT current_timestamp(),
+              `item_updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+              `item_archived_at` datetime DEFAULT NULL,
+              `item_tax_id` int(11) NOT NULL DEFAULT 0,
+              `item_product_id` int(11) NOT NULL DEFAULT 0,
+              `item_recurring_invoice_id` int(11) NOT NULL,
+              PRIMARY KEY (`item_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.4.1'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '2.4.1') {
+
+        // Migrate Items
+        mysqli_query($mysqli, "
+            INSERT INTO `recurring_invoice_items` (
+              `item_name`,
+              `item_description`,
+              `item_quantity`,
+              `item_price`,
+              `item_subtotal`,
+              `item_tax`,
+              `item_total`,
+              `item_order`,
+              `item_created_at`,
+              `item_updated_at`,
+              `item_archived_at`,
+              `item_tax_id`,
+              `item_product_id`,
+              `item_recurring_invoice_id`
+            )
+            SELECT
+              `item_name`,
+              `item_description`,
+              `item_quantity`,
+              `item_price`,
+              `item_subtotal`,
+              `item_tax`,
+              `item_total`,
+              `item_order`,
+              `item_created_at`,
+              `item_updated_at`,
+              `item_archived_at`,
+              `item_tax_id`,
+              `item_product_id`,
+              `item_recurring_invoice_id`
+            FROM `invoice_items`
+            WHERE `item_recurring_invoice_id` != 0
+        ");
+
+        mysqli_query($mysqli, "
+            INSERT INTO `quote_items` (
+              `item_name`,
+              `item_description`,
+              `item_quantity`,
+              `item_price`,
+              `item_subtotal`,
+              `item_tax`,
+              `item_total`,
+              `item_order`,
+              `item_created_at`,
+              `item_updated_at`,
+              `item_archived_at`,
+              `item_tax_id`,
+              `item_product_id`,
+              `item_quote_id`
+            )
+            SELECT
+              `item_name`,
+              `item_description`,
+              `item_quantity`,
+              `item_price`,
+              `item_subtotal`,
+              `item_tax`,
+              `item_total`,
+              `item_order`,
+              `item_created_at`,
+              `item_updated_at`,
+              `item_archived_at`,
+              `item_tax_id`,
+              `item_product_id`,
+              `item_quote_id`
+            FROM `invoice_items`
+            WHERE `item_quote_id` != 0
+        ");
+
+        mysqli_query($mysqli, "
+            DELETE FROM `invoice_items`
+            WHERE `item_recurring_invoice_id` != 0
+        ");
+
+        mysqli_query($mysqli, "
+            DELETE FROM `invoice_items`
+            WHERE `item_quote_id` != 0
+        ");
+
+        mysqli_query($mysqli, "
+            ALTER TABLE `invoice_items`
+            DROP COLUMN `item_quote_id`,
+            DROP COLUMN `item_recurring_invoice_id`
+        ");
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.4.2'");
+
+    }
+
+    if (CURRENT_DATABASE_VERSION == '2.4.2') {
+
+        mysqli_query($mysqli, "ALTER TABLE `categories` ADD `category_description` VARCHAR(255) DEFAULT NULL AFTER `category_name`");
+        mysqli_query($mysqli, "ALTER TABLE `categories` ADD `category_order` INT(11) NOT NULL DEFAULT 0 AFTER `category_icon`");
+
+        // Create network_interfaces
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Ethernet', category_type = 'network_interface', category_order = 1"); // 1
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'SFP', category_type = 'network_interface', category_order = 2"); // 2
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'SFP+', category_type = 'network_interface', category_order = 3"); // 3
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'QSFP28', category_type = 'network_interface', category_order = 4"); // 4
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'QSFP-DD', category_type = 'network_interface', category_order = 5"); // 5
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Coaxial', category_type = 'network_interface', category_order = 6"); // 6
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Fiber', category_type = 'network_interface', category_order = 7"); // 7
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'WiFi', category_type = 'network_interface', category_order = 8"); // 8
+
+
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.4.3'");
+    }
+
+    if (CURRENT_DATABASE_VERSION == '2.4.3') {
+        // Asset Status
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Ready to Deploy', category_description = 'Asset is configured and ready to be assigned', category_type = 'asset_status', category_order = 1"); // 1
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Deployed', category_description = 'Asset is actively in use and assigned to a client or location', category_type = 'asset_status', category_order = 2"); // 2
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Out for Repair', category_description = 'Asset has been sent out for servicing or repair', category_type = 'asset_status', category_order = 3"); // 3
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Lost', category_description = 'Asset location is unknown and cannot be accounted for', category_type = 'asset_status', category_order = 4"); // 4
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Stolen', category_description = 'Asset has been reported stolen', category_type = 'asset_status', category_order = 5"); // 5
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Retired', category_description = 'Asset has been decommissioned and is no longer in service', category_type = 'asset_status', category_order = 6"); // 6
+
+        // Contact note types
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Call', category_description = 'Phone call with a client or contact', category_icon = 'fa-phone-alt', category_type = 'contact_note_type', category_order = 1"); // 1
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Email', category_description = 'Email correspondence with a client or contact', category_icon = 'fa-envelope', category_type = 'contact_note_type', category_order = 2"); // 2
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Meeting', category_description = 'Scheduled meeting with a client or contact', category_icon = 'fa-handshake', category_type = 'contact_note_type', category_order = 3"); // 3
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'In Person', category_description = 'In person visit or on-site interaction', category_icon = 'fa-people-arrows', category_type = 'contact_note_type', category_order = 4"); // 4
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Note', category_description = 'General note or internal comment', category_icon = 'fa-sticky-note', category_type = 'contact_note_type', category_order = 5"); // 5
+
+        // Rack Types
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = '2-Post Open Frame', category_description = 'Two-post open frame rack for patch panels and lightweight equipment', category_type = 'rack_type', category_order = 1"); // 1
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = '4-Post Open Frame', category_description = 'Four-post open frame rack for servers and heavier equipment', category_type = 'rack_type', category_order = 2"); // 2
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = '4-Post Enclosed Cabinet', category_description = 'Four-post enclosed cabinet with doors and sides for secure equipment housing', category_type = 'rack_type', category_order = 3"); // 3
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Wall-Mount Open', category_description = 'Open frame rack mounted directly to a wall for small deployments', category_type = 'rack_type', category_order = 4"); // 4
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Wall-Mount Enclosed', category_description = 'Enclosed cabinet rack mounted to a wall with a locking door', category_type = 'rack_type', category_order = 5"); // 5
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Other', category_description = 'Rack type does not fit any standard category', category_type = 'rack_type', category_order = 6"); // 6
+
+        // Software Types
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Software as a Service (SaaS)', category_description = 'Cloud-hosted software accessed via a web browser or API', category_type = 'software_type', category_order = 1"); // 1
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Productivity Suite', category_description = 'Bundled office and collaboration tools such as Microsoft 365 or Google Workspace', category_type = 'software_type', category_order = 2"); // 2
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Web Application', category_description = 'Application hosted on a web server and accessed through a browser', category_type = 'software_type', category_order = 3"); // 3
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Desktop Application', category_description = 'Application installed and run locally on a workstation or laptop', category_type = 'software_type', category_order = 4"); // 4
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Mobile Application', category_description = 'Application installed and run on a mobile device or tablet', category_type = 'software_type', category_order = 5"); // 5
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Security Software', category_description = 'Software providing antivirus, endpoint protection, or security monitoring', category_type = 'software_type', category_order = 6"); // 6
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'System Software', category_description = 'Low-level software managing hardware resources and system operations', category_type = 'software_type', category_order = 7"); // 7
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Operating System', category_description = 'Core software managing hardware and providing a platform for applications', category_type = 'software_type', category_order = 8"); // 8
+        mysqli_query($mysqli, "INSERT INTO categories SET category_name = 'Other', category_description = 'Software type does not fit any standard category', category_type = 'software_type', category_order = 9"); // 9
+
+        mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.4.4'");
+
+    }
+
+    // if (CURRENT_DATABASE_VERSION == '2.4.4') {
+    //     // Insert queries here required to update to DB version 2.4.5
     //     // Then, update the database to the next sequential version
-    //     mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.3.5'");
+    //     mysqli_query($mysqli, "UPDATE `settings` SET `config_current_database_version` = '2.4.5'");
     // }
 
 } else {

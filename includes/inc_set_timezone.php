@@ -1,7 +1,7 @@
 <?php
 
 $result = mysqli_query($mysqli, "SELECT config_timezone FROM settings WHERE company_id = 1");
-$row = mysqli_fetch_array($result);
+$row = mysqli_fetch_assoc($result);
 $_SESSION['session_timezone'] = $row['config_timezone'];
 
 // Set PHP timezone

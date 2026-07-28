@@ -1,6 +1,6 @@
 <?php
 /*
- * Client Portal - AutoPay Configuration (multi-provider)
+ * Client Portal - AutoPay Configuration (multi-provider - assumes Stripe for now)
  */
 
 require_once "includes/inc_all.php";
@@ -17,7 +17,7 @@ require_once '../plugins/stripe-php/init.php';
 $stripe_provider_query = mysqli_query($mysqli, "
     SELECT * FROM payment_providers WHERE payment_provider_name = 'Stripe' LIMIT 1
 ");
-$stripe_provider = mysqli_fetch_array($stripe_provider_query);
+$stripe_provider = mysqli_fetch_assoc($stripe_provider_query);
 
 if (!$stripe_provider) {
     echo "Stripe payment error - Stripe provider is not configured.";
@@ -35,7 +35,7 @@ $stripe_customer_query = mysqli_query($mysqli, "
     WHERE client_id = $session_client_id AND payment_provider_id = $stripe_provider_id
     LIMIT 1
 ");
-$stripe_customer = mysqli_fetch_array($stripe_customer_query);
+$stripe_customer = mysqli_fetch_assoc($stripe_customer_query);
 $stripe_customer_id = $stripe_customer ? sanitizeInput($stripe_customer['payment_provider_client']) : null;
 
 // Get saved payment methods
@@ -46,7 +46,7 @@ $saved_methods_query = mysqli_query($mysqli, "
 ");
 
 $saved_methods = [];
-while ($row = mysqli_fetch_array($saved_methods_query)) {
+while ($row = mysqli_fetch_assoc($saved_methods_query)) {
     $saved_methods[] = $row;
 }
 
@@ -69,12 +69,13 @@ if (!$stripe_public_key || !$stripe_secret_key) {
             <br><br>
 
             <form action="post.php" method="POST">
-               
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+
                 <div class="form-group">
                     <button type="submit" class="btn btn-success" name="create_stripe_customer"><strong><i class="fas fa-check mr-2"></i>I grant consent for automatic payments</strong></button>
                 </div>
             </form>
-            
+
         <?php } else { ?>
 
             <b>Manage saved payment methods</b><br><br>
@@ -108,7 +109,7 @@ if (!$stripe_public_key || !$stripe_secret_key) {
                             $exp_year = nullable_htmlentities($pm->card->exp_year);
 
                             echo "<li><i class='$payment_icon fa-2x mr-2'></i>$brand x<strong>$last4</strong> | Exp. $exp_month/$exp_year";
-                            echo " – <a class='text-danger' href='post.php?delete_saved_payment={$method['saved_payment_id']}'>Remove</a></li>";
+                            echo " – <a class='text-danger' href='post.php?delete_saved_payment={$method['saved_payment_id']}&csrf_token={$_SESSION['csrf_token']}'>Remove</a></li>";
                         }
                     } catch (Exception $e) {
                         $error = $e->getMessage();

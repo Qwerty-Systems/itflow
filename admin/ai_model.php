@@ -12,11 +12,21 @@ $num_rows = mysqli_num_rows($sql);
 
 ?>
 
+<ol class="breadcrumb d-print-none">
+    <li class="breadcrumb-item">
+        <a href="/admin">Admin</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="ai_provider.php">AI Providers</a>
+    </li>
+    <li class="breadcrumb-item active">AI Models</li>
+</ol>
+
 <div class="card card-dark">
     <div class="card-header py-2">
         <h3 class="card-title mt-2"><i class="fas fa-fw fa-robot mr-2"></i>AI Models</h3>
         <div class="card-tools">
-            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addAIModelModal"><i class="fas fa-plus mr-2"></i>Add Model</button>
+            <button type="button" class="btn btn-primary ajax-modal" data-modal-url="modals/ai/ai_model_add.php"><i class="fas fa-plus mr-2"></i>Add Model</button>
         </div>
     </div>
     <div class="card-body">
@@ -48,7 +58,7 @@ $num_rows = mysqli_num_rows($sql);
                 <tbody>
                 <?php
 
-                while ($row = mysqli_fetch_array($sql)) {
+                while ($row = mysqli_fetch_assoc($sql)) {
                     $provider_id = intval($row['ai_provider_id']);
                     $provider_name = nullable_htmlentities($row['ai_provider_name']);
                     $model_id = intval($row['ai_model_id']);
@@ -104,5 +114,4 @@ $num_rows = mysqli_num_rows($sql);
 </div>
 
 <?php
-require_once "modals/ai/ai_model_add.php";
 require_once "../includes/footer.php";

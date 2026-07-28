@@ -17,7 +17,7 @@ if (isset($_GET['accept_quote'], $_GET['url_key'])) {
     $sql = mysqli_query($mysqli, "SELECT quote_prefix, quote_number, client_name, client_id FROM quotes LEFT JOIN clients ON quote_client_id = client_id WHERE quote_id = $quote_id AND quote_url_key = '$url_key'");
 
     if (mysqli_num_rows($sql) == 1) {
-        $row = mysqli_fetch_array($sql);
+        $row = mysqli_fetch_assoc($sql);
         $quote_prefix = sanitizeInput($row['quote_prefix']);
         $quote_number = intval($row['quote_number']);
         $client_name = sanitizeInput($row['client_name']);
@@ -27,17 +27,17 @@ if (isset($_GET['accept_quote'], $_GET['url_key'])) {
         mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Accepted', history_description = 'Client accepted Quote!', history_quote_id = $quote_id");
 
         // Notification
-        appNotify("Quote Accepted", "Quote $quote_prefix$quote_number has been accepted by $client_name", "quote.php?quote_id=$quote_id", $client_id);
+        appNotify("Quote Accepted", "Quote $quote_prefix$quote_number has been accepted by $client_name", "/agent/quote.php?quote_id=$quote_id", $client_id);
         customAction('quote_accept', $quote_id);
 
         // Internal email notification
 
         $sql_company = mysqli_query($mysqli, "SELECT company_name FROM companies WHERE company_id = 1");
-        $row = mysqli_fetch_array($sql_company);
+        $row = mysqli_fetch_assoc($sql_company);
         $company_name = sanitizeInput($row['company_name']);
 
         $sql_settings = mysqli_query($mysqli, "SELECT * FROM settings WHERE company_id = 1");
-        $row = mysqli_fetch_array($sql_settings);
+        $row = mysqli_fetch_assoc($sql_settings);
         $config_smtp_host = $row['config_smtp_host'];
         $config_smtp_port = intval($row['config_smtp_port']);
         $config_smtp_encryption = $row['config_smtp_encryption'];
@@ -64,9 +64,9 @@ if (isset($_GET['accept_quote'], $_GET['url_key'])) {
         }
 
         flash_alert("Quote Accepted");
-        
+
         redirect();
-    
+
     } else {
         echo "Invalid!!";
     }
@@ -82,7 +82,7 @@ if (isset($_GET['decline_quote'], $_GET['url_key'])) {
     $sql = mysqli_query($mysqli, "SELECT quote_prefix, quote_number, client_name, client_id FROM quotes LEFT JOIN clients ON quote_client_id = client_id WHERE quote_id = $quote_id AND quote_url_key = '$url_key'");
 
     if (mysqli_num_rows($sql) == 1) {
-        $row = mysqli_fetch_array($sql);
+        $row = mysqli_fetch_assoc($sql);
         $quote_prefix = sanitizeInput($row['quote_prefix']);
         $quote_number = intval($row['quote_number']);
         $client_name = sanitizeInput($row['client_name']);
@@ -92,17 +92,17 @@ if (isset($_GET['decline_quote'], $_GET['url_key'])) {
         mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Declined', history_description = 'Client declined Quote!', history_quote_id = $quote_id");
 
         // Notification
-        appNotify("Quote Declined", "Quote $quote_prefix$quote_number has been declined by $client_name", "quote.php?quote_id=$quote_id", $client_id);
+        appNotify("Quote Declined", "Quote $quote_prefix$quote_number has been declined by $client_name", "/agent/quote.php?quote_id=$quote_id", $client_id);
         customAction('quote_decline', $quote_id);
 
         // Internal email notification
 
         $sql_company = mysqli_query($mysqli, "SELECT company_name FROM companies WHERE company_id = 1");
-        $row = mysqli_fetch_array($sql_company);
+        $row = mysqli_fetch_assoc($sql_company);
         $company_name = sanitizeInput($row['company_name']);
 
         $sql_settings = mysqli_query($mysqli, "SELECT * FROM settings WHERE company_id = 1");
-        $row = mysqli_fetch_array($sql_settings);
+        $row = mysqli_fetch_assoc($sql_settings);
         $config_smtp_host = $row['config_smtp_host'];
         $config_smtp_port = intval($row['config_smtp_port']);
         $config_smtp_encryption = $row['config_smtp_encryption'];
@@ -130,7 +130,7 @@ if (isset($_GET['decline_quote'], $_GET['url_key'])) {
         flash_alert("Quote Declined", 'danger');
 
         redirect();
-    
+
     } else {
         echo "Invalid!!";
     }
@@ -138,7 +138,7 @@ if (isset($_GET['decline_quote'], $_GET['url_key'])) {
 }
 
 if (isset($_GET['reopen_ticket'], $_GET['url_key'])) {
-    
+
     $ticket_id = intval($_GET['ticket_id']);
     $url_key = sanitizeInput($_GET['url_key']);
 
@@ -148,16 +148,16 @@ if (isset($_GET['reopen_ticket'], $_GET['url_key'])) {
     if (mysqli_num_rows($sql) == 1) {
         // Update the ticket
         mysqli_query($mysqli, "UPDATE tickets SET ticket_status = 2, ticket_resolved_at = NULL WHERE ticket_id = $ticket_id AND ticket_url_key = '$url_key'");
-        
+
         // Add reply
         mysqli_query($mysqli, "INSERT INTO ticket_replies SET ticket_reply = 'Ticket reopened by client (guest URL).', ticket_reply_type = 'Internal', ticket_reply_by = 0, ticket_reply_ticket_id = $ticket_id");
-        
+
         customAction('ticket_update', $ticket_id);
-        
+
         flash_alert("Ticket reopened");
-        
+
         redirect();
-    
+
     } else {
         echo "Invalid!!";
     }
@@ -165,7 +165,7 @@ if (isset($_GET['reopen_ticket'], $_GET['url_key'])) {
 }
 
 if (isset($_GET['close_ticket'], $_GET['url_key'])) {
-    
+
     $ticket_id = intval($_GET['ticket_id']);
     $url_key = sanitizeInput($_GET['url_key']);
 
@@ -173,26 +173,26 @@ if (isset($_GET['close_ticket'], $_GET['url_key'])) {
     $sql = mysqli_query($mysqli, "SELECT ticket_id FROM tickets WHERE ticket_id = $ticket_id AND ticket_url_key = '$url_key' AND ticket_resolved_at IS NOT NULL AND ticket_closed_at IS NULL");
 
     if (mysqli_num_rows($sql) == 1) {
-        
+
         // Update the ticket
         mysqli_query($mysqli, "UPDATE tickets SET ticket_status = 5, ticket_closed_at = NOW() WHERE ticket_id = $ticket_id AND ticket_url_key = '$url_key'");
-        
+
         // Add reply
         mysqli_query($mysqli, "INSERT INTO ticket_replies SET ticket_reply = 'Ticket closed by client (guest URL).', ticket_reply_type = 'Internal', ticket_reply_by = 0, ticket_reply_ticket_id = $ticket_id");
 
         customAction('ticket_close', $ticket_id);
-        
+
         flash_alert("Ticket closed");
-        
+
         redirect();
-    
+
     } else {
         echo "Invalid!!";
     }
 }
 
 if (isset($_GET['add_ticket_feedback'], $_GET['url_key'])) {
-    
+
     $ticket_id = intval($_GET['ticket_id']);
     $url_key = sanitizeInput($_GET['url_key']);
     $feedback = sanitizeInput($_GET['feedback']);
@@ -206,22 +206,55 @@ if (isset($_GET['add_ticket_feedback'], $_GET['url_key'])) {
 
         // Notify on bad feedback
         if ($feedback == "Bad") {
-            $ticket_details = mysqli_fetch_array(mysqli_query($mysqli, "SELECT ticket_prefix, ticket_number FROM tickets WHERE ticket_id = $ticket_id LIMIT 1"));
+            $ticket_details = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT ticket_prefix, ticket_number FROM tickets WHERE ticket_id = $ticket_id LIMIT 1"));
             $ticket_prefix = sanitizeInput($ticket_details['ticket_prefix']);
             $ticket_number = intval($ticket_details['ticket_number']);
 
-            appNotify("Feedback", "Guest rated ticket number $ticket_prefix$ticket_number (ID: $ticket_id) as bad", "ticket.php?ticket_id=$ticket_id");
+            appNotify("Feedback", "Guest rated ticket number $ticket_prefix$ticket_number (ID: $ticket_id) as bad", "/agent/ticket.php?ticket_id=$ticket_id");
         }
 
         flash_alert("Feedback recorded - thank you");
-        
+
         redirect();
-        
+
         customAction('ticket_feedback', $ticket_id);
-    
+
     } else {
         echo "Invalid!!";
     }
+
+}
+
+if (isset($_GET['approve_ticket_task'])) {
+
+    $task_id = intval($_GET['approve_ticket_task']);
+    $approval_id = intval($_GET['approval_id']);
+    $url_key = sanitizeInput($_GET['approval_url_key']);
+
+    $approval_row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT * FROM task_approvals LEFT JOIN tasks on task_id = approval_task_id WHERE approval_id = $approval_id AND approval_task_id = $task_id AND approval_url_key = '$url_key' AND approval_status = 'pending'"));
+
+    $task_name = nullable_htmlentities($approval_row['task_name']);
+    $scope = nullable_htmlentities($approval_row['approval_scope']);
+    $type = nullable_htmlentities($approval_row['approval_type']);
+    $required_user = intval($approval_row['approval_required_user_id']);
+    $created_by = intval($approval_row['approval_created_by']);
+    $ticket_id = intval($approval_row['task_ticket_id']);
+
+    if (!$approval_row) {
+        exit("Cannot find/approve that task");
+    }
+
+    // Approve
+    mysqli_query($mysqli, "UPDATE task_approvals SET approval_status = 'approved', approval_approved_by = $required_user WHERE approval_id = $approval_id AND approval_task_id = $task_id AND approval_url_key = '$url_key' AND approval_status = 'pending'");
+
+    // Notify tech
+    mysqli_query($mysqli, "INSERT INTO notifications SET notification_type = 'Ticket', notification = 'Guest approved ticket task $task_name', notification_action = 'ticket.php?ticket_id=$ticket_id', notification_user_id = $created_by");
+
+    // Logging
+    logAction("Task", "Edit", "Guest user approved task $task_name via link (approval $approval_id)", 0, $task_id);
+
+    flash_alert("Task Approved");
+    redirect();
 
 }
 
@@ -242,7 +275,7 @@ if (isset($_GET['export_quote_pdf'])) {
 
     if (mysqli_num_rows($sql) == 1) {
 
-        $row = mysqli_fetch_array($sql);
+        $row = mysqli_fetch_assoc($sql);
         $quote_id = intval($row['quote_id']);
         $quote_prefix = nullable_htmlentities($row['quote_prefix']);
         $quote_number = intval($row['quote_number']);
@@ -278,7 +311,7 @@ if (isset($_GET['export_quote_pdf'])) {
         }
 
         $sql = mysqli_query($mysqli, "SELECT * FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1");
-        $row = mysqli_fetch_array($sql);
+        $row = mysqli_fetch_assoc($sql);
 
         $company_id = intval($row['company_id']);
         $company_name = nullable_htmlentities($row['company_name']);
@@ -367,9 +400,9 @@ if (isset($_GET['export_quote_pdf'])) {
         // Load items
         $sub_total = 0;
         $total_tax = 0;
-        
-        $sql_items = mysqli_query($mysqli, "SELECT * FROM invoice_items WHERE item_quote_id = $quote_id ORDER BY item_order ASC");
-        while ($item = mysqli_fetch_array($sql_items)) {
+
+        $sql_items = mysqli_query($mysqli, "SELECT * FROM quote_items WHERE item_quote_id = $quote_id ORDER BY item_order ASC");
+        while ($item = mysqli_fetch_assoc($sql_items)) {
             $name = $item['item_name'];
             $desc = $item['item_description'];
             $qty = $item['item_quantity'];
@@ -443,7 +476,7 @@ if (isset($_GET['export_invoice_pdf'])) {
 
     if (mysqli_num_rows($sql) == 1) {
 
-        $row = mysqli_fetch_array($sql);
+        $row = mysqli_fetch_assoc($sql);
         $invoice_id = intval($row['invoice_id']);
         $invoice_prefix = nullable_htmlentities($row['invoice_prefix']);
         $invoice_number = intval($row['invoice_number']);
@@ -479,7 +512,7 @@ if (isset($_GET['export_invoice_pdf'])) {
         }
 
         $sql = mysqli_query($mysqli, "SELECT * FROM companies WHERE company_id = 1");
-        $row = mysqli_fetch_array($sql);
+        $row = mysqli_fetch_assoc($sql);
         $company_id = intval($row['company_id']);
         $company_name = nullable_htmlentities($row['company_name']);
         $company_country = nullable_htmlentities($row['company_country']);
@@ -506,7 +539,7 @@ if (isset($_GET['export_invoice_pdf'])) {
 
         //Add up all the payments for the invoice and get the total amount paid to the invoice
         $sql_amount_paid = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS amount_paid FROM payments WHERE payment_invoice_id = $invoice_id");
-        $row = mysqli_fetch_array($sql_amount_paid);
+        $row = mysqli_fetch_assoc($sql_amount_paid);
         $amount_paid = floatval($row['amount_paid']);
 
         $balance = $invoice_amount - $amount_paid;
@@ -590,9 +623,9 @@ if (isset($_GET['export_invoice_pdf'])) {
         // Load items
         $sub_total = 0;
         $total_tax = 0;
-        
+
         $sql_items = mysqli_query($mysqli, "SELECT * FROM invoice_items WHERE item_invoice_id = $invoice_id ORDER BY item_order ASC");
-        while ($item = mysqli_fetch_array($sql_items)) {
+        while ($item = mysqli_fetch_assoc($sql_items)) {
             $name = $item['item_name'];
             $desc = $item['item_description'];
             $qty = $item['item_quantity'];
@@ -650,13 +683,13 @@ if (isset($_GET['export_invoice_pdf'])) {
         $filename = preg_replace('/[^A-Za-z0-9_\-]/', '_', "{$invoice_date}_{$company_name}_{$client_name}_Invoice_{$invoice_prefix}{$invoice_number}");
         $pdf->Output("$filename.pdf", 'I');
     }
-    
+
     exit;
 
 }
 
 if (isset($_POST['guest_quote_upload_file'])) {
-    
+
     $quote_id = intval($_POST['quote_id']);
     $url_key = sanitizeInput($_POST['url_key']);
 
@@ -664,7 +697,7 @@ if (isset($_POST['guest_quote_upload_file'])) {
     $sql = mysqli_query($mysqli, "SELECT quote_prefix, quote_number, client_id FROM quotes LEFT JOIN clients ON quote_client_id = client_id WHERE quote_id = $quote_id AND quote_url_key = '$url_key'");
 
     if (mysqli_num_rows($sql) == 1) {
-        $row = mysqli_fetch_array($sql);
+        $row = mysqli_fetch_assoc($sql);
         $quote_prefix = sanitizeInput($row['quote_prefix']);
         $quote_number = intval($row['quote_number']);
         $client_id = intval($row['client_id']);
@@ -705,7 +738,7 @@ if (isset($_POST['guest_quote_upload_file'])) {
                     $folder_sql = mysqli_query($mysqli, "SELECT * FROM folders WHERE folder_name = 'Client Uploads' AND parent_folder = 0 AND folder_client_id = $client_id LIMIT 1");
                     if (mysqli_num_rows($folder_sql) == 1) {
                         // Get
-                        $row = mysqli_fetch_array($folder_sql);
+                        $row = mysqli_fetch_assoc($folder_sql);
                         $folder_id = $row['folder_id'];
                     } else {
                         // Create
@@ -726,16 +759,16 @@ if (isset($_POST['guest_quote_upload_file'])) {
 
                     // Logging & feedback
                     flash_alert('File uploaded!');
-                    
-                    appNotify("Quote File", "$file_name was uploaded to quote $quote_prefix$quote_number", "quote.php?quote_id=$quote_id", $client_id);
-                    
+
+                    appNotify("Quote File", "$file_name was uploaded to quote $quote_prefix$quote_number", "/agent/quote.php?quote_id=$quote_id", $client_id);
+
                     mysqli_query($mysqli, "INSERT INTO history SET history_status = 'Upload', history_description = 'Client uploaded file $file_name', history_quote_id = $quote_id");
-                    
+
                     logAction("File", "Upload", "Guest uploaded file $file_name to quote $quote_prefix$quote_number", $client_id);
 
                 } else {
                     flash_alert('Something went wrong uploading the file - please let the support team know.', 'error');
-                    
+
                     logApp("Guest", "error", "Error uploading file to invoice");
                 }
 

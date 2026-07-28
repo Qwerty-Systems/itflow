@@ -6,7 +6,7 @@ $model_id = intval($_GET['id']);
 
 $sql = mysqli_query($mysqli, "SELECT * FROM ai_models WHERE ai_model_id = $model_id LIMIT 1");
 
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 $ai_model_ai_provider_id = intval($row['ai_model_ai_provider_id']);
 $model_id = intval($row['ai_model_id']);
 $model_name = nullable_htmlentities($row['ai_model_name']);
@@ -39,7 +39,7 @@ ob_start();
                     <option value="">- Select an AI Provider -</option>
                     <?php
                         $sql_ai_providers = mysqli_query($mysqli, "SELECT * FROM ai_providers");
-                        while ($row = mysqli_fetch_array($sql_ai_providers)) {
+                        while ($row = mysqli_fetch_assoc($sql_ai_providers)) {
                             $ai_provider_id = intval($row['ai_provider_id']);
                             $ai_provider_name = nullable_htmlentities($row['ai_provider_name']);
 

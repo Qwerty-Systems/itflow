@@ -19,7 +19,7 @@ if (isset($_POST['edit_company'])) {
     $tax_id = sanitizeInput($_POST['tax_id']);
 
     $sql = mysqli_query($mysqli,"SELECT company_logo FROM companies WHERE company_id = 1");
-    $row = mysqli_fetch_array($sql);
+    $row = mysqli_fetch_assoc($sql);
     $existing_file_name = sanitizeInput($row['company_logo']);
 
     // Company logo
@@ -54,8 +54,10 @@ if (isset($_POST['edit_company'])) {
 
 if (isset($_GET['remove_company_logo'])) {
 
+    validateCSRFToken($_GET['csrf_token']);
+
     $sql = mysqli_query($mysqli,"SELECT company_logo FROM companies");
-    $row = mysqli_fetch_array($sql);
+    $row = mysqli_fetch_assoc($sql);
     $company_logo = $row['company_logo']; // FileSystem Operation Logo is already sanitized
 
     unlink("../uploads/settings/$company_logo");

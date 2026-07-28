@@ -1,10 +1,10 @@
 <?php
 
-require_once "includes/guest_header.php";
+require_once "includes/inc_all_guest.php";
 
 if (!isset($_GET['invoice_id'], $_GET['url_key'])) {
     echo "<br><h2>Oops, something went wrong! Please raise a ticket if you believe this is an error.</h2>";
-    require_once "includes/guest_footer.php";
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
 
     exit();
 }
@@ -25,12 +25,12 @@ $sql = mysqli_query(
 if (mysqli_num_rows($sql) !== 1) {
     // Invalid invoice/key
     echo "<br><h2>Oops, something went wrong! Please raise a ticket if you believe this is an error.</h2>";
-    require_once "includes/guest_footer.php";
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
 
     exit();
 }
 
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 
 $invoice_id = intval($row['invoice_id']);
 $invoice_prefix = nullable_htmlentities($row['invoice_prefix']);
@@ -62,7 +62,7 @@ $client_currency_code = nullable_htmlentities($row['client_currency_code']);
 $client_net_terms = intval($row['client_net_terms']);
 
 $sql = mysqli_query($mysqli, "SELECT * FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1");
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 
 $company_name = nullable_htmlentities($row['company_name']);
 $company_address = nullable_htmlentities($row['company_address']);
@@ -85,11 +85,11 @@ if (!empty($company_logo)) {
     $company_logo_base64 = base64_encode(file_get_contents("../uploads/settings/$company_logo"));
 }
 $company_locale = nullable_htmlentities($row['company_locale']);
-$config_invoice_footer = nullable_htmlentities($row['config_invoice_footer']); 
+$config_invoice_footer = nullable_htmlentities($row['config_invoice_footer']);
 
 // Get Payment Provide Details
 $sql = mysqli_query($mysqli, "SELECT * FROM payment_providers WHERE payment_provider_active = 1 LIMIT 1");
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 $payment_provider_id = intval($row['payment_provider_id']);
 $payment_provider_name = nullable_htmlentities($row['payment_provider_name']);
 $payment_provider_threshold = floatval($row['payment_provider_threshold']);
@@ -111,15 +111,15 @@ if ($invoice_status == 'Sent') {
 mysqli_query($mysqli, "INSERT INTO history SET history_status = '$invoice_status', history_description = 'Invoice viewed - $ip - $os - $browser', history_invoice_id = $invoice_id");
 
 if ($invoice_status !== 'Paid') {
-    
-    appNotify("Invoice Viewed", "Invoice $invoice_prefix$invoice_number has been viewed by $client_name_escaped - $ip - $os - $browser", "invoice.php?invoice_id=$invoice_id", $client_id);
-    
+
+    appNotify("Invoice Viewed", "Invoice $invoice_prefix$invoice_number has been viewed by $client_name_escaped - $ip - $os - $browser", "/agent/invoice.php?invoice_id=$invoice_id", $client_id);
+
 }
 $sql_payments = mysqli_query($mysqli, "SELECT * FROM payments, accounts WHERE payment_account_id = account_id AND payment_invoice_id = $invoice_id ORDER BY payments.payment_id DESC");
 
 //Add up all the payments for the invoice and get the total amount paid to the invoice
 $sql_amount_paid = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS amount_paid FROM payments WHERE payment_invoice_id = $invoice_id");
-$row = mysqli_fetch_array($sql_amount_paid);
+$row = mysqli_fetch_assoc($sql_amount_paid);
 $amount_paid = floatval($row['amount_paid']);
 
 // Calculate the balance owed
@@ -141,12 +141,12 @@ $sql_invoice_items = mysqli_query($mysqli, "SELECT * FROM invoice_items WHERE it
 // Get Total Account Balance
 //Add up all the payments for the invoice and get the total amount paid to the invoice
 $sql_invoice_amounts = mysqli_query($mysqli, "SELECT SUM(invoice_amount) AS invoice_amounts FROM invoices WHERE invoice_client_id = $client_id AND invoice_status != 'Draft' AND invoice_status != 'Cancelled' AND invoice_status != 'Non-Billable'");
-$row = mysqli_fetch_array($sql_invoice_amounts);
+$row = mysqli_fetch_assoc($sql_invoice_amounts);
 
 $account_balance = floatval($row['invoice_amounts']);
 
 $sql_amount_paid = mysqli_query($mysqli, "SELECT SUM(payment_amount) AS amount_paid FROM payments, invoices WHERE payment_invoice_id = invoice_id AND invoice_client_id = $client_id");
-$row = mysqli_fetch_array($sql_amount_paid);
+$row = mysqli_fetch_assoc($sql_amount_paid);
 
 $account_amount_paid = floatval($row['amount_paid']);
 
@@ -173,7 +173,15 @@ if ($balance > 0) {
                         <i class="fa fa-fw fa-download mr-2"></i>Download
                     </a>
                     <?php
-                    if ($invoice_status !== "Paid" && $invoice_status  !== "Cancelled" && $invoice_status !== "Draft" && $payment_provider_id) { ?>
+                    if ($invoice_status !== "Paid" &&
+                        $invoice_status  !== "Cancelled" &&
+                        $invoice_status !== "Draft" &&
+                        $payment_provider_id &&
+                        (
+                            $payment_provider_threshold == 0 ||
+                            $payment_provider_threshold > $invoice_amount
+                        )
+                    ){ ?>
                         <a class="btn btn-success" href="guest_pay_invoice_stripe.php?invoice_id=<?php echo $invoice_id; ?>&url_key=<?php echo $url_key; ?>"><i class="fa fa-fw fa-credit-card mr-2"></i>Pay Now </a>
                     <?php } ?>
                 </div>
@@ -256,7 +264,7 @@ if ($balance > 0) {
                             $total_tax = 0.00;
                             $sub_total = 0.00 - $invoice_discount;
 
-                            while ($row = mysqli_fetch_array($sql_invoice_items)) {
+                            while ($row = mysqli_fetch_assoc($sql_invoice_items)) {
                                 $item_id = intval($row['item_id']);
                                 $item_name = nullable_htmlentities($row['item_name']);
                                 $item_description = nullable_htmlentities($row['item_description']);
@@ -330,7 +338,7 @@ if ($balance > 0) {
                             <td class="text-right text-success"><?php echo numfmt_format_currency($currency_format, $amount_paid, $invoice_currency_code); ?></td>
                         </tr>
                     <?php
-                    } 
+                    }
                     ?>
                     <tr class="h5 text-bold">
                         <td>Balance:</td>
@@ -375,7 +383,7 @@ if ($current_invoices_count > 0) { ?>
             <tbody>
             <?php
 
-            while ($row = mysqli_fetch_array($sql_current_invoices)) {
+            while ($row = mysqli_fetch_assoc($sql_current_invoices)) {
                 $invoice_id = intval($row['invoice_id']);
                 $invoice_prefix = nullable_htmlentities($row['invoice_prefix']);
                 $invoice_number = intval($row['invoice_number']);
@@ -437,7 +445,7 @@ if ($outstanding_invoices_count > 0) { ?>
             <tbody>
             <?php
 
-            while ($row = mysqli_fetch_array($sql_outstanding_invoices)) {
+            while ($row = mysqli_fetch_assoc($sql_outstanding_invoices)) {
                 $invoice_id = intval($row['invoice_id']);
                 $invoice_prefix = nullable_htmlentities($row['invoice_prefix']);
                 $invoice_number = intval($row['invoice_number']);
@@ -470,4 +478,4 @@ if ($outstanding_invoices_count > 0) { ?>
 
 <?php } // End previous unpaid invoices
 
-require_once "includes/guest_footer.php";
+require_once $_SERVER['DOCUMENT_ROOT']  . '/includes/footer.php';

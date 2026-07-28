@@ -11,7 +11,7 @@ if ($sql && mysqli_num_rows($sql) > 0) {
     $return_arr['count'] = mysqli_num_rows($sql);
 
     $row = array();
-    while ($row = mysqli_fetch_array($sql)) {
+    while ($row = mysqli_fetch_assoc($sql)) {
         $return_arr['data'][] = $row;
     }
 

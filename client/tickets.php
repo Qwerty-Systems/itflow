@@ -26,17 +26,17 @@ $contact_tickets = mysqli_query($mysqli, "SELECT ticket_id, ticket_prefix, ticke
 
 //Get Total tickets closed
 $sql_total_tickets_closed = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_closed FROM tickets WHERE ticket_closed_at IS NOT NULL AND ticket_client_id = $session_client_id AND ticket_contact_id = $session_contact_id");
-$row = mysqli_fetch_array($sql_total_tickets_closed);
+$row = mysqli_fetch_assoc($sql_total_tickets_closed);
 $total_tickets_closed = intval($row['total_tickets_closed']);
 
 //Get Total tickets open
 $sql_total_tickets_open = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets_open FROM tickets WHERE ticket_closed_at IS NULL AND ticket_client_id = $session_client_id AND ticket_contact_id = $session_contact_id");
-$row = mysqli_fetch_array($sql_total_tickets_open);
+$row = mysqli_fetch_assoc($sql_total_tickets_open);
 $total_tickets_open = intval($row['total_tickets_open']);
 
 //Get Total tickets
 $sql_total_tickets = mysqli_query($mysqli, "SELECT COUNT(ticket_id) AS total_tickets FROM tickets WHERE ticket_client_id = $session_client_id AND ticket_contact_id = $session_contact_id");
-$row = mysqli_fetch_array($sql_total_tickets);
+$row = mysqli_fetch_assoc($sql_total_tickets);
 $total_tickets = intval($row['total_tickets']);
 
 
@@ -58,7 +58,7 @@ $total_tickets = intval($row['total_tickets']);
             <tbody>
 
             <?php
-            while ($row = mysqli_fetch_array($contact_tickets)) {
+            while ($row = mysqli_fetch_assoc($contact_tickets)) {
                 $ticket_id = intval($row['ticket_id']);
                 $ticket_prefix = nullable_htmlentities($row['ticket_prefix']);
                 $ticket_number = intval($row['ticket_number']);

@@ -15,8 +15,11 @@ if (isset($_GET['type'])) {
         $type_display = "Contact";
     } elseif ($type === 4) {
         $type_display = "Credential";
+    } elseif ($type === 5) {
+        $type_display = "Asset";
     }
 }
+ob_start();
 
 ?>
 
@@ -27,7 +30,9 @@ if (isset($_GET['type'])) {
     </button>
 </div>
 <form action="post.php" method="post" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
     <input type="hidden" name="type" value="<?php echo $type; ?>">
+
     <div class="modal-body">
         <div class="form-group">
             <label>Name <strong class="text-danger">*</strong></label>
@@ -38,13 +43,13 @@ if (isset($_GET['type'])) {
                 <input type="text" class="form-control" name="name" placeholder="Tag name" maxlength="200" required autofocus>
             </div>
         </div>
-        
+
         <?php if (isset($_GET['type'])) { ?>
-        
+
         <input type="hidden" name="type" value="<?= $type ?>">
-        
+
         <?php } else { ?>
-        
+
         <div class="form-group">
             <label>Type <strong class="text-danger">*</strong></label>
             <div class="input-group">
@@ -57,10 +62,11 @@ if (isset($_GET['type'])) {
                     <option value="2">Location Tag</option>
                     <option value="3">Contact Tag</option>
                     <option value="4">Credential Tag</option>
+                    <option value="5">Asset Tag</option>
                 </select>
             </div>
         </div>
-    
+
         <?php } ?>
 
         <div class="form-group">
@@ -85,7 +91,7 @@ if (isset($_GET['type'])) {
 
     </div>
     <div class="modal-footer">
-        <button type="submit" name="add_tag" class="btn btn-primary text-bold"><i class="fas fa-check mr-2"></i>Create</button>
+        <button type="submit" name="add_tag" class="btn btn-primary text-bold"><i class="fas fa-check mr-2"></i>Create Tag</button>
         <button type="button" class="btn btn-light" data-dismiss="modal"><i class="fas fa-times mr-2"></i>Cancel</button>
     </div>
 </form>

@@ -21,7 +21,7 @@ if (isset($_GET['update'])) {
     if ($config_telemetry > 0 OR $config_telemetry = 2) {
 
         $sql = mysqli_query($mysqli,"SELECT * FROM companies WHERE company_id = 1");
-        $row = mysqli_fetch_array($sql);
+        $row = mysqli_fetch_assoc($sql);
 
         $company_name = sanitizeInput($row['company_name']);
         $website = sanitizeInput($row['company_website']);

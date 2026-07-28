@@ -35,7 +35,7 @@ $sql_document = mysqli_query($mysqli,
         LIMIT 1"
 );
 
-$row = mysqli_fetch_array($sql_document);
+$row = mysqli_fetch_assoc($sql_document);
 
 if ($row) {
     $document_id = intval($row['document_id']);
@@ -73,7 +73,7 @@ $sql_files = mysqli_query($mysqli,
 <?php
 // Check if this document has attached files and handle accordingly
 if (mysqli_num_rows($sql_files) > 0) {
-    $file_row = mysqli_fetch_array($sql_files);
+    $file_row = mysqli_fetch_assoc($sql_files);
     $file_id = intval($file_row['file_id']);
     $file_name = nullable_htmlentities($file_row['file_name']);
     $file_reference_name = nullable_htmlentities($file_row['file_reference_name']);
@@ -81,9 +81,9 @@ if (mysqli_num_rows($sql_files) > 0) {
     $file_size = intval($file_row['file_size']);
     $file_mime_type = nullable_htmlentities($file_row['file_mime_type']);
     $file_size_formatted = formatBytes($file_size);
-    
+
     $file_path = "../uploads/clients/$session_client_id/$file_reference_name";
-    
+
     // For PDF files, display them inline
     if ($file_ext == 'pdf') {
         ?>
@@ -185,7 +185,7 @@ if (mysqli_num_rows($sql_files) > 0) {
         </div>
         <?php
     }
-    
+
 } else {
     // Regular text-based document (no files attached)
     ?>

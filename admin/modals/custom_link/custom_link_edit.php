@@ -5,7 +5,7 @@ require_once '../../../includes/modal_header.php';
 $custom_link_id = intval($_GET['id']);
 
 $sql = mysqli_query($mysqli, "SELECT * FROM custom_links WHERE custom_link_id = $custom_link_id LIMIT 1");
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 $custom_link_name = nullable_htmlentities($row['custom_link_name']);
 $custom_link_uri = nullable_htmlentities($row['custom_link_uri']);
 $custom_link_icon = nullable_htmlentities($row['custom_link_icon']);
@@ -24,9 +24,9 @@ ob_start();
     </button>
 </div>
 <form action="post.php" method="post" autocomplete="off">
-    
+    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?>">
     <input type="hidden" name="custom_link_id" value="<?php echo $custom_link_id; ?>">
-    
+
     <div class="modal-body">
 
         <div class="form-group">
@@ -81,9 +81,11 @@ ob_start();
                     <span class="input-group-text"><i class="fa fa-fw fa-home"></i></span>
                 </div>
                 <select class="form-control select2" name="location" required>
-                    <option value="1" <?php if ($custom_link_location == 1) { echo "selected"; } ?> >Main Side Nav</option>
-                    <option value="2" <?php if ($custom_link_location == 2) { echo "selected"; } ?> >Top Nav (Icon Required)</option>
-                    <option value="3" <?php if ($custom_link_location == 3) { echo "selected"; } ?> >Client Portal Nav</option>
+                    <option value="1" <?php if ($custom_link_location === 1) { echo "selected"; } ?> >Main Side Nav</option>
+                    <option value="2" <?php if ($custom_link_location === 2) { echo "selected"; } ?> >Top Nav (Icon Required)</option>
+                    <option value="3" <?php if ($custom_link_location === 3) { echo "selected"; } ?> >Client Portal Nav</option>
+                    <option value="4" <?php if ($custom_link_location === 4) { echo "selected"; } ?> >Admin Nav</option>
+                    <option value="5" <?php if ($custom_link_location === 5) { echo "selected"; } ?> >Reports Nav</option>
                 </select>
             </div>
         </div>

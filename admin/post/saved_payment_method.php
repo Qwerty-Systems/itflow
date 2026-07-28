@@ -3,13 +3,13 @@
 defined('FROM_POST_HANDLER') || die("Direct file access is not allowed");
 
 if (isset($_GET['delete_saved_payment'])) {
-    
+
     validateCSRFToken($_GET['csrf_token']);
 
     $saved_payment_id = intval($_GET['delete_saved_payment']);
 
     $sql = mysqli_query($mysqli, "
-        SELECT 
+        SELECT
             client_saved_payment_methods.saved_payment_id,
             client_saved_payment_methods.saved_payment_client_id,
             client_saved_payment_methods.saved_payment_provider_id,
@@ -27,7 +27,7 @@ if (isset($_GET['delete_saved_payment'])) {
         WHERE client_saved_payment_methods.saved_payment_id = $saved_payment_id"
     );
 
-    $row = mysqli_fetch_array($sql);
+    $row = mysqli_fetch_assoc($sql);
     $client_id = intval($row['saved_payment_client_id']);
     $provider_id = intval($row['saved_payment_provider_id']);
     $payment_provider_name = nullable_htmlentities($row['payment_provider_name']);
@@ -37,12 +37,12 @@ if (isset($_GET['delete_saved_payment'])) {
 
     $private_key = $row['payment_provider_private_key'];
 
-    // Seperate logic for each Payment Provider
+    // Separate logic for each Payment Provider
     if ($payment_provider_name == 'Stripe') {
 
         try {
             // Initialize stripe
-            require_once 'plugins/stripe-php/init.php';
+            require_once '../plugins/stripe-php/init.php';
             $stripe = new \Stripe\StripeClient($private_key);
 
             // Detach PM
@@ -56,15 +56,15 @@ if (isset($_GET['delete_saved_payment'])) {
 
     }
 
-    // Remove payment method from ITFlow
+    // Remove payment method from ITFlow. This will also cascade delete related recurring payments setup
     mysqli_query($mysqli, "DELETE FROM client_saved_payment_methods WHERE saved_payment_id = $saved_payment_id");
 
     // SQL Cascade delete will Remove All Associated Auto Payment Methods on recurring invoices in the recurring payments table.
 
     logAction("Payment Provider", "Update", "$session_name deleted saved payment method $saved_payment_description (PM: $payment_method)", $client_id);
-    
+
     flash_alert("Payment method <strong>$saved_payment_description</strong> removed", 'error');
-    
+
     redirect();
 
 }

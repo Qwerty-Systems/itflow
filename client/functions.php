@@ -23,7 +23,7 @@ function verifyContactTicketAccess($requested_ticket_id, $expected_ticket_state)
     }
 
     // Verify the contact has access to the provided ticket ID
-    $row = mysqli_fetch_array(mysqli_query($mysqli, "SELECT * FROM tickets WHERE ticket_id = $requested_ticket_id AND $ticket_state_snippet AND ticket_client_id = $session_client_id LIMIT 1"));
+    $row = mysqli_fetch_assoc(mysqli_query($mysqli, "SELECT * FROM tickets WHERE ticket_id = $requested_ticket_id AND $ticket_state_snippet AND ticket_client_id = $session_client_id LIMIT 1"));
     if ($row) {
         $ticket_id = $row['ticket_id'];
 
@@ -43,7 +43,7 @@ function verifyContactTicketAccess($requested_ticket_id, $expected_ticket_state)
  */
 function getFileIcon($file_extension) {
     $file_extension = strtolower($file_extension);
-    
+
     // Document icons
     if (in_array($file_extension, ['pdf'])) {
         return 'file-pdf';
@@ -75,10 +75,10 @@ function getFileIcon($file_extension) {
  */
 function formatBytes($bytes, $precision = 2) {
     $units = array('B', 'KB', 'MB', 'GB', 'TB');
-    
+
     for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
         $bytes /= 1024;
     }
-    
+
     return round($bytes, $precision) . ' ' . $units[$i];
 }

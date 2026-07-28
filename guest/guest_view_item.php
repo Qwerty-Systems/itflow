@@ -4,7 +4,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
 
-require_once "includes/guest_header.php";
+require_once "includes/inc_all_guest.php";
 
 
 //Initialize the HTML Purifier to prevent XSS
@@ -16,7 +16,7 @@ $purifier_config->set('URI.AllowedSchemes', ['data' => true, 'src' => true, 'htt
 $purifier = new HTMLPurifier($purifier_config);
 
 $sql = mysqli_query($mysqli, "SELECT * FROM companies, settings WHERE companies.company_id = settings.company_id AND companies.company_id = 1");
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 
 $company_name = nullable_htmlentities($row['company_name']);
 $company_address = nullable_htmlentities($row['company_address']);
@@ -39,7 +39,7 @@ $currency_format = numfmt_create($company_locale, NumberFormatter::CURRENCY);
 <?php
 if (!isset($_GET['id']) || !isset($_GET['key'])) {
     echo "<div class='alert alert-danger'>Incorrect URL.</div>";
-    include "includes/guest_footer.php";
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
 
     exit();
 }
@@ -48,12 +48,12 @@ $item_id = intval($_GET['id']);
 $item_key = sanitizeInput($_GET['key']);
 
 $sql = mysqli_query($mysqli, "SELECT * FROM shared_items WHERE item_id = $item_id AND item_key = '$item_key' AND item_expire_at > NOW() LIMIT 1");
-$row = mysqli_fetch_array($sql);
+$row = mysqli_fetch_assoc($sql);
 
 // Check we got a result
 if (mysqli_num_rows($sql) !== 1 || !$row) {
     echo "<div class='alert alert-danger' >No item to view. Check with the person that sent you this link to ensure it is correct and has not expired.</div>";
-    include "includes/guest_footer.php";
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
 
     exit();
 }
@@ -61,7 +61,7 @@ if (mysqli_num_rows($sql) !== 1 || !$row) {
 // Check item share is active & hasn't been viewed too many times but allow 0 views as that is consider infinite views
 if ($row['item_active'] !== "1" || ($row['item_view_limit'] > 0 && $row['item_views'] >= $row['item_view_limit'])) {
     echo "<div class='alert alert-danger'>Item cannot be viewed at this time. Check with the person that sent you this link to ensure it is correct and has not expired.</div>";
-    include "includes/guest_footer.php";
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
 
     exit();
 }
@@ -83,7 +83,7 @@ $client_id = intval($row['item_client_id']);
 $item_type_sql_escaped = sanitizeInput($row['item_type']);
 $item_recipient_sql_escaped = sanitizeInput($row['item_recipient']);
 
-appNotify("Share Viewed", "$item_type_sql_escaped has been viewed by $item_recipient_sql_escaped", "client_overview.php?client_id=$client_id", $client_id);
+appNotify("Share Viewed", "$item_type_sql_escaped has been viewed by $item_recipient_sql_escaped", "/agent/client_overview.php?client_id=$client_id", $client_id);
 
 ?>
 
@@ -119,11 +119,11 @@ appNotify("Share Viewed", "$item_type_sql_escaped has been viewed by $item_recip
 if ($item_type == "Document") {
 
     $doc_sql = mysqli_query($mysqli, "SELECT * FROM documents WHERE document_id = $item_related_id AND document_client_id = $client_id LIMIT 1");
-    $doc_row = mysqli_fetch_array($doc_sql);
+    $doc_row = mysqli_fetch_assoc($doc_sql);
 
     if (mysqli_num_rows($doc_sql) !== 1 || !$doc_row) {
         echo "<div class='alert alert-danger'>Error retrieving document to view.</div>";
-        require_once "includes/guest_footer.php";
+        require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
 
         exit();
     }
@@ -146,11 +146,11 @@ if ($item_type == "Document") {
 
 } elseif ($item_type == "File") {
     $file_sql = mysqli_query($mysqli, "SELECT * FROM files WHERE file_id = $item_related_id AND file_client_id = $client_id LIMIT 1");
-    $file_row = mysqli_fetch_array($file_sql);
+    $file_row = mysqli_fetch_assoc($file_sql);
 
     if (mysqli_num_rows($file_sql) !== 1 || !$file_row) {
         echo "<div class='alert alert-danger'>Error retrieving file.</div>";
-        include "includes/guest_footer.php";
+        require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
 
         exit();
     }
@@ -168,10 +168,10 @@ if ($item_type == "Document") {
     $encryption_key = $_GET['ek'];
 
     $credential_sql = mysqli_query($mysqli, "SELECT * FROM credentials WHERE credential_id = $item_related_id AND credential_client_id = $client_id LIMIT 1");
-    $credential_row = mysqli_fetch_array($credential_sql);
+    $credential_row = mysqli_fetch_assoc($credential_sql);
     if (mysqli_num_rows($credential_sql) !== 1 || !$credential_row) {
         echo "<div class='alert alert-danger'>Error retrieving login.</div>";
-        include "includes/guest_footer.php";
+        require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
 
         exit();
     }
@@ -231,7 +231,7 @@ if ($item_type == "Document") {
         function showOTP(id, secret) {
             //Send a GET request to ajax.php as guest_ajax.php?get_totp_token=true&totp_secret=SECRET
             jQuery.get(
-                "guest_ajax.php",
+                "/agent/ajax.php",
                 {get_totp_token: 'true', totp_secret: secret},
                 function(data) {
                     //If we get a response from post.php, parse it as JSON
@@ -274,6 +274,4 @@ if ($item_type == "Document") {
 </div>
 
 <?php
-require_once "includes/guest_footer.php";
-
-?>
+require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
