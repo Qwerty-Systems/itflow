@@ -260,9 +260,11 @@ $currencies_array = array(
     'JMD' => 'Jamaica Dollar',
     'JPY' => 'Japan Yen',
     'JEP' => 'Jersey Pound',
+    'KSH' => 'Kenyan Shilling',
     'KMF' => 'Comorian Franc',
     'KPW' => 'Korea (North) Won',
     'KRW' => 'Korea (South) Won',
+    'KSH' => 'Kenayan Shilling',
     'KWD' => 'Kuwaiti Dinar',
     'LAK' => 'Laos Kip',
     'LVL' => 'Latvia Lat',
@@ -773,3 +775,4 @@ $locales_array = [
     'zu_ZA'       => 'Zulu (South Africa)',
     'zu'          => 'Zulu',
 ];
+?>

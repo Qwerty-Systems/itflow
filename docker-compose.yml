@@ -1,0 +1,99 @@
+# ########################### NETWORKS
+# # networks:
+# #   wan:
+# #     name: wan
+# #     driver: bridge
+
+# #   itflow-db:
+# #     name: itflow-db
+# #     external: false
+
+# ########################### VOLUMES
+
+# # volumes:
+# #   itflow-db:
+
+# ########################### ITFLOW
+# services:
+#   itflow:
+#     platform: linux/amd64
+#     hostname: itflow
+#     container_name: itflow
+#     # Comment out image for DockerHub image, use build for local DockerFile if you prefer to build from base
+#     #image: itfloworg/itflow:latest
+#     build: 
+#       context: .
+#       dockerfile: Dockerfile
+#     restart: unless-stopped
+#     # depends_on: 
+#     #   - itflow-db
+#     # networks:
+#     #   - wan
+#       # - itflow-db
+#     ports:
+#       - "${ITFLOW_PORT:-8043}:8080"
+#     environment:
+#       - TZ=${TZ}
+#       - ITFLOW_NAME=${ITFLOW_NAME}
+#       - ITFLOW_URL=${ROOT_DOMAIN}
+#       - ITFLOW_PORT=${ITFLOW_PORT}
+#       - ITFLOW_REPO=${ITFLOW_REPO}
+#       - ITFLOW_REPO_BRANCH=${ITFLOW_REPO_BRANCH}
+#       - ITFLOW_LOG_LEVEL=info
+#       - ITFLOW_DB_HOST=${ITFLOW_DB_HOST}
+#       - ITFLOW_DB_PASS=${ITFLOW_DB_PASS}
+#     volumes:
+#       - ./itflow/:/var/www/localhost/htdocs
+
+#   # itflow-db:
+#   #   hostname: itflow-db
+#   #   container_name: itflow-db
+#   #   image: mariadb:10.11.6
+#   #   restart: always
+#   #   networks:
+#   #     - itflow-db
+#   #   environment:
+#   #     - MARIADB_RANDOM_ROOT_PASSWORD=true
+#   #     - MARIADB_DATABASE=itflow
+#   #     - MARIADB_USER=itflow
+#   #     - MARIADB_PASSWORD=$ITFLOW_DB_PASS
+#   #   volumes:
+#   #     - itflow-db:/var/lib/mysql/    
+
+
+########################### ITFLOW
+services:
+  itflow:
+    platform: linux/amd64
+    hostname: itflow
+    container_name: itflow
+    # Comment out image for DockerHub image, use build for local DockerFile if you prefer to build from base
+    image: itfloworg/itflow
+    #build: 
+      #context: .
+      #dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8099:8080"
+    # environment:
+    #   - TZ=$TZ
+    #   - ITFLOW_NAME=IT
+    #   - ITFLOW_URL=appp.$ROOT_DOMAIN
+    #   - ITFLOW_PORT=8080
+    #   - ITFLOW_REPO=github.com/itflow-org/itflow
+    #   - ITFLOW_REPO_BRANCH=master
+    #   - ITFLOW_LOG_LEVEL=info
+    #   - ITFLOW_DB_HOST=itflow-db
+    #   - ITFLOW_DB_PASS=$ITFLOW_DB_PASS
+    environment:
+      - TZ=${TZ}
+      - ITFLOW_NAME=${ITFLOW_NAME}
+      - ITFLOW_URL=${ROOT_DOMAIN}
+      - ITFLOW_PORT=${ITFLOW_PORT}
+      - ITFLOW_REPO=${ITFLOW_REPO}
+      - ITFLOW_REPO_BRANCH=${ITFLOW_REPO_BRANCH}
+      - ITFLOW_LOG_LEVEL=info
+      - ITFLOW_DB_HOST=${ITFLOW_DB_HOST}
+      - ITFLOW_DB_PASS=${ITFLOW_DB_PASS}
+    volumes:
+      - ./itflow/:/var/www/html
